@@ -1,0 +1,417 @@
+import React, { useState } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import {
+  FolderCheck,
+  FolderPlus,
+  Folder,
+  MessageSquareText,
+} from "lucide-react";
+
+const stats = [
+  {
+    title: "Dự Án Đã Nhận",
+    value: 35,
+    icon: <FolderPlus className="w-6 h-6 text-blue-600" />,
+  },
+  {
+    title: "Dự Án Hoàn Thành",
+    value: 20,
+    icon: <FolderCheck className="w-6 h-6 text-green-600" />,
+  },
+  {
+    title: "Dự Án Đang Tiến Hành",
+    value: 10,
+    icon: <Folder className="w-6 h-6 text-yellow-500" />,
+  },
+  {
+    title: "Dự Án Đã Thu Hồi",
+    value: 15,
+    icon: <MessageSquareText className="w-6 h-6 text-purple-600" />,
+  },
+];
+
+const progressChart = [
+  {
+    name: "Tháng 1",
+    DuAnDaNhan: 70,
+    DuAnDaHoanThanh: 50,
+    DuAnDangLam: 10,
+    DuAnDaThuHoi: 10,
+  },
+  {
+    name: "Tháng 2",
+    DuAnDaNhan: 65,
+    DuAnDaHoanThanh: 60,
+    DuAnDangLam: 5,
+    DuAnDaThuHoi: 0,
+  },
+  {
+    name: "Tháng 3",
+    DuAnDaNhan: 70,
+    DuAnDaHoanThanh: 55,
+    DuAnDangLam: 10,
+    DuAnDaThuHoi: 5,
+  },
+  {
+    name: "Tháng 4",
+    DuAnDaNhan: 40,
+    DuAnDaHoanThanh: 20,
+    DuAnDangLam: 15,
+    DuAnDaThuHoi: 5,
+  },
+  {
+    name: "Tháng 5",
+    DuAnDaNhan: 80,
+    DuAnDaHoanThanh: 80,
+    DuAnDangLam: 10,
+    DuAnDaThuHoi: 5,
+  },
+  {
+    name: "Tháng 6",
+    DuAnDaNhan: 85,
+    DuAnDaHoanThanh: 72,
+    DuAnDangLam: 10,
+    DuAnDaThuHoi: 3,
+  },
+  {
+    name: "Tháng 7",
+    DuAnDaNhan: 76,
+    DuAnDaHoanThanh: 67,
+    DuAnDangLam: 7,
+    DuAnDaThuHoi: 2,
+  },
+  {
+    name: "Tháng 8",
+    DuAnDaNhan: 92,
+    DuAnDaHoanThanh: 85,
+    DuAnDangLam: 5,
+    DuAnDaThuHoi: 2,
+  },
+  {
+    name: "Tháng 9",
+    DuAnDaNhan: 60,
+    DuAnDaHoanThanh: 47,
+    DuAnDangLam: 10,
+    DuAnDaThuHoi: 3,
+  },
+  {
+    name: "Tháng 10",
+    DuAnDaNhan: 10,
+    DuAnDaHoanThanh: 7,
+    DuAnDangLam: 2,
+    DuAnDaThuHoi: 1,
+  },
+  {
+    name: "Tháng 11",
+    DuAnDaNhan: 97,
+    DuAnDaHoanThanh: 85,
+    DuAnDangLam: 12,
+    DuAnDaThuHoi: 0,
+  },
+  {
+    name: "Tháng 12",
+    DuAnDaNhan: 89,
+    DuAnDaHoanThanh: 88,
+    DuAnDangLam: 1,
+    DuAnDaThuHoi: 0,
+  },
+];
+
+const recentProjects = [
+  {
+    name: "Website Bán Hàng",
+    team: "Frontend",
+    progress: "100%",
+    status: "Hoàn thành",
+  },
+  {
+    name: "App Chấm Công",
+    team: "Backend",
+    progress: "80%",
+    status: "Đang làm",
+  },
+  {
+    name: "CRM Nội Bộ",
+    team: "Fullstack",
+    progress: "65%",
+    status: "Đang làm",
+  },
+  { name: "Dự Án 4", team: "Mobile", progress: "50%", status: "Đang làm" },
+  { name: "Dự Án 5", team: "DevOps", progress: "30%", status: "Đang làm" },
+  { name: "Dự Án 6", team: "Frontend", progress: "90%", status: "Hoàn thành" },
+];
+
+const feedbacks = [
+  {
+    user: "Nguyễn Văn A",
+    message: "Thiết kế mới rất dễ sử dụng!",
+    date: "20/05/2025",
+  },
+  {
+    user: "Trần Thị B",
+    message: "Tôi cần thêm tính năng lọc dự án.",
+    date: "19/05/2025",
+  },
+  {
+    user: "Lê Thị C",
+    message: "Giao diện trực quan, dễ thao tác.",
+    date: "18/05/2025",
+  },
+  {
+    user: "Phạm Văn D",
+    message: "Mong có thêm báo cáo tiến độ chi tiết.",
+    date: "17/05/2025",
+  },
+  {
+    user: "Trần Văn E",
+    message: "Tốc độ load trang nhanh, rất tốt.",
+    date: "16/05/2025",
+  },
+];
+
+const ITEMS_PER_PAGE = 3;
+
+const Home = () => {
+  const [projectPage, setProjectPage] = useState(1);
+  const [feedbackPage, setFeedbackPage] = useState(1);
+
+  const projectTotalPages = Math.ceil(recentProjects.length / ITEMS_PER_PAGE);
+  const feedbackTotalPages = Math.ceil(feedbacks.length / ITEMS_PER_PAGE);
+
+  const displayedProjects = recentProjects.slice(
+    (projectPage - 1) * ITEMS_PER_PAGE,
+    projectPage * ITEMS_PER_PAGE
+  );
+
+  const displayedFeedbacks = feedbacks.slice(
+    (feedbackPage - 1) * ITEMS_PER_PAGE,
+    feedbackPage * ITEMS_PER_PAGE
+  );
+
+  const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+    return (
+      <div className="mt-4 flex flex-wrap gap-2 justify-end">
+        {pages.map((page) => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`px-2 py-1 sm:px-3 sm:py-1 rounded-md font-medium transition-colors duration-200 text-xs sm:text-sm ${
+              page === currentPage
+                ? "bg-blue-600 text-white shadow-md"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+            aria-label={`Trang ${page}`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-3 sm:p-4 md:p-6 w-full mx-auto font-sans text-gray-900 min-w-0">
+      <h2 className="text-2xl sm:text-3xl font-extrabold mb-4 sm:mb-6 tracking-wide">
+        Trang Chủ
+      </h2>
+
+      {/* Thẻ thông số */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+        {stats.map((item, index) => (
+          <div
+            key={index}
+            className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex items-center space-x-4 sm:space-x-5 hover:shadow-lg transition-shadow duration-300"
+          >
+            <div className="p-3 sm:p-4 bg-gray-100 rounded-full flex items-center justify-center">
+              {item.icon}
+            </div>
+            <div>
+              <div className="text-xl sm:text-2xl font-semibold text-gray-800">
+                {item.value}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">
+                {item.title}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Biểu đồ tiến độ với 4 chỉ số % */}
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md mb-8 sm:mb-12">
+        <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-gray-800">
+          Tỷ lệ dự án theo trạng thái (%)
+        </h3>
+        <ResponsiveContainer width="100%" height={380} className="sm:h-[320px]">
+          <LineChart
+            data={progressChart}
+            margin={{ top: 15, right: 10, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: "#6b7280", fontSize: "12px" }}
+              tickLine={false}
+              axisLine={{ stroke: "#d1d5db" }}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tickFormatter={(tick) => `${tick}%`}
+              tick={{ fill: "#6b7280", fontSize: "12px" }}
+              tickLine={false}
+              axisLine={{ stroke: "#d1d5db" }}
+              label={{
+                value: "Phần Trăm",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#6b7280",
+                offset: 10,
+                style: {
+                  textAnchor: "middle",
+                  fontSize: 12,
+                  fontWeight: "600",
+                },
+              }}
+            />
+            <Tooltip
+              formatter={(value) => `${value}%`}
+              contentStyle={{ borderRadius: 8, borderColor: "#9ca3af" }}
+              itemStyle={{ color: "#374151", fontSize: "12px" }}
+            />
+            <Legend verticalAlign="top" height={36} />
+            <Line
+              type="monotone"
+              dataKey="DuAnDaNhan"
+              stroke="#3b82f6"
+              strokeWidth={3}
+              dot={{ r: 5 }}
+              activeDot={{ r: 7 }}
+              name="Dự Án Đã Nhận"
+            />
+            <Line
+              type="monotone"
+              dataKey="DuAnDaHoanThanh"
+              stroke="#10b981"
+              strokeWidth={3}
+              dot={{ r: 5 }}
+              activeDot={{ r: 7 }}
+              name="Dự Án Đã Hoàn Thành"
+            />
+            <Line
+              type="monotone"
+              dataKey="DuAnDangLam"
+              stroke="#f59e0b"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              name="Dự Án Đang Làm"
+            />
+            <Line
+              type="monotone"
+              dataKey="DuAnDaThuHoi"
+              stroke="#ef4444"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              name="Dự Án Đã Thu Hồi"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Dự án gần đây */}
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md mb-8 sm:mb-12">
+        <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-gray-800">
+          Dự Án Gần Đây
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto border-collapse border border-gray-300 text-left text-xs sm:text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3 font-medium text-gray-700">
+                  Tên dự án
+                </th>
+                <th className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3 font-medium text-gray-700">
+                  Đội nhóm
+                </th>
+                <th className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3 font-medium text-gray-700">
+                  Tiến độ
+                </th>
+                <th className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3 font-medium text-gray-700">
+                  Trạng thái
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedProjects.map((project, idx) => (
+                <tr
+                  key={idx}
+                  className="even:bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
+                >
+                  <td className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3">
+                    {project.name}
+                  </td>
+                  <td className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3">
+                    {project.team}
+                  </td>
+                  <td className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3">
+                    {project.progress}
+                  </td>
+                  <td className="border border-gray-300 px-3 sm:px-5 py-2 sm:py-3">
+                    {project.status}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pagination
+          currentPage={projectPage}
+          totalPages={projectTotalPages}
+          onPageChange={setProjectPage}
+        />
+      </div>
+
+      {/* Phản hồi */}
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md">
+        <h3 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 text-gray-800">
+          Phản Hồi Từ Người Dùng
+        </h3>
+        <ul className="space-y-4 sm:space-y-5 max-h-80 sm:max-h-96 overflow-y-auto">
+          {displayedFeedbacks.map((fb, idx) => (
+            <li
+              key={idx}
+              className="border-l-4 border-blue-600 bg-gray-50 p-3 sm:p-4 rounded-md shadow-sm"
+            >
+              <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                {fb.user}
+              </p>
+              <p className="text-gray-700 mt-1 text-xs sm:text-sm">
+                {fb.message}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">{fb.date}</p>
+            </li>
+          ))}
+        </ul>
+        <Pagination
+          currentPage={feedbackPage}
+          totalPages={feedbackTotalPages}
+          onPageChange={setFeedbackPage}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Home;
