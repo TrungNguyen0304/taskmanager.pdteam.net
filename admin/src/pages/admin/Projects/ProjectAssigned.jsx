@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Eye, Pencil, Trash2, RotateCcw, Plus } from "lucide-react";
+import { Eye, Pencil, Trash2, RotateCcw } from "lucide-react";
 
 const ProjectAssigned = () => {
   const [projects, setProjects] = useState([]);
@@ -14,6 +14,7 @@ const ProjectAssigned = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalProjects, setTotalProjects] = useState(0);
   const [limit] = useState(3);
+  const [isProcessing, setIsProcessing] = useState(false); // Thêm state loading cho xóa/thu hồi
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,8 +51,6 @@ const ProjectAssigned = () => {
     fetchProjects();
   }, [navigate, currentPage, limit]);
 
-  const handleAdd = () => navigate("/create-projects");
-
   const handleEdit = (id) => navigate(`/update-projects/${id}`);
 
   const handleDelete = (id) => {
@@ -67,6 +66,8 @@ const ProjectAssigned = () => {
   };
 
   const confirmAction = async () => {
+    setIsProcessing(true); // Bật loading khi bắt đầu xử lý
+
     try {
       const token = localStorage.getItem("token");
       if (actionType === "delete") {
@@ -99,8 +100,17 @@ const ProjectAssigned = () => {
       navigate("/project-unassigned");
     } catch (error) {
       console.error("Lỗi khi thực hiện hành động:", error);
-      setError(error.response?.data?.message || "Không thể thực hiện hành động.");
+      setError(
+        error.response?.data?.message || "Không thể thực hiện hành động."
+      );
       setShowModal(false);
+      alert(
+        `Lỗi: ${
+          error.response?.data?.message || "Không thể thực hiện hành động."
+        }`
+      );
+    } finally {
+      setIsProcessing(false); // Tắt loading
     }
   };
 
@@ -117,15 +127,22 @@ const ProjectAssigned = () => {
 
   return (
     <div className="w-full mx-auto bg-white p-6 rounded-lg shadow-md">
+      {/* Loading Overlay cho xóa/thu hồi */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-700 font-medium">
+              {actionType === "delete"
+                ? "Đang xóa dự án..."
+                : "Đang thu hồi dự án..."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4 sm:gap-0">
         <h2 className="text-2xl font-bold">Quản Lý Dự Án</h2>
-        <button
-          onClick={handleAdd}
-          className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Thêm Dự Án
-        </button>
       </div>
 
       {loading ? (
@@ -146,7 +163,8 @@ const ProjectAssigned = () => {
                   <div className="flex-1">
                     <h3 className="text-xl font-semibold">{project.name}</h3>
                     <p className="text-gray-600">
-                      <span className="font-semibold text-black">Mô tả:</span> {project.description}
+                      <span className="font-semibold text-black">Mô tả:</span>{" "}
+                      {project.description}
                     </p>
                     <p className="text-gray-600">
                       <strong>Trạng thái:</strong> {project.status}
@@ -163,28 +181,32 @@ const ProjectAssigned = () => {
                   <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
                     <button
                       onClick={() => handleViewProjectDetail(project.id)}
-                      className="flex items-center px-3 py-1 border border-gray-300 rounded hover:bg-gray-100"
+                      className="flex items-center px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessing}
                     >
                       <Eye className="w-4 h-4 mr-1" />
                       Xem
                     </button>
                     <button
                       onClick={() => handleEdit(project.id)}
-                      className="flex items-center px-3 py-1 border border-yellow-400 text-yellow-700 rounded hover:bg-yellow-50"
+                      className="flex items-center px-3 py-1 border border-yellow-400 text-yellow-700 rounded hover:bg-yellow-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessing}
                     >
                       <Pencil className="w-4 h-4 mr-1" />
                       Sửa
                     </button>
                     <button
                       onClick={() => handleDelete(project.id)}
-                      className="flex items-center px-3 py-1 border border-red-500 text-red-600 rounded hover:bg-red-50"
+                      className="flex items-center px-3 py-1 border border-red-500 text-red-600 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessing}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Xóa
                     </button>
                     <button
                       onClick={() => handleRevoke(project.id)}
-                      className="flex items-center px-3 py-1 border border-blue-500 text-blue-600 rounded hover:bg-blue-50"
+                      className="flex items-center px-3 py-1 border border-blue-500 text-blue-600 rounded hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessing}
                     >
                       <RotateCcw className="w-4 h-4 mr-1" />
                       Thu hồi
@@ -204,28 +226,31 @@ const ProjectAssigned = () => {
               <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
+                  disabled={currentPage === 1 || isProcessing}
+                  className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Trước
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-3 py-1 border rounded ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      disabled={isProcessing}
+                      className={`px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
+                  disabled={currentPage === totalPages || isProcessing}
+                  className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Sau
                 </button>
@@ -237,7 +262,7 @@ const ProjectAssigned = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div className="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-md">
             <h3 className="text-xl font-semibold mb-4">
               {actionType === "delete"
@@ -251,15 +276,26 @@ const ProjectAssigned = () => {
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={cancelAction}
-                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isProcessing}
               >
                 Hủy
               </button>
               <button
                 onClick={confirmAction}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                disabled={isProcessing}
               >
-                Xác nhận
+                {isProcessing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {actionType === "delete"
+                      ? "Đang xóa..."
+                      : "Đang thu hồi..."}
+                  </>
+                ) : (
+                  "Xác nhận"
+                )}
               </button>
             </div>
           </div>

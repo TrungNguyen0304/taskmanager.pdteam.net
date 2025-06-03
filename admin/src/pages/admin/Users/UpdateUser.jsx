@@ -7,6 +7,8 @@ const UpdateUser = () => {
   const navigate = useNavigate();
   const employee = location.state?.employee;
 
+  const [loading, setLoading] = useState(false); // ✅ Trạng thái loading
+
   const [formData, setFormData] = useState({
     name: employee?.name || "",
     email: employee?.email || "",
@@ -40,10 +42,11 @@ const UpdateUser = () => {
     }
 
     const token = localStorage.getItem("token");
+    setLoading(true); // ✅ Bắt đầu loading
 
     try {
       await axios.put(
-        `https://apitaskmanager.pdteam.net/api/company/updateUser/${employee._id}`,
+        `http://localhost:8001/api/company/updateUser/${employee._id}`,
         {
           name: formData.name,
           email: formData.email,
@@ -66,11 +69,11 @@ const UpdateUser = () => {
         }
       );
 
-      alert("Cập nhật thông tin nhân viên thành công!");
       navigate("/member");
     } catch (err) {
       console.error("Lỗi khi cập nhật nhân viên:", err);
-      alert("Đã xảy ra lỗi khi cập nhật nhân viên!");
+    } finally {
+      setLoading(false); // ✅ Kết thúc loading
     }
   };
 
@@ -89,7 +92,7 @@ const UpdateUser = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md w-full mx-auto">
+    <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md w-full mx-auto relative">
       <h2 className="text-2xl font-bold mb-4">Cập Nhật Nhân Viên</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 border p-4 rounded-lg bg-gray-50">
@@ -200,7 +203,9 @@ const UpdateUser = () => {
               onChange={handleInputChange}
               className="border px-2 py-1 rounded w-full"
               required
-              disabled={formData.role === "leader" || formData.role === "member"}
+              disabled={
+                formData.role === "leader" || formData.role === "member"
+              }
             >
               <option value="">Chức Vụ</option>
               <option value="leader">Leader</option>
@@ -229,6 +234,35 @@ const UpdateUser = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ Overlay loading */}
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white px-6 py-4 rounded shadow-md flex items-center space-x-2">
+            <svg
+              className="animate-spin h-5 w-5 text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              ></path>
+            </svg>
+            <span>Đang cập nhật...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

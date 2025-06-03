@@ -13,12 +13,12 @@ import { MdScreenShare, MdStopScreenShare } from "react-icons/md";
 import io from "socket.io-client";
 import axios from "axios";
 
-const socket = io("https://apitaskmanager.pdteam.net", {
+const socket = io("http://localhost:8001", {
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
 }); // Replace with your Socket.IO server URL
-const API_BASE_URL = "https://apitaskmanager.pdteam.net/api/group";
+const API_BASE_URL = "http://localhost:8001/api/group";
 
 const MAX_VISIBLE = 5;
 

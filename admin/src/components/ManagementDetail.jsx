@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import imgUser from "../assets/images/lequythien.png";
+import imgUser from "../assets/images/avatar-none.png";
 
 const ManagementDetail = ({ fetchUrl, title, isLeader = false }) => {
   const location = useLocation();

@@ -11,6 +11,7 @@ const CreateDepartment = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [leadersList, setLeadersList] = useState([]);
   const [membersList, setMembersList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false); // Thêm state loading
 
   const token = localStorage.getItem("token");
   const itemsPerPage = 6;
@@ -62,6 +63,7 @@ const CreateDepartment = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true); // Bật loading
 
     const newDepartment = {
       name,
@@ -82,7 +84,6 @@ const CreateDepartment = () => {
         }
       );
       console.log("Phòng ban được tạo:", res.data);
-      alert("Phòng ban đã được tạo!");
       navigate("/departments");
     } catch (err) {
       console.error(
@@ -90,6 +91,8 @@ const CreateDepartment = () => {
         err.response?.data || err.message
       );
       alert("Tạo phòng ban thất bại!");
+    } finally {
+      setIsLoading(false); // Tắt loading
     }
   };
 
@@ -107,6 +110,16 @@ const CreateDepartment = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-gray-700 font-medium">Đang tạo phòng ban...</p>
+          </div>
+        </div>
+      )}
+
       <div className="w-full mx-auto bg-white p-6 md:p-10 rounded-xl shadow-md">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
           Tạo Phòng Ban Mới
@@ -123,6 +136,7 @@ const CreateDepartment = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -137,6 +151,7 @@ const CreateDepartment = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -150,6 +165,7 @@ const CreateDepartment = () => {
               value={leader}
               onChange={(e) => setLeader(e.target.value)}
               required
+              disabled={isLoading}
             >
               <option value="">-- Chọn người quản lý --</option>
               {leadersList.map((emp) => (
@@ -171,6 +187,7 @@ const CreateDepartment = () => {
               placeholder="Tìm kiếm nhân viên..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isLoading}
             />
           </div>
 
@@ -199,7 +216,8 @@ const CreateDepartment = () => {
                         isSelected
                           ? "bg-red-500 text-white hover:bg-red-600"
                           : "bg-green-500 text-white hover:bg-green-600"
-                      }`}
+                      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                      disabled={isLoading}
                     >
                       {isSelected ? "−" : "+"}
                     </button>
@@ -225,7 +243,8 @@ const CreateDepartment = () => {
               <button
                 type="button"
                 onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
-                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
               >
                 Trước
               </button>
@@ -237,7 +256,8 @@ const CreateDepartment = () => {
                 onClick={() =>
                   setCurrentPage(Math.min(currentPage + 1, totalPages))
                 }
-                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
               >
                 Sau
               </button>
@@ -249,15 +269,24 @@ const CreateDepartment = () => {
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              disabled={isLoading}
             >
-              Tạo Phòng Ban
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Đang tạo...
+                </>
+              ) : (
+                "Tạo Phòng Ban"
+              )}
             </button>
           </div>
         </form>
