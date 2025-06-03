@@ -48,7 +48,11 @@ const taskSchema = new mongoose.Schema({
     type: Number,
     enum: [0, 1],
     default: 0
-  }
+  },
+  assignedAt: {
+    type: Date,
+    default: null
+  },
 }, {
   timestamps: true
 });

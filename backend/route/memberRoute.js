@@ -5,7 +5,8 @@ const {
   createReport,
   showAllFeedback,
   updateTaskStatus,
-  viewTeam
+  viewTeam,
+  viewTask
 } = require("../controller/member.js");
 const authenticateJWT = require("../middleware/auth.js");
 
@@ -27,5 +28,6 @@ router.post("/createReport/", authenticateJWT, createReport);
 router.put("/updateStatus/:id", authenticateJWT, updateTaskStatus);
 
 router.get("/viewTeam/:id", authenticateJWT, viewTeam);
+router.get("/viewTask/:id", authenticateJWT, viewTask);
 
 module.exports = router;
