@@ -41,24 +41,26 @@ const getMyTasks = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Lấy tất cả task của user
-    const tasks = await Task.find({ assignedMember: userId }).lean();
+    // Tìm tất cả task của user và populate project + team name
+    const tasks = await Task.find({ assignedMember: userId })
+      .populate({
+        path: 'projectId',
+        select: 'name assignedTeam',
+        populate: {
+          path: 'assignedTeam',
+          select: 'name' // tên team
+        }
+      })
+      .lean();
 
     if (tasks.length === 0) {
       return res.status(404).json({ message: "Bạn chưa được giao task nào." });
     }
 
-    // Lấy danh sách projectId liên quan
-    const projectIds = tasks.map(task => task.projectId);
-    const validProjects = await Project.find({
-      _id: { $in: projectIds },
-      assignedTeam: { $ne: null } // chỉ giữ lại project còn được gán cho team
-    }).select('_id');
-
-    const validProjectIds = validProjects.map(p => p._id.toString());
-
-    // Lọc task theo project còn hợp lệ
-    const filteredTasks = tasks.filter(task => validProjectIds.includes(task.projectId?.toString()));
+    // Lọc project còn hợp lệ (project vẫn có assignedTeam)
+    const filteredTasks = tasks.filter(
+      task => task.projectId && task.projectId.assignedTeam
+    );
 
     if (filteredTasks.length === 0) {
       return res.status(404).json({ message: "Bạn chưa được giao task nào." });
@@ -73,7 +75,17 @@ const getMyTasks = async (req, res) => {
         status: task.status,
         priority: task.priority,
         deadline: task.deadline,
-        projectId: task.projectId
+        assignedAt: task.assignedAt
+          ? new Date(task.assignedAt.getTime() + 7 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19)
+          : null,
+        project: {
+          id: task.projectId._id,
+          name: task.projectId.name,
+          team: {
+            id: task.projectId.assignedTeam._id,
+            name: task.projectId.assignedTeam.name
+          }
+        }
       }))
     });
   } catch (error) {
@@ -355,6 +367,66 @@ const createReport = async (req, res) => {
   }
 };
 
+// xem chi tiêt task
+const viewTask = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params; 
+
+    // Lấy task và populate project + team
+    const task = await Task.findOne({ _id: id, assignedMember: userId })
+      .populate({
+        path: 'projectId',
+        select: 'name assignedTeam',
+        populate: {
+          path: 'assignedTeam',
+          select: 'name'
+        }
+      })
+      .lean();
+
+    if (!task) {
+      return res.status(404).json({ message: "Task không tồn tại hoặc bạn không có quyền truy cập." });
+    }
+
+    // Kiểm tra project và team hợp lệ
+    if (!task.projectId || !task.projectId.assignedTeam) {
+      return res.status(400).json({ message: "Task không còn hợp lệ (project/team đã bị xoá hoặc huỷ liên kết)." });
+    }
+
+    // Trả về task với thời gian Việt Nam
+    const assignedAtVN = task.assignedAt
+      ? new Date(task.assignedAt.getTime() + 7 * 60 * 60 * 1000)
+          .toISOString()
+          .replace('T', ' ')
+          .slice(0, 19)
+      : null;
+
+    res.status(200).json({
+      message: "Lấy chi tiết task thành công.",
+      task: {
+        id: task._id,
+        name: task.name,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        deadline: task.deadline,
+        assignedAt: assignedAtVN,
+        project: {
+          id: task.projectId._id,
+          name: task.projectId.name,
+          team: {
+            id: task.projectId.assignedTeam._id,
+            name: task.projectId.assignedTeam.name
+          }
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
 // vỉewTeam
 const viewTeam = async (req, res) => {
   try {
@@ -398,5 +470,6 @@ module.exports = {
   createReport,
   showAllFeedback,
   updateTaskStatus,
-  viewTeam
+  viewTeam,
+  viewTask
 };

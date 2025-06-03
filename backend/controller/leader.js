@@ -14,7 +14,7 @@ const getMyTeam = async (req, res) => {
     // Tìm các team mà người dùng là leader
     const teams = await Team.find({ assignedLeader: userId })
       .populate("assignedLeader", "name")
-      .populate("assignedMembers", "name _id"); 
+      .populate("assignedMembers", "name _id");
     if (teams.length === 0) {
       return res.status(404).json({ message: "Bạn không tham gia vào nhóm nào." });
     }
@@ -137,11 +137,24 @@ const viewTask = async (req, res) => {
 // thêm sửa xóa task
 const createTask = async (req, res) => {
   try {
-    const { name, description, status, projectId, priority, progress } = req.body;
+    const { name, description, status, projectId, priority, progress, deadline } = req.body;
     const userId = req.user._id;
 
-    if (!name || !projectId) {
-      return res.status(400).json({ message: "Thiếu tên task hoặc projectId." });
+    if (!name || !projectId || !deadline) {
+      return res.status(400).json({ message: "Thiếu tên task hoặc projectId hoặc deadline." });
+    }
+
+    // ✅ Kiểm tra deadline có hợp lệ
+    const parsedDeadline = new Date(deadline);
+    if (isNaN(parsedDeadline.getTime())) {
+      return res.status(400).json({ message: "Giá trị deadline không hợp lệ." });
+    }
+
+    // ✅ Kiểm tra deadline không nằm trong quá khứ (theo ngày)
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Reset về 00:00 hôm nay
+    if (parsedDeadline < now) {
+      return res.status(400).json({ message: "Deadline không được nằm trong quá khứ." });
     }
 
     // 1. Kiểm tra project tồn tại
@@ -158,23 +171,25 @@ const createTask = async (req, res) => {
     // 3. Lấy team và kiểm tra leader
     const team = await Team.findById(project.assignedTeam);
     if (!team || team.assignedLeader.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "bạn không có quyền tạo task" });
+      return res.status(403).json({ message: "Bạn không có quyền tạo task." });
     }
 
-    // 4. Tạo task
+    // 4. Validate status, priority, progress
     const allowedStatuses = ["pending", "in_progress", "completed", "cancelled"];
     const allowedPriorities = [1, 2, 3];
     const taskStatus = allowedStatuses.includes(status) ? status : "pending";
     const taskPriority = allowedPriorities.includes(priority) ? priority : 2;
     const taskProgress = typeof progress === "number" && progress >= 0 && progress <= 100 ? progress : 0;
 
+    // 5. Tạo task mới
     const newTask = new Task({
       name,
       description,
       status: taskStatus,
-      projectId: projectId,
+      projectId,
       priority: taskPriority,
-      progress: taskProgress
+      progress: taskProgress,
+      deadline: parsedDeadline
     });
 
     await newTask.save();
@@ -187,7 +202,9 @@ const createTask = async (req, res) => {
         description: newTask.description,
         status: newTask.status,
         projectId: newTask.projectId,
-        priority: newTask.priority
+        priority: newTask.priority,
+        progress: newTask.progress,
+        deadline: newTask.deadline
       }
     });
   } catch (error) {
@@ -386,54 +403,35 @@ const paginationTask = async (req, res) => {
 const assignTask = async (req, res) => {
   try {
     const { id } = req.params;  // Lấy id từ URL
-    const { memberId, deadline } = req.body;
+    const { memberId } = req.body;
 
-    // Kiểm tra thông tin bắt buộc
-    if (!memberId || !deadline) {
-      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (memberId, deadline)." });
+    if (!memberId) {
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc (memberId)." });
     }
 
-    const parsedDeadline = new Date(deadline);
-    if (isNaN(parsedDeadline.getTime())) {
-      return res.status(400).json({ message: "Giá trị deadline không hợp lệ" });
-    }
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Đặt về đầu ngày hôm nay
-
-    if (parsedDeadline < now) {
-      return res.status(400).json({
-        message: "Deadline không được nằm trong quá khứ.",
-      });
-    }
-    // 1. Tìm task theo id
     const task = await Task.findById(id);
     if (!task) {
       return res.status(404).json({ message: "Task không tồn tại." });
     }
 
-    // 2. Tìm project của task
     const project = await Project.findById(task.projectId);
     if (!project) {
       return res.status(404).json({ message: "Project không tồn tại." });
     }
 
-    // 3. Kiểm tra project có assignedTeam
     if (!project.assignedTeam) {
       return res.status(400).json({ message: "Project chưa được gán cho team nào." });
     }
 
-    // 4. Lấy thông tin team (Không kiểm tra trưởng nhóm)
     const team = await Team.findById(project.assignedTeam);
     if (!team) {
       return res.status(404).json({ message: "Team không hợp lệ." });
     }
 
-    // Nếu task đang ở trạng thái pending hoặc draft, thì chuyển sang in_progress
     if (["pending", "draft"].includes(task.status)) {
       task.status = "in_progress";
     }
 
-    // 5. Kiểm tra thành viên có trong team chính thức không
     if (!Array.isArray(team.assignedMembers) || team.assignedMembers.length === 0) {
       return res.status(400).json({ message: "Danh sách thành viên không hợp lệ." });
     }
@@ -444,12 +442,13 @@ const assignTask = async (req, res) => {
     if (!isOfficialMember) {
       return res.status(400).json({ message: "Thành viên chưa chính thức trong team." });
     }
-    // 7. Gán task cho thành viên và deadline
+
     task.assignedMember = memberId;
-    task.deadline = new Date(deadline);
+    task.assignedAt = new Date(); // 👈 Thêm dòng này để set ngày gán task
 
     await task.save();
     await notifyTask({ userId: memberId.toString(), task });
+
     res.status(200).json({
       message: "Gán task thành công.",
       task: {
@@ -457,6 +456,7 @@ const assignTask = async (req, res) => {
         name: task.name,
         description: task.description,
         assignedMember: task.assignedMember,
+        assignedAt: new Date(task.assignedAt.getTime() + 7 * 60 * 60 * 1000),
         deadline: task.deadline,
         status: task.status,
         priority: task.priority
@@ -529,7 +529,6 @@ const revokeTaskAssignment = async (req, res) => {
 
     // 3. Thu hồi task
     task.assignedMember = null;
-    task.deadline = null;
 
     await task.save();
 
