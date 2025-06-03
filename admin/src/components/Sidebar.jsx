@@ -72,9 +72,9 @@ const Sidebar = () => {
           icon: <GiProgression />,
         },
         {
-          label: "Đánh Giá",
+          label: "Báo Cáo",
           icon: <VscFeedback />,
-          to: "/feedback-admin",
+          to: "/seereport-admin",
         },
         {
           label: "Trò chuyện",
@@ -94,7 +94,7 @@ const Sidebar = () => {
       ],
       menu: [
         {
-          label: "Quản Lý Nhân Viên",
+          label: "Quản Lý Nhóm",
           icon: <FaUser />,
           to: "/teams-table",
         },
@@ -103,7 +103,7 @@ const Sidebar = () => {
           icon: <TbSubtask />,
           dropdown: true,
           items: [
-            { label: "Nhiệm Vụ Đã Giao", to: "/assigned-tasks" },
+            { label: "Nhiệm Vụ Đang Làm", to: "/assigned-tasks" },
             { label: "Nhiệm Vụ Chưa Giao", to: "/unassigned-tasks" },
           ],
         },

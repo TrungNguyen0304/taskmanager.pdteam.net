@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, RotateCcw, Trash2, Pencil } from "lucide-react";
-import { MdAddTask } from "react-icons/md";
+import { Eye, RotateCcw, Trash2, Pencil } from "lucide-react";
 import axios from "axios";
 
 const PAGE_SIZE = 5;
@@ -126,15 +125,8 @@ const AssignedTasks = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
           <h2 className="text-3xl font-bold text-gray-800 flex-1">
-            Danh sách nhiệm vụ đã giao
+            Nhiệm Vụ Đang Làm
           </h2>
-          <button
-            onClick={() => navigate("/create-task")}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 flex items-center shadow transition"
-          >
-            <MdAddTask className="mr-2 text-xl" />
-            Thêm nhiệm vụ
-          </button>
         </div>
 
         {/* Table */}
@@ -172,7 +164,7 @@ const AssignedTasks = () => {
                     colSpan="8"
                     className="text-center py-8 text-gray-400 text-lg"
                   >
-                    Không có nhiệm vụ đã giao.
+                    Không có nhiệm vụ nào đang làm.
                   </td>
                 </tr>
               ) : (

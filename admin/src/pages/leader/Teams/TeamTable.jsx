@@ -88,7 +88,6 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
         <table className="min-w-[800px] w-full table-fixed border-separate border-spacing-y-2">
           <thead>
             <tr className="bg-[#cce5ff] rounded-xl text-[#323338] text-base">
-              <th className="w-[10%] px-4 py-3 rounded-l-xl">STT</th>
               <th className="w-[25%] px-4 py-3">Tên Nhóm</th>
               <th className="w-[25%] px-4 py-3">Trưởng Nhóm</th>
               <th className="w-[20%] px-4 py-3">Số Thành Viên</th>
@@ -113,9 +112,6 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
                     key={team.id}
                     className="bg-white rounded-xl shadow transition hover:bg-[#eaf1fb] text-center"
                   >
-                    <td className="px-4 py-3 font-semibold text-[#323338] rounded-l-xl">
-                      {globalIndex}
-                    </td>
                     <td className="px-4 py-3 text-[#323338]">{team.name}</td>
                     <td className="px-4 py-3 text-[#676879]">{team.leader}</td>
                     <td className="px-4 py-3 text-[#676879]">
