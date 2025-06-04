@@ -287,18 +287,17 @@ const updateTaskStatus = async (req, res) => {
 // ghi đề taskProgress lên
 const createReport = async (req, res) => {
   try {
-    const { taskId, content, taskProgress, difficulties, feedback } = req.body;
+    const { content, taskProgress, difficulties } = req.body;
     const userId = req.user._id;
+    const taskId = req.params.id;
 
     if (!taskId || !content || taskProgress === undefined) {
       return res.status(400).json({ message: "Thiếu taskId, nội dung hoặc tiến độ công việc." });
     }
 
-    // Xử lý giá trị taskProgress nếu nó có dấu %
     let progress = taskProgress;
     if (typeof taskProgress === "string" && taskProgress.includes("%")) {
-      progress = taskProgress.replace("%", "");
-      progress = parseInt(progress, 10);
+      progress = parseInt(taskProgress.replace("%", ""), 10);
     }
 
     if (isNaN(progress) || progress < 0 || progress > 100) {
@@ -336,17 +335,23 @@ const createReport = async (req, res) => {
       assignedMembers: userId,
       content,
       difficulties,
-      taskProgress: progress, // Sử dụng giá trị đã xử lý
+      taskProgress: progress,
       task: taskId,
       team: team._id,
       assignedLeader: assignedLeader._id,
-      feedback: feedback || "",
     });
 
     await report.save();
 
-    // Cập nhật task.progress với giá trị progress mới từ báo cáo
-    task.progress = progress; // Ghi đè lên task.progress
+    // Populate để hiển thị name và _id
+    await report.populate([
+      { path: 'assignedLeader', select: 'name _id' },
+      { path: 'assignedMembers', select: 'name _id' },
+      { path: 'task', select: 'name _id' },
+      { path: 'team', select: 'name _id' }
+    ]);
+
+    task.progress = progress;
     await task.save();
 
     await notifyReport({
@@ -405,7 +410,7 @@ const viewTask = async (req, res) => {
     res.status(200).json({
       message: "Lấy chi tiết task thành công.",
       task: {
-        id: task._id,
+        _id: task._id,
         name: task.name,
         description: task.description,
         status: task.status,
@@ -413,10 +418,10 @@ const viewTask = async (req, res) => {
         deadline: task.deadline,
         assignedAt: assignedAtVN,
         project: {
-          id: task.projectId._id,
+          _id: task.projectId._id,
           name: task.projectId.name,
           team: {
-            id: task.projectId.assignedTeam._id,
+            _id: task.projectId.assignedTeam._id,
             name: task.projectId.assignedTeam.name
           }
         }
@@ -463,7 +468,6 @@ const viewTeam = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
-
 module.exports = {
   getMyTeam,
   getMyTasks,

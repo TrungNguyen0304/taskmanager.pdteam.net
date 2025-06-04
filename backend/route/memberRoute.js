@@ -22,12 +22,14 @@ router.get("/showAllFeedback/", authenticateJWT, showAllFeedback);
 router.get("/showallTask/", authenticateJWT, getMyTasks);
 
 // tạo báo cáo
-router.post("/createReport/", authenticateJWT, createReport);
+router.post("/createReport/:id", authenticateJWT, createReport);
 
 // cập nhật trạng thái task
 router.put("/updateStatus/:id", authenticateJWT, updateTaskStatus);
 
 router.get("/viewTeam/:id", authenticateJWT, viewTeam);
+router.get("/viewTask/:id", authenticateJWT, viewTask);
+
 router.get("/viewTask/:id", authenticateJWT, viewTask);
 
 module.exports = router;

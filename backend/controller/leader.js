@@ -75,6 +75,31 @@ const viewAssignedProject = async (req, res) => {
   }
 };
 
+// const viewProject = async (req, res) =>{
+//   try{
+//     const userId = req.user._id;
+//     const {id} = req.params;
+//         const task = await Task.findOne({ _id: id, assignedMember: userId })
+//           .populate({
+//             path: 'projectId',
+//             select: 'name assignedTeam',
+//             populate: {
+//               path: 'assignedTeam',
+//               select: 'name'
+//             }
+//           })
+//           .lean();
+    
+//         if (!task) {
+//           return res.status(404).json({ message: "Task không tồn tại hoặc bạn không có quyền truy cập." });
+//         }
+    
+
+//   }catch(error){
+
+//   }
+// }
+
 const viewTask = async (req, res) => {
   try {
     const { id } = req.params;
@@ -91,6 +116,7 @@ const viewTask = async (req, res) => {
 
   }
 }
+
 // const viewAssignedProject = async (req, res) => {
 //   try {
 //     const userId = req.user._id;
@@ -467,7 +493,6 @@ const assignTask = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
-
 
 // lấy ra những task chk giao 
 const unassignedTask = async (req, res) => {
@@ -973,6 +998,7 @@ const showAllFeedback = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   getMyTeam,
