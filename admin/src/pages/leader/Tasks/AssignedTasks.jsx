@@ -20,7 +20,7 @@ const AssignedTasks = () => {
     const fetchAssignedTasks = async () => {
       try {
         const response = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/leader/getAssignedTask",
+          "http://localhost:8001/api/leader/getAssignedTask",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -62,12 +62,9 @@ const AssignedTasks = () => {
     setIsActionLoading(true);
     setActionError("");
     try {
-      await axios.delete(
-        `https://apitaskmanager.pdteam.net/api/leader/deleteTask/${id}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
+      await axios.delete(`http://localhost:8001/api/leader/deleteTask/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
       setTasks((prev) => prev.filter((task) => task.id !== id));
       setIsModalOpen(false);
     } catch (error) {
@@ -82,7 +79,7 @@ const AssignedTasks = () => {
     setActionError("");
     try {
       await axios.put(
-        `https://apitaskmanager.pdteam.net/api/leader/revokeTask/${id}/revoke`,
+        `http://localhost:8001/api/leader/revokeTask/${id}/revoke`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
