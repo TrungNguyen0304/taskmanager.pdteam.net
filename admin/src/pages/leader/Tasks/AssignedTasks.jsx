@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, RotateCcw, Trash2, Pencil } from "lucide-react";
+import { Eye, RotateCcw, Pencil } from "lucide-react";
 import axios from "axios";
 
 const PAGE_SIZE = 5;
@@ -20,7 +20,7 @@ const AssignedTasks = () => {
     const fetchAssignedTasks = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8001/api/leader/getAssignedTask",
+          "https://apitaskmanager.pdteam.net/api/leader/getAssignedTask",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -62,9 +62,12 @@ const AssignedTasks = () => {
     setIsActionLoading(true);
     setActionError("");
     try {
-      await axios.delete(`http://localhost:8001/api/leader/deleteTask/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
+      await axios.delete(
+        `https://apitaskmanager.pdteam.net/api/leader/deleteTask/${id}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
       setTasks((prev) => prev.filter((task) => task.id !== id));
       setIsModalOpen(false);
     } catch (error) {
@@ -79,7 +82,7 @@ const AssignedTasks = () => {
     setActionError("");
     try {
       await axios.put(
-        `http://localhost:8001/api/leader/revokeTask/${id}/revoke`,
+        `https://apitaskmanager.pdteam.net/api/leader/revokeTask/${id}/revoke`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -136,10 +139,8 @@ const AssignedTasks = () => {
                 <th className="px-4 py-3 text-left font-semibold">Mô tả</th>
                 <th className="px-4 py-3 text-left font-semibold">Giao cho</th>
                 <th className="px-4 py-3 text-left font-semibold">Deadline</th>
-                <th className="px-4 py-3 text-left font-semibold">
-                  Trạng thái
-                </th>
                 <th className="px-4 py-3 text-left font-semibold">Tiến độ</th>
+                <th className="px-4 py-3 text-left font-semibold">Báo cáo</th>
                 <th className="px-4 py-3 text-center font-semibold">
                   Hành động
                 </th>
@@ -177,20 +178,13 @@ const AssignedTasks = () => {
                     <td className="px-4 py-3">{task.description}</td>
                     <td className="px-4 py-3">{task.assignedMember}</td>
                     <td className="px-4 py-3">{task.deadline}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-semibold ${
-                          task.status === "pending"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : task.status === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {task.status}
-                      </span>
-                    </td>
+
                     <td className="px-4 py-3">{task.progress}%</td>
+                    <td>
+                      <button className="bg-blue-600 py-1.5 px-4 rounded-full text-white font-semibold">
+                        Xem báo cáo
+                      </button>
+                    </td>
                     <td className="px-4 py-3 flex justify-center gap-2">
                       <button
                         onClick={() => navigate(`/task-detail/${task.id}`)}
@@ -205,13 +199,6 @@ const AssignedTasks = () => {
                         className="p-2 rounded hover:bg-yellow-100 group"
                       >
                         <Pencil className="w-5 h-5 text-yellow-500" />
-                      </button>
-                      <button
-                        onClick={() => openConfirmModal("delete", task.id)}
-                        title="Xóa"
-                        className="p-2 rounded hover:bg-red-100 group"
-                      >
-                        <Trash2 className="w-5 h-5 text-red-500" />
                       </button>
                       <button
                         onClick={() => openConfirmModal("revoke", task.id)}

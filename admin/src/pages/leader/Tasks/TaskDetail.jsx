@@ -14,7 +14,7 @@ const TaskDetail = () => {
     const fetchTaskDetail = async () => {
       try {
         const res = await axios.get(
-          `https://apitaskmanager.pdteam.net/api/leader/viewTask/${id}`,
+          `http://localhost:8001/api/leader/viewTask/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -34,18 +34,32 @@ const TaskDetail = () => {
 
   const getPriorityText = (priority) => {
     switch (priority) {
-      case 0:
-        return "Thấp";
       case 1:
-        return "Trung bình";
+        return "Thấp";
       case 2:
+        return "Trung bình";
+      case 3:
         return "Cao";
       default:
         return "Không rõ";
     }
   };
 
+  const getStatusText = (status) => {
+    switch (status) {
+      case "in_progress":
+        return "⏳ Đang thực hiện";
+      case "pending":
+        return "⏳ Đang chờ xử lý";
+      case "completed":
+        return "✅ Đã hoàn thành";
+      default:
+        return status;
+    }
+  };
+
   const formatDate = (date) => {
+    if (!date) return "Chưa xác định";
     return new Date(date).toLocaleString("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -84,30 +98,31 @@ const TaskDetail = () => {
       <div className="bg-slate-50 border border-gray-200 rounded-2xl shadow p-6 space-y-6">
         <DetailRow label="Tên nhiệm vụ" value={task.name} />
         <DetailRow label="Mô tả" value={task.description || "Không có mô tả"} />
-        <DetailRow
-          label="Trạng thái"
-          value={task.status === "pending" ? "⏳ Đang chờ xử lý" : task.status}
-        />
-        <DetailRow label="Tiến độ" value={`${task.progress || 0}%`}>
+        <DetailRow label="Trạng thái" value={getStatusText(task.status)} />
+        <DetailRow label="Tiến độ" value={`${task.progress}%`}>
           <div className="w-full bg-gray-200 h-2 rounded mt-1">
             <div
               className="bg-blue-500 h-2 rounded"
-              style={{ width: `${task.progress || 0}%` }}
+              style={{ width: `${task.progress}%` }}
             />
           </div>
         </DetailRow>
         <DetailRow label="Ưu tiên" value={getPriorityText(task.priority)} />
-        <DetailRow
-          label="Đã hoàn thành"
-          value={task.isCompleted ? "✅ Có" : "❌ Chưa"}
-        />
-        <DetailRow
-          label="Thông báo quá hạn"
-          value={task.isOverdueNotified ? "✅ Có" : "❌ Chưa"}
-        />
-        <DetailRow label="ID dự án" value={task.projectId} />
-        <DetailRow label="Ngày tạo" value={formatDate(task.createdAt)} />
-        <DetailRow label="Ngày cập nhật" value={formatDate(task.updatedAt)} />
+        <DetailRow label="Dự án" value={task.projectId.name} />
+        {task.status === "in_progress" && task.assignedMember && (
+          <DetailRow
+            label="Thành viên được giao"
+            value={task.assignedMember.name}
+          />
+        )}
+        {task.status === "pending" && (
+          <DetailRow
+            label="Thành viên được giao"
+            value="Chưa được giao"
+          />
+        )}
+        <DetailRow label="Hạn chót" value={formatDate(task.deadline)} />
+        <DetailRow label="Ngày giao" value={formatDate(task.assignedAt)} />
 
         {/* Button Actions */}
         <div className="flex justify-end gap-4 pt-4">
