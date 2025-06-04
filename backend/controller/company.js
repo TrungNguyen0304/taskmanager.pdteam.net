@@ -836,6 +836,13 @@ const assignProject = async (req, res) => {
     if (!project) {
       return res.status(404).json({ message: "Công việc không tồn tại." });
     }
+    // kiem tra them team do cs project chk 
+    const existingProject = await Project.findOne({ assignedTeam });
+    if (existingProject && existingProject.status !== "completed") {
+      return res.status(404).json({
+        message: `Team đã được gán cho project '${existingProject.name}' và project này chưa hoàn thành.`,
+      })
+    }
 
     const parsedDeadline = new Date(deadline);
     if (isNaN(parsedDeadline.getTime())) {
@@ -856,6 +863,8 @@ const assignProject = async (req, res) => {
     if (!team) {
       return res.status(404).json({ message: "Nhân viên không hợp lệ." });
     }
+
+
 
     const assignedLeader = team.assignedLeader;
     if (!assignedLeader) {
