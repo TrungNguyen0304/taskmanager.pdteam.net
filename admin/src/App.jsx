@@ -31,7 +31,6 @@ import MemberDetailLeader from "./pages/leader/Teams/MemberDetailLeader";
 import CreateTask from "./pages/leader/Tasks/CreateTask";
 import UpdateTask from "./pages/leader/Tasks/UpdateTask";
 import TaskDetail from "./pages/leader/Tasks/TaskDetail";
-import ProjectDetailLeader from "./pages/leader/Projects/ProjectDetailLeader";
 import ReportProjects from "./pages/leader/Projects/ReportProjects";
 import TaskMember from "./pages/member/Task/TaskMember";
 import ChatMember from "./pages/member/ChatMember/ChatMember";
@@ -48,6 +47,7 @@ import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import SeeReportAdmin from "./pages/admin/ReportAdmin/SeeReportAdmin";
 import TeamMember from "./pages/member/Team/TeamMember";
 import TeamDetailMember from "./pages/member/Team/TeamDetailMember";
+import ProjectDetailLeader from "./pages/leader/Projects/ProjectDetailLeader";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -119,7 +119,7 @@ const LeaderLayout = () => {
 
             <Route path="/projects" element={<Projects />} />
             <Route
-              path="/project-detail/:id"
+              path="/project-detail/:_id"
               element={<ProjectDetailLeader />}
             />
             <Route path="/project-report/:id" element={<ReportProjects />} />
