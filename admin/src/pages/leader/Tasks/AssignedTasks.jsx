@@ -58,25 +58,6 @@ const AssignedTasks = () => {
     currentPage * PAGE_SIZE
   );
 
-  const handleDelete = async (id) => {
-    setIsActionLoading(true);
-    setActionError("");
-    try {
-      await axios.delete(
-        `https://apitaskmanager.pdteam.net/api/leader/deleteTask/${id}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      setTasks((prev) => prev.filter((task) => task.id !== id));
-      setIsModalOpen(false);
-    } catch (error) {
-      setActionError("Không thể xóa nhiệm vụ.");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
   const handleRevoke = async (id) => {
     setIsActionLoading(true);
     setActionError("");

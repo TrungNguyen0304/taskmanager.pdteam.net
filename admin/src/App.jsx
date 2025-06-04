@@ -43,11 +43,11 @@ import VideoCallPageLeader from "./pages/leader/ChatLeader/VideoCallPageLeader";
 import Chat from "./pages/admin/Chat/Chat";
 import JoinRequestsPage from "./pages/admin/Chat/JoinRequestsPage";
 import VideoCallPage from "./pages/admin/Chat/VideoCallPage";
-import TeamMember from "./pages/member/Task/TeamMember";
 import FeedbackMember from "./pages/member/Task/FeedbackMember";
 import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import SeeReportAdmin from "./pages/admin/ReportAdmin/SeeReportAdmin";
-import TeamDetailMember from "./pages/member/Task/TeamDetailMember";
+import TeamMember from "./pages/member/Team/TeamMember";
+import TeamDetailMember from "./pages/member/Team/TeamDetailMember";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));

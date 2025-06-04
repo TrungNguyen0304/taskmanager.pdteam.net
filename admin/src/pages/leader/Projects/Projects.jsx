@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const ProjectCard = ({ project, onViewReport }) => {
   return (
-    <div className="w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-200 transition-shadow duration-300 p-6 md:p-8 cursor-default">
+    <div className="w-full mx-auto bg-white rounded-2xl shadow-md border border-gray-200 transition-shadow duration-300 p-6 md:p-8 cursor-default">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h2 className="text-2xl md:text-3xl font-bold text-blue-800 flex items-center gap-2">
           {project.name}
@@ -32,9 +32,7 @@ const ProjectCard = ({ project, onViewReport }) => {
         </div>
       </div>
 
-      {/* Bố cục mới: mô tả bên trái, thông tin bên phải 3 hàng dọc */}
       <div className="flex flex-col md:flex-row gap-8 text-gray-700 text-base">
-        {/* Mô tả - chiếm 2/3 chiều ngang */}
         <div className="md:w-2/3 flex flex-col gap-4">
           <div>
             <div className="flex items-center gap-2 font-semibold text-gray-900 mb-1">
@@ -50,7 +48,6 @@ const ProjectCard = ({ project, onViewReport }) => {
           </div>
         </div>
 
-        {/* Thông tin bên phải - 1 cột dọc 3 hàng */}
         <div className="md:w-1/3 flex flex-col gap-6">
           <div>
             <div className="flex items-center gap-2 font-semibold text-gray-900 mb-1">
@@ -91,11 +88,12 @@ const ProjectCard = ({ project, onViewReport }) => {
 
 const Projects = () => {
   const navigate = useNavigate();
-  const [project, setProject] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const projectsPerPage = 2; // Phân trang: 2 dự án mỗi trang
   useEffect(() => {
-    const fetchProject = async () => {
+    const fetchProjects = async () => {
       try {
         const response = await axios.get(
           "https://apitaskmanager.pdteam.net/api/leader/showallProject",
@@ -110,8 +108,7 @@ const Projects = () => {
           Array.isArray(response.data.projects) &&
           response.data.projects.length > 0
         ) {
-          const p = response.data.projects[0];
-          setProject({
+          const formattedProjects = response.data.projects.map((p) => ({
             id: p._id,
             name: p.name || "N/A",
             description: p.description || "N/A",
@@ -120,22 +117,40 @@ const Projects = () => {
               : "N/A",
             status: p.status || "N/A",
             teamId: p.teamId || "N/A",
-          });
+          }));
+          setProjects(formattedProjects);
         } else {
-          setProject(null);
+          setProjects([]);
         }
       } catch (err) {
         console.error("Lỗi khi lấy dự án:", err);
+        setProjects([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProject();
+    fetchProjects();
   }, []);
 
   const handleViewReport = (id) => {
     navigate(`/project-report/${id}`);
+  };
+
+  // Calculate total pages and current projects to display
+  const totalPages = Math.ceil(projects.length / projectsPerPage);
+  const indexOfLastProject = currentPage * projectsPerPage;
+  const indexOfFirstProject = indexOfLastProject - projectsPerPage;
+  const currentProjects = projects.slice(
+    indexOfFirstProject,
+    indexOfLastProject
+  );
+
+  // Handle page change
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
   };
 
   if (loading) {
@@ -148,7 +163,7 @@ const Projects = () => {
     );
   }
 
-  if (!project) {
+  if (projects.length === 0) {
     return (
       <div className="p-6 w-full mx-auto mt-10">
         <p className="text-gray-500 text-center italic">
@@ -160,7 +175,60 @@ const Projects = () => {
 
   return (
     <div className="m-4">
-      <ProjectCard project={project} onViewReport={handleViewReport} />
+      {/* Project Cards */}
+      {currentProjects.map((project) => (
+        <div key={project.id} className="mb-6">
+          <ProjectCard project={project} onViewReport={handleViewReport} />
+        </div>
+      ))}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-end items-center mt-8 space-x-2">
+          {/* Previous Button */}
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg border ${
+              currentPage === 1
+                ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                : "border-blue-600 text-blue-600 hover:bg-blue-50"
+            } font-medium transition`}
+          >
+            Trước
+          </button>
+
+          {/* Page Numbers */}
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+            (page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-4 py-2 rounded-lg border ${
+                  currentPage === page
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                } font-medium transition`}
+              >
+                {page}
+              </button>
+            )
+          )}
+
+          {/* Next Button */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-lg border ${
+              currentPage === totalPages
+                ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                : "border-blue-600 text-blue-600 hover:bg-blue-50"
+            } font-medium transition`}
+          >
+            Sau
+          </button>
+        </div>
+      )}
     </div>
   );
 };
