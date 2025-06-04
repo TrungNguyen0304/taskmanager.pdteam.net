@@ -12,16 +12,13 @@ const CreateTask = () => {
     projectId: "",
     priority: 2,
     progress: 0,
-    assignedMember: "",
     deadline: "",
   });
   const [errors, setErrors] = useState({});
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [project, setProject] = useState(null);
-  const [members, setMembers] = useState([]);
   const [loadingProject, setLoadingProject] = useState(true);
-  const [loadingMembers, setLoadingMembers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -53,30 +50,7 @@ const CreateTask = () => {
       }
     };
 
-    const fetchMembers = async () => {
-      try {
-        const response = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/leader/showallTeam",
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        // Extract assignedMembers from all teams and flatten into a single array
-        const allMembers = response.data.teams.flatMap(
-          (team) => team.assignedMembers
-        );
-        setMembers(allMembers || []);
-      } catch (error) {
-        setSubmitError("Không thể tải danh sách thành viên.");
-      } finally {
-        setLoadingMembers(false);
-      }
-    };
-
     fetchProject();
-    fetchMembers();
   }, []);
 
   const handleChange = (e) => {
@@ -90,8 +64,6 @@ const CreateTask = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Tên nhiệm vụ là bắt buộc";
     if (!formData.projectId) newErrors.projectId = "Dự án là bắt buộc";
-    if (!formData.assignedMember)
-      newErrors.assignedMember = "Thành viên là bắt buộc";
     if (!formData.deadline) newErrors.deadline = "Thời hạn là bắt buộc";
     return newErrors;
   };
@@ -135,7 +107,6 @@ const CreateTask = () => {
 
   return (
     <div className="relative w-full mx-auto p-6 bg-white rounded-xl shadow-md font-sans">
-      {/* Overlay Loading */}
       {isSubmitting && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 shadow-lg flex flex-col items-center gap-3">
@@ -147,7 +118,6 @@ const CreateTask = () => {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center mb-8">
         <button
           onClick={() => navigate(-1)}
@@ -162,7 +132,6 @@ const CreateTask = () => {
         <div className="w-16"></div>
       </div>
 
-      {/* Notifications */}
       {submitSuccess && (
         <div className="mb-6 rounded bg-green-50 border border-green-300 text-green-700 p-4 text-sm font-medium">
           Nhiệm vụ được tạo thành công!
@@ -174,9 +143,7 @@ const CreateTask = () => {
         </div>
       )}
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Tên nhiệm vụ */}
         <div>
           <label
             htmlFor="name"
@@ -205,9 +172,7 @@ const CreateTask = () => {
           )}
         </div>
 
-        {/* Project + Priority */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Project */}
           <div>
             <label
               htmlFor="projectId"
@@ -233,7 +198,6 @@ const CreateTask = () => {
             </div>
           </div>
 
-          {/* Priority */}
           <div>
             <label
               htmlFor="priority"
@@ -255,77 +219,33 @@ const CreateTask = () => {
           </div>
         </div>
 
-        {/* Assigned Member + Deadline */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Assigned Member */}
-          <div>
-            <label
-              htmlFor="assignedMember"
-              className="block mb-2 font-semibold text-[#222D45] text-lg"
-            >
-              Thành viên <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center">
-              <select
-                id="assignedMember"
-                name="assignedMember"
-                value={formData.assignedMember}
-                onChange={handleChange}
-                required
-                className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
-                  errors.assignedMember
-                    ? "border-red-500 focus:ring-red-400"
-                    : "border-gray-300 focus:ring-blue-500"
-                }`}
-              >
-                <option value="">Chọn thành viên</option>
-                {members.map((member) => (
-                  <option key={member._id} value={member._id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-              {loadingMembers && (
-                <Loader2 className="w-5 h-5 ml-3 text-gray-400 animate-spin" />
-              )}
-            </div>
-            {errors.assignedMember && (
-              <p className="mt-1 text-xs text-red-600 font-medium">
-                {errors.assignedMember}
-              </p>
-            )}
-          </div>
-
-          {/* Deadline */}
-          <div>
-            <label
-              htmlFor="deadline"
-              className="block mb-2 font-semibold text-[#222D45] text-lg"
-            >
-              Thời hạn <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="deadline"
-              type="date"
-              name="deadline"
-              value={formData.deadline}
-              onChange={handleChange}
-              required
-              className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
-                errors.deadline
-                  ? "border-red-500 focus:ring-red-400"
-                  : "border-gray-300 focus:ring-blue-500"
-              }`}
-            />
-            {errors.deadline && (
-              <p className="mt-1 text-xs text-red-600 font-medium">
-                {errors.deadline}
-              </p>
-            )}
-          </div>
+        <div>
+          <label
+            htmlFor="deadline"
+            className="block mb-2 font-semibold text-[#222D45] text-lg"
+          >
+            Thời hạn <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="deadline"
+            type="date"
+            name="deadline"
+            value={formData.deadline}
+            onChange={handleChange}
+            required
+            className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
+              errors.deadline
+                ? "border-red-500 focus:ring-red-400"
+                : "border-gray-300 focus:ring-blue-500"
+            }`}
+          />
+          {errors.deadline && (
+            <p className="mt-1 text-xs text-red-600 font-medium">
+              {errors.deadline}
+            </p>
+          )}
         </div>
 
-        {/* Description */}
         <div>
           <label
             htmlFor="description"
@@ -345,7 +265,6 @@ const CreateTask = () => {
           />
         </div>
 
-        {/* Buttons */}
         <div className="flex justify-end gap-4">
           <button
             type="button"
