@@ -46,6 +46,22 @@ const ProjectCard = ({ project, onViewReport }) => {
               {project.description || "Không có mô tả"}
             </div>
           </div>
+          {/* Progress Bar for averageTaskProgress */}
+          <div>
+            <div className="flex items-center gap-2 font-semibold text-gray-900 mb-2">
+              <MdOutlineAssignmentTurnedIn className="text-blue-500" />
+              Tiến độ trung bình
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full"
+                style={{ width: `${project.averageTaskProgress || 0}%` }}
+              ></div>
+            </div>
+            <div className="text-sm text-gray-600 mt-1">
+              {project.averageTaskProgress || 0}% hoàn thành
+            </div>
+          </div>
         </div>
 
         <div className="md:w-1/3 flex flex-col gap-6">
@@ -80,6 +96,18 @@ const ProjectCard = ({ project, onViewReport }) => {
             </div>
             <div>{project.teamId || "N/A"}</div>
           </div>
+          {/* Task Stats */}
+          <div>
+            <div className="flex items-center gap-2 font-semibold text-gray-900 mb-1">
+              <MdOutlineAssignmentTurnedIn className="text-indigo-500" />
+              Thống kê nhiệm vụ
+            </div>
+            <div>
+              <p>Tổng nhiệm vụ: {project.taskStats?.totalTasks || 0}</p>
+              <p>Đã giao: {project.taskStats?.assignedTasks || 0}</p>
+              <p>Chưa giao: {project.taskStats?.unassignedTasks || 0}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -92,11 +120,12 @@ const Projects = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const projectsPerPage = 2; // Phân trang: 2 dự án mỗi trang
+
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         const response = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/leader/showallProject",
+          "http://localhost:8001/api/leader/showallProject",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -117,6 +146,12 @@ const Projects = () => {
               : "N/A",
             status: p.status || "N/A",
             teamId: p.teamId || "N/A",
+            averageTaskProgress: response.data.averageTaskProgress || 0,
+            taskStats: {
+              totalTasks: response.data.taskStats?.totalTasks || 0,
+              unassignedTasks: response.data.taskStats?.unassignedTasks || 0,
+              assignedTasks: response.data.taskStats?.assignedTasks || 0,
+            },
           }));
           setProjects(formattedProjects);
         } else {
