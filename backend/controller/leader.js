@@ -37,6 +37,52 @@ const getMyTeam = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+
+const viewTeam = async (req, res) => {
+  try {
+    const { id } = req.params; // teamId từ URL
+    const userId = req.user._id;
+
+    // 1. Tìm team theo ID và populate thông tin leader và members
+    const team = await Team.findById(id)
+      .populate("assignedLeader", "_id name email role")
+      .populate("assignedMembers", "_id name email role address phoneNumber dateOfBirth gender")
+      .lean();
+
+    if (!team) {
+      return res.status(404).json({ message: "Team không tồn tại." });
+    }
+
+    // 2. Kiểm tra user có phải là leader của team không
+    if (!team.assignedLeader || team.assignedLeader._id.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Bạn không có quyền xem thông tin team này." });
+    }
+
+    // 3. Định dạng dữ liệu trả về
+    const response = {
+      _id: team._id,
+      name: team.name,
+      assignedMembers: team.assignedMembers.map(member => ({
+        _id: member._id,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        gender: member.gender,
+        dateOfBirth: member.dateOfBirth,
+        phoneNumber: member.phoneNumber,
+        address: member.address,
+      }))
+    };
+    // 4. Trả về phản hồi
+    res.status(200).json({
+      message: "Lấy thông tin team thành công.",
+      team: response
+    });
+  } catch (error) {
+    console.error("Lỗi trong viewTeam:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+};
 // xem dự án company giao
 const viewAssignedProject = async (req, res) => {
   try {
@@ -75,39 +121,75 @@ const viewAssignedProject = async (req, res) => {
   }
 };
 
-// const viewProject = async (req, res) =>{
-//   try{
-//     const userId = req.user._id;
-//     const {id} = req.params;
-//         const task = await Task.findOne({ _id: id, assignedMember: userId })
-//           .populate({
-//             path: 'projectId',
-//             select: 'name assignedTeam',
-//             populate: {
-//               path: 'assignedTeam',
-//               select: 'name'
-//             }
-//           })
-//           .lean();
+const viewProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id
 
-//         if (!task) {
-//           return res.status(404).json({ message: "Task không tồn tại hoặc bạn không có quyền truy cập." });
-//         }
+    const project = await Project.findById(id)
+      .populate("assignedTeam", "_id name assignedLeader")
+      .lean();
+    if (!project) {
+      return res.status(404).json({ massegae: "project khong ton tai" })
+    }
+    // Kiểm tra project có gan  team không
+    if (!project.assignedTeam) {
+      return res.status(403).json({ message: "Bạn không có quyền xem thông tin project này" });
+    }
+    //  Kiểm tra user có phải là leader của team không
+    const team = await Team.findById(project.assignedTeam._id);
+    if (!team.assignedLeader || team.assignedLeader._id.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Bạn không có quyền xem thông tin team này." });
+    }
+    // laay tat ca cac task thuoc project
+    const tasks = await Task.find({ projectId: id })
+      .populate("assignedMember", "_id name")
+      .lean();
+    res.status(200).json({
+      message: "Lấy thông tin dự án và danh sách task thành công.",
+      project: {
+        _id: project._id,
+        name: project.name,
+        description: project.description,
+        deadline: project.deadline,
+        status: project.status,
+        progress: project.progress,
+        team: {
+          _id: project.assignedTeam._id,
+          name: project.assignedTeam.name,
+          leaderId: project.assignedTeam.assignedLeader
+        }
+      },
+      tasks: tasks.map(task => ({
+        _id: task._id,
+        name: task.name,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        progress: task.progress,
+        deadline: task.deadline,
+        assignedMember: task.assignedMember ? {
+          _id: task.assignedMember._id,
+          name: task.assignedMember.name
+        } : null,
+        assignedAt: task.assignedAt
+      }))
+    })
 
-
-//   }catch(error){
-
-//   }
-// }
+  } catch (error) {
+    console.error("Lỗi trong viewProject:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+}
 
 const viewTask = async (req, res) => {
   try {
     const { id } = req.params;
     const task = await Task.findById(id)
-     .select('_id name description projectId deadline status progress priority assignedAt')
+      .select('_id name description projectId deadline status progress priority assignedAt')
       .populate("projectId", "_id name")
       .populate("assignedMember", "_id name")
-      
+
       .lean();
     if (!task) {
       return res.status(404).json({ message: "task không tồn tại" })
@@ -770,6 +852,55 @@ const showAllReportMember = async (req, res) => {
   }
 };
 
+const showAllReportTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    // tim task theo ID
+    const task = await Task.findById(id).populate('projectId');
+    if (!task) {
+      return res.status(404).json({ massage: "task không tồn tại" })
+    }
+    // tim project lien quan den task
+    const project = await Project.findById(task.projectId);
+    if (!project) {
+      return res.status(404).json({ massege: "không tỉm thấy project liên quan" })
+    }
+    // kiem tra project co team hay khong
+    if (!project.assignedTeam) {
+      return res.status(404).json({ massega: "project chk gán cho team nào" })
+    }
+    // kiem tra user cs phai la leader cuar team hay ko
+    const team = await Team.findById(project.assignedTeam);
+    if (!team || team.assignedLeader.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Bạn không có quyền xem báo cáo của task này." });
+    }
+    // tim tat ca bao cao lien quan den tassk
+    const reports = await Report.find({ task: id }, '-team -feedback')
+      .populate({
+        path: 'task',
+        select: '_id name deadline',
+      })
+      .populate({
+        path: 'assignedMembers',
+        select: '_id name role',
+      })
+      .lean();
+    // kiem tra neu ko cs bao cao 
+    if (!reports || reports.length == 0) {
+      return res.status(404).json({ massega: "không có bào cáo nào của task này " })
+    }
+    // tra ve danh sach bao cao
+    res.status(404).json({
+      message: "Lấy danh sách báo cáo của task thành công.",
+      reports
+    })
+
+  } catch (error) {
+    console.error("Lỗi trong showAllReportTask:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+}
 
 const evaluateMemberReport = async (req, res) => {
   try {
@@ -1025,5 +1156,7 @@ module.exports = {
   createReportCompany,
   showAllFeedback,
   viewTask,
-  // showAllReportTask
+  showAllReportTask,
+  viewTeam,
+  viewProject
 };
