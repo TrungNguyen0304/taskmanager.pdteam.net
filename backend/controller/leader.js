@@ -89,11 +89,11 @@ const viewAssignedProject = async (req, res) => {
 //             }
 //           })
 //           .lean();
-    
+
 //         if (!task) {
 //           return res.status(404).json({ message: "Task không tồn tại hoặc bạn không có quyền truy cập." });
 //         }
-    
+
 
 //   }catch(error){
 
@@ -103,10 +103,16 @@ const viewAssignedProject = async (req, res) => {
 const viewTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const task = await Task.findById(id);
+    const task = await Task.findById(id)
+     .select('_id name description projectId deadline status progress priority assignedAt')
+      .populate("projectId", "_id name")
+      .populate("assignedMember", "_id name")
+      
+      .lean();
     if (!task) {
       return res.status(404).json({ message: "task không tồn tại" })
     }
+
     res.status(200).json({
       message: `thong tin task ${task.name}`,
       task,
@@ -764,6 +770,7 @@ const showAllReportMember = async (req, res) => {
   }
 };
 
+
 const evaluateMemberReport = async (req, res) => {
   try {
     const { id } = req.params; // id của report
@@ -1017,5 +1024,6 @@ module.exports = {
   evaluateMemberReport,
   createReportCompany,
   showAllFeedback,
-  viewTask
+  viewTask,
+  // showAllReportTask
 };
