@@ -12,13 +12,17 @@ const CreateTask = () => {
     projectId: "",
     priority: 2,
     progress: 0,
+    assignedMember: "",
+    deadline: "",
   });
   const [errors, setErrors] = useState({});
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [project, setProject] = useState(null);
+  const [members, setMembers] = useState([]);
   const [loadingProject, setLoadingProject] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false); // ✅
+  const [loadingMembers, setLoadingMembers] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -48,7 +52,31 @@ const CreateTask = () => {
         setLoadingProject(false);
       }
     };
+
+    const fetchMembers = async () => {
+      try {
+        const response = await axios.get(
+          "https://apitaskmanager.pdteam.net/api/leader/showallTeam",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        // Extract assignedMembers from all teams and flatten into a single array
+        const allMembers = response.data.teams.flatMap(
+          (team) => team.assignedMembers
+        );
+        setMembers(allMembers || []);
+      } catch (error) {
+        setSubmitError("Không thể tải danh sách thành viên.");
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
     fetchProject();
+    fetchMembers();
   }, []);
 
   const handleChange = (e) => {
@@ -62,6 +90,9 @@ const CreateTask = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Tên nhiệm vụ là bắt buộc";
     if (!formData.projectId) newErrors.projectId = "Dự án là bắt buộc";
+    if (!formData.assignedMember)
+      newErrors.assignedMember = "Thành viên là bắt buộc";
+    if (!formData.deadline) newErrors.deadline = "Thời hạn là bắt buộc";
     return newErrors;
   };
 
@@ -73,7 +104,7 @@ const CreateTask = () => {
       return;
     }
 
-    setIsSubmitting(true); // ✅ Bắt đầu loading
+    setIsSubmitting(true);
     try {
       await axios.post(
         "https://apitaskmanager.pdteam.net/api/leader/createTask",
@@ -98,7 +129,7 @@ const CreateTask = () => {
           "Lỗi khi tạo nhiệm vụ, vui lòng thử lại."
       );
     } finally {
-      setIsSubmitting(false); // ✅ Kết thúc loading
+      setIsSubmitting(false);
     }
   };
 
@@ -120,7 +151,7 @@ const CreateTask = () => {
       <div className="flex items-center mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-[#505F79] hover:text-[#3B4B68] transition"
+          className="flex items-center gap-2 text-blue-600 hover:underline"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="font-semibold text-lg">Quay lại</span>
@@ -217,10 +248,80 @@ const CreateTask = () => {
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={1}>Cao</option>
+              <option value={3}>Cao</option>
               <option value={2}>Trung bình</option>
-              <option value={3}>Thấp</option>
+              <option value={1}>Thấp</option>
             </select>
+          </div>
+        </div>
+
+        {/* Assigned Member + Deadline */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Assigned Member */}
+          <div>
+            <label
+              htmlFor="assignedMember"
+              className="block mb-2 font-semibold text-[#222D45] text-lg"
+            >
+              Thành viên <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center">
+              <select
+                id="assignedMember"
+                name="assignedMember"
+                value={formData.assignedMember}
+                onChange={handleChange}
+                required
+                className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
+                  errors.assignedMember
+                    ? "border-red-500 focus:ring-red-400"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
+              >
+                <option value="">Chọn thành viên</option>
+                {members.map((member) => (
+                  <option key={member._id} value={member._id}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+              {loadingMembers && (
+                <Loader2 className="w-5 h-5 ml-3 text-gray-400 animate-spin" />
+              )}
+            </div>
+            {errors.assignedMember && (
+              <p className="mt-1 text-xs text-red-600 font-medium">
+                {errors.assignedMember}
+              </p>
+            )}
+          </div>
+
+          {/* Deadline */}
+          <div>
+            <label
+              htmlFor="deadline"
+              className="block mb-2 font-semibold text-[#222D45] text-lg"
+            >
+              Thời hạn <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="deadline"
+              type="date"
+              name="deadline"
+              value={formData.deadline}
+              onChange={handleChange}
+              required
+              className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
+                errors.deadline
+                  ? "border-red-500 focus:ring-red-400"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+            />
+            {errors.deadline && (
+              <p className="mt-1 text-xs text-red-600 font-medium">
+                {errors.deadline}
+              </p>
+            )}
           </div>
         </div>
 
