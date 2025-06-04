@@ -89,7 +89,7 @@ const viewAssignedProject = async (req, res) => {
     const userId = req.user._id;
 
     // Tìm các team mà user là trưởng nhóm
-    const teams = await Team.find({ assignedLeader: userId }).select("_id");
+    const teams = await Team.find({ assignedLeader: userId }).select("_id name");
 
     if (!teams.length) {
       return res.status(404).json({ message: "Bạn chưa là trưởng nhóm của nhóm nào." });
@@ -103,6 +103,19 @@ const viewAssignedProject = async (req, res) => {
     if (!projects.length) {
       return res.status(404).json({ message: "Không có nhiệm vụ nào được giao cho nhóm bạn phụ trách." });
     }
+    //Lấy tất cả các task thuộc các project đó
+    const projectIds = projects.map(project => project._id);
+    const tasks = await Task.find({ projectId: { $in: projectIds } }).select("progress")
+
+    let averageProgress = 0;
+    if (tasks.length > 0) {
+      const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
+      averageProgress = (totalProgress / tasks.length).toFixed(2); // Làm tròn đến 2 chữ số thập phân
+    }
+    // 5. Đếm số lượng task
+    const totalTasks = tasks.length
+    const unassignedTasks = tasks.filter(task => !task.assignedMember).length;
+    const assignedTasks = tasks.filter(task => task.assignedMember).length;
 
     res.status(200).json({
       message: "Danh sách nhiệm vụ nhóm bạn phụ trách:",
@@ -113,7 +126,13 @@ const viewAssignedProject = async (req, res) => {
         deadline: project.deadline,
         status: project.status,
         teamId: project.assignedTeam
-      }))
+      })),
+      averageTaskProgress: parseFloat(averageProgress),
+      taskStats: {
+        totalTasks,
+        unassignedTasks,
+        assignedTasks
+      }
     });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách project:", error);
