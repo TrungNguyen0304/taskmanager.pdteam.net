@@ -28,6 +28,7 @@ router.post("/createReport/:id", authenticateJWT, createReport);
 router.put("/updateStatus/:id", authenticateJWT, updateTaskStatus);
 
 router.get("/viewTeam/:id", authenticateJWT, viewTeam);
+router.get("/viewTask/:id", authenticateJWT, viewTask);
 
 router.get("/viewTask/:id", authenticateJWT, viewTask);
 
