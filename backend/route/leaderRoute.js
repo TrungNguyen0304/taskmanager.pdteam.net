@@ -17,7 +17,9 @@ const {
   createReportCompany,
   showAllFeedback,
   viewTask,
-  // showAllReportTask
+  showAllReportTask,
+  viewTeam,
+  viewProject
 } = require("../controller/leader.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -26,8 +28,12 @@ const router = express.Router();
 // xem task của mình được giao
 router.get("/showallTeam/", authenticateJWT, getMyTeam);
 
+router.get("/viewTeam/:id", authenticateJWT, viewTeam);
+
 // xem tất cả các project của mình
 router.get("/showallProject/", authenticateJWT, viewAssignedProject);
+
+router.get("/viewProject/:id", authenticateJWT, viewProject);
 
 // tạo task
 router.post("/createTask", authenticateJWT, authorize("leader"), createTask);
@@ -62,7 +68,7 @@ router.get("/viewReport/", authenticateJWT, authorize("leader"), showallReport);
 // lấy ra report của từng member theo id
 router.get("/viewReportMember/:id/",authenticateJWT,authorize("leader"),showAllReportMember);
 
-// router.get("/showAllReportTask/:id/",authenticateJWT,authorize("leader"),showAllReportTask);
+router.get("/showAllReportTask/:id/",authenticateJWT,authorize("leader"),showAllReportTask);
 
 // đánh giá báo cáo của member theo id
 router.post("/evaluateMemberReport/:id",authenticateJWT,authorize("leader"),evaluateMemberReport);
