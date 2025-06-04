@@ -585,7 +585,6 @@ module.exports = {
   notifyEvaluateCompany,
   notifyTaskOverdue,
   notifyProjectOverdue,
-
   getNotifications,
   deleteNotification,
   markNotificationAsRead

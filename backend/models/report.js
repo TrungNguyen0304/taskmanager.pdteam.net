@@ -12,13 +12,13 @@ const reportSchema = new Schema({
     },
     taskProgress: {
         type: Number,
-        required: true,
+        required: false,
         min: 0,
         max: 100
     },
     projectProgress: {
         type: Number,
-        required: true,
+        required: false,
         min: 0,
         max: 100
     },
@@ -53,11 +53,6 @@ const reportSchema = new Schema({
         ref: "User",
         required: true
     },
-    feedback: {
-        type: Schema.Types.ObjectId,
-        ref: 'Feedback',
-        default: null
-    }
 });
 
 module.exports = mongoose.model('Report', reportSchema);
