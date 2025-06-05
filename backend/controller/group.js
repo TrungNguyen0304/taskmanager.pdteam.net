@@ -18,12 +18,35 @@ const createGroup = async (req, res) => {
             });
         }
 
-        // Kiểm tra leader
-        const team = await Team.findOne({ assignedLeader: userId });
-        if (!team) {
-            return res.status(403).json({
-                message: "Bạn không phải leader của team nào",
-            });
+        // Kiểm tra role của người dùng
+        const user = await User.findById(userId).select("role");
+        if (!user) {
+            return res.status(404).json({ message: "Không tìm thấy người dùng" });
+        }
+
+        // Nếu user có role 'company', bỏ qua kiểm tra leader/team
+        if (user.role !== "company") {
+            const team = await Team.findOne({ assignedLeader: userId });
+            if (!team) {
+                return res.status(403).json({
+                    message: "Bạn không phải leader của team nào",
+                });
+            }
+
+            // Kiểm tra từng thành viên có thuộc team không
+            for (const memberId of members) {
+                const member = await User.findById(memberId);
+                if (!member) {
+                    return res.status(404).json({ message: `Không tìm thấy người dùng với ID ${memberId}` });
+                }
+
+                if (!team.assignedMembers.map(id => id.toString()).includes(memberId.toString()) &&
+                    userId.toString() !== memberId.toString()) {
+                    return res.status(400).json({
+                        message: `Người dùng ${memberId} không thuộc team`,
+                    });
+                }
+            }
         }
 
         // Đảm bảo người tạo nhóm cũng là thành viên
@@ -31,29 +54,14 @@ const createGroup = async (req, res) => {
         membersSet.add(userId.toString());
         const finalMembers = Array.from(membersSet);
 
-        // Kiểm tra từng thành viên có thuộc team không
-        for (const memberId of finalMembers) {
-            const user = await User.findById(memberId);
-            if (!user) {
-                return res.status(404).json({ message: `Không tìm thấy người dùng với ID ${memberId}` });
-            }
-
-            if (!team.assignedMembers.map(id => id.toString()).includes(memberId.toString()) &&
-                userId.toString() !== memberId.toString()) {
-                return res.status(400).json({
-                    message: `Người dùng ${memberId} không thuộc team`,
-                });
-            }
-        }
-
         // Tạo nhóm
         const group = new Group({ name, members: finalMembers });
         await group.save();
 
         // Gửi thông báo cho các thành viên
         for (const memberId of finalMembers) {
-            const user = await User.findById(memberId).select("name");
-            notifyNewMember(group._id, memberId, user.name);
+            const member = await User.findById(memberId).select("name");
+            notifyNewMember(group._id, memberId, member.name);
         }
 
         // Lấy nhóm với thông tin tên thành viên
@@ -75,7 +83,17 @@ const createGroup = async (req, res) => {
 const getGroups = async (req, res) => {
     try {
         const userId = req.user._id;
-        const groups = await Group.find({ members: userId }).populate("members", "name email");
+        const role = req.user.role; // Giả sử role được lưu trong req.user
+
+        let groups;
+        if (role === "company") {
+            // Nếu role là company, lấy tất cả nhóm
+            groups = await Group.find().populate("members", "name email");
+        } else {
+            // Nếu không phải company, chỉ lấy nhóm mà user là thành viên
+            groups = await Group.find({ members: userId }).populate("members", "name email");
+        }
+
         return res.status(200).json(groups);
     } catch (error) {
         res.status(500).json({
@@ -164,14 +182,17 @@ const sendGroupMessage = async (req, res) => {
         const group = await Group.findById(groupId);
         if (!group) return res.status(404).json({ message: "Nhóm không tồn tại" });
 
-        const memberIds = group.members.map((id) => id.toString());
-        if (!memberIds.includes(userId.toString())) {
-            return res.status(403).json({ message: "Người dùng không có trong nhóm" });
-        }
-
-        const user = await User.findById(userId).select("name");
+        const user = await User.findById(userId).select("name role");
         if (!user) {
             return res.status(404).json({ message: "Người dùng không tồn tại" });
+        }
+
+        // Bỏ qua kiểm tra thành viên nhóm nếu role là 'company'
+        if (user.role !== "company") {
+            const memberIds = group.members.map((id) => id.toString());
+            if (!memberIds.includes(userId.toString())) {
+                return res.status(403).json({ message: "Người dùng không có trong nhóm" });
+            }
         }
 
         const newMessage = new Message({
@@ -347,48 +368,48 @@ const startCall = async (req, res) => {
     }
 };
 const startScreenShare = async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const userId = req.user._id;
-    const { offer } = req.body; // 🎯 Nhận offer từ client
+    try {
+        const { groupId } = req.params;
+        const userId = req.user._id;
+        const { offer } = req.body; // 🎯 Nhận offer từ client
 
-    if (!offer || !offer.sdp || !offer.type) {
-      return res.status(400).json({ message: "Offer không hợp lệ" });
-    }
+        if (!offer || !offer.sdp || !offer.type) {
+            return res.status(400).json({ message: "Offer không hợp lệ" });
+        }
 
-    if (!mongoose.Types.ObjectId.isValid(groupId)) {
-      return res.status(400).json({ message: "ID nhóm không hợp lệ" });
-    }
+        if (!mongoose.Types.ObjectId.isValid(groupId)) {
+            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+        }
 
-    const group = await Group.findById(groupId);
-    if (!group) {
-      return res.status(404).json({ message: "Nhóm không tồn tại" });
-    }
+        const group = await Group.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ message: "Nhóm không tồn tại" });
+        }
 
-    if (!group.members.map(id => id.toString()).includes(userId.toString())) {
-      return res.status(403).json({ message: "Bạn không có trong nhóm" });
-    }
+        if (!group.members.map(id => id.toString()).includes(userId.toString())) {
+            return res.status(403).json({ message: "Bạn không có trong nhóm" });
+        }
 
-    const io = getIO();
+        const io = getIO();
 
-    group.members.forEach(memberId => {
-      if (memberId.toString() !== userId.toString()) {
-        io.to(memberId.toString()).emit("screen-share-started", {
-          groupId,
-          userId,
-          userName: req.user.name || "Không tên", // hoặc lấy từ DB
-          offer, // ✅ Gửi offer vào socket event
+        group.members.forEach(memberId => {
+            if (memberId.toString() !== userId.toString()) {
+                io.to(memberId.toString()).emit("screen-share-started", {
+                    groupId,
+                    userId,
+                    userName: req.user.name || "Không tên", // hoặc lấy từ DB
+                    offer, // ✅ Gửi offer vào socket event
+                });
+            }
         });
-      }
-    });
 
-    res.status(200).json({ message: "Khởi tạo chia sẻ màn hình thành công" });
-  } catch (error) {
-    res.status(500).json({
-      message: "Lỗi khi khởi tạo chia sẻ màn hình",
-      error: error.message,
-    });
-  }
+        res.status(200).json({ message: "Khởi tạo chia sẻ màn hình thành công" });
+    } catch (error) {
+        res.status(500).json({
+            message: "Lỗi khi khởi tạo chia sẻ màn hình",
+            error: error.message,
+        });
+    }
 };
 
 const getCallStatus = async (req, res) => {
@@ -492,6 +513,7 @@ const startFileTransfer = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi khởi tạo truyền file", error: error.message });
     }
 };
+
 
 module.exports = {
     createGroup,

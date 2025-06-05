@@ -32,7 +32,8 @@ const {
   showAllReportLeader,
   viewReportTeam,
   evaluateLeaderReport,
-  viewProject
+  viewProject,
+  showAllRoprtProject
 } = require("../controller/company.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -259,6 +260,13 @@ router.get(
   authenticateJWT,
   authorize("company"),
   viewReportTeam
+);
+
+router.get(
+  "/showAllRoprtProject/:id",
+  authenticateJWT,
+  authorize("company"),
+  showAllRoprtProject
 );
 
 // Đánh giá Leader theo ID
