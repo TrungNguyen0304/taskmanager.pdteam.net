@@ -876,7 +876,7 @@ const assignProject = async (req, res) => {
     // Gán thông tin
     project.assignedTeam = assignedTeam;
     project.deadline = deadline;
-    project.status = "pending";
+    project.status = "in_progress";
 
     await project.save();
 
@@ -1332,6 +1332,64 @@ const evaluateLeaderReport = async (req, res) => {
   }
 };
 
+// xem tien do du an 
+const viewProject = async (req, res) => {
+  try {
+    const { id } = params;
+
+    const project = await Project.findById(id)
+      .populate({
+        path: "assignedTeam",
+        select: "_id name assignedLeader assignedMembers",
+        populate: [
+          { path: "assignedLeader", select: "_id name email" },
+          { path: "assignedMembers", select: "_id name email" },
+        ]
+      })
+
+    if (!project) {
+      return res.status(404).json({ massege: "dự án không tồn tại " })
+    }
+
+    const tasks = await Task.find({ projectId: id })
+      .select("name description assignedMember status deadline priority")
+      .populate("assignedMember", "name email")
+      .lean();
+
+    const memberCount = project.assignedTeam
+      ? project.assignedTeam.assignedMembers.length
+      : 0;
+    const taskCount = tasks.length;
+
+    res.status(200).json({
+      massege: "Thông tin dự án: ${project.name}",
+      project: {
+        id: project._id,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        priority: project.priority,
+        deadline: project.deadline,
+        assignedTeam: project.assignedTeam
+          ? {
+            id: project.assignedTeam._id,
+            name: project.assignedTeam.name,
+            leader: project.assignedTeam.assignedLeader,
+            members: project.assignedTeam.assignedMembers,
+            memberCount,
+          }
+          : null,
+        tasks,
+        taskCount,
+      }
+    })
+
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin dự án:", error);
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+}
+
 //
 module.exports = {
   createUser,
@@ -1364,4 +1422,5 @@ module.exports = {
   showAllReportLeader,
   viewReportTeam,
   evaluateLeaderReport,
+  viewProject
 };
