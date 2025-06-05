@@ -878,6 +878,8 @@ const assignProject = async (req, res) => {
     project.deadline = deadline;
     project.status = "in_progress";
 
+    project.assignedAt = new Date();
+
     await project.save();
 
     await notifyProject({ userId: assignedLeader.toString(), project });
@@ -891,6 +893,7 @@ const assignProject = async (req, res) => {
           id: team._id,
           name: team.name,
         },
+        assignedAt: new Date(task.assignedAt.getTime() + 7 * 60 * 60 * 1000),
         deadline: project.deadline,
         status: project.status,
       },
@@ -1352,7 +1355,7 @@ const viewProject = async (req, res) => {
     }
 
     const tasks = await Task.find({ projectId: id })
-      .select("name description assignedMember status deadline priority progress")
+      .select("name description assignedMember status deadline priority progress  ")
       .populate("assignedMember", "name email")
       .lean();
 

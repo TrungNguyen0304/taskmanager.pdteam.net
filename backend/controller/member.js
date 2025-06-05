@@ -331,6 +331,11 @@ const createReport = async (req, res) => {
       return res.status(400).json({ message: "Không tìm thấy team hoặc leader." });
     }
 
+    let fileUrl = null;
+    if (req.file) {
+      fileUrl = `/uploads/reports/${req.file.filename}`;
+    }
+
     const report = new Report({
       assignedMembers: userId,
       content,
@@ -339,11 +344,11 @@ const createReport = async (req, res) => {
       task: taskId,
       team: team._id,
       assignedLeader: assignedLeader._id,
+      file: fileUrl,
     });
 
     await report.save();
 
-    // Populate để hiển thị name và _id
     await report.populate([
       { path: 'assignedLeader', select: 'name _id' },
       { path: 'assignedMembers', select: 'name _id' },
@@ -371,7 +376,6 @@ const createReport = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
-
 // xem chi tiêt task
 const viewTask = async (req, res) => {
   try {
