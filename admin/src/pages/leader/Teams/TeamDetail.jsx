@@ -50,7 +50,7 @@ const TeamDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 text-center max-w-md w-full">
           <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 text-base sm:text-lg font-medium">
@@ -83,7 +83,7 @@ const TeamDetail = () => {
   }
 
   return (
-    <div className="w-full mx-auto p-2 md:p-4">
+    <div className="w-full mx-auto p-0 md:p-4">
       {/* Header */}
       <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -136,7 +136,7 @@ const TeamDetail = () => {
                 Trưởng Nhóm
               </p>
               <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1 truncate">
-                {team.leader || "Chưa chỉ định"}
+                {team.assignedLeader?.name || team.leader || "Chưa chỉ định"}
               </p>
             </div>
           </div>
@@ -189,6 +189,11 @@ const TeamDetail = () => {
                     </h3>
                     <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
                       {member.role}
+                      {team.assignedLeader?._id === member._id && (
+                        <span className="ml-2 bg-green-100 text-green-800 text-xs font-medium rounded-full px-2 py-1">
+                          Trưởng nhóm
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>

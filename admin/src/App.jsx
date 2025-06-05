@@ -48,6 +48,7 @@ import SeeReportAdmin from "./pages/admin/ReportAdmin/SeeReportAdmin";
 import TeamMember from "./pages/member/Team/TeamMember";
 import TeamDetailMember from "./pages/member/Team/TeamDetailMember";
 import ProjectDetailLeader from "./pages/leader/Projects/ProjectDetailLeader";
+import TaskReport from "./pages/leader/Tasks/TaskReport";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -114,6 +115,7 @@ const LeaderLayout = () => {
             <Route path="/create-task" element={<CreateTask />} />
             <Route path="/update-task/:id" element={<UpdateTask />} />
             <Route path="/task-detail/:id" element={<TaskDetail />} />
+            <Route path="/task-report/:id" element={<TaskReport />} />
 
             <Route path="/unassigned-tasks" element={<UnassignedTasks />} />
 
