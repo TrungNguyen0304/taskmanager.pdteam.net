@@ -22,7 +22,7 @@ const reportSchema = new Schema({
         min: 0,
         max: 100
     },
-    
+
     task: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Task",
@@ -53,6 +53,10 @@ const reportSchema = new Schema({
         ref: "User",
         required: true
     },
+    file: {
+        type: String,
+        default: null
+    }
 });
 
 module.exports = mongoose.model('Report', reportSchema);

@@ -11,38 +11,38 @@ const projectSchema = new mongoose.Schema({
   },
   assignedTeam: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Team", 
+    ref: "Team",
     required: false
   },
   assignedLeader: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", 
+    ref: "User",
     required: false
   },
   assignedMembers: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", 
+    ref: "User",
     required: false
   },
   companyManager: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User", 
+    ref: "User",
     required: false
   },
-  
+
   team: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Team", 
+    ref: "Team",
     required: false
   },
-  
+
   deadline: {
     type: Date,
     required: false
   },
   status: {
     type: String,
-    enum: ["revoke", "in_progress", "completed", "cancelled","pending"],
+    enum: ["revoke", "in_progress", "completed", "cancelled", "pending"],
     default: "pending"
   },
   priority: {
@@ -50,7 +50,7 @@ const projectSchema = new mongoose.Schema({
     enum: [1, 2, 3],
     default: 2
   },
-   isCompleted: {
+  isCompleted: {
     type: Number,
     enum: [0, 1],
     default: 0
@@ -59,9 +59,13 @@ const projectSchema = new mongoose.Schema({
     type: Number,
     enum: [0, 1],
     default: 0
-  }
+  },
+  assignedAt: {
+    type: Date,
+    default: null
+  },
 }, {
-  timestamps: true 
+  timestamps: true
 });
 
 

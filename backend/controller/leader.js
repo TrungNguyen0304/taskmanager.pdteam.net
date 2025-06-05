@@ -954,13 +954,17 @@ const showAllReportTask = async (req, res) => {
         path: 'assignedMembers',
         select: '_id name role',
       })
+      .populate({
+        path: 'assignedLeader',
+        select: '_id name role',
+      })
       .lean();
     // kiem tra neu ko cs bao cao 
     if (!reports || reports.length == 0) {
       return res.status(404).json({ massega: "không có bào cáo nào của task này " })
     }
     // tra ve danh sach bao cao
-    res.status(404).json({
+    res.status(200).json({
       message: "Lấy danh sách báo cáo của task thành công.",
       reports
     })
