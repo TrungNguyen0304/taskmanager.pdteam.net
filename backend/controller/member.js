@@ -48,7 +48,11 @@ const getMyTasks = async (req, res) => {
         select: 'name assignedTeam',
         populate: {
           path: 'assignedTeam',
-          select: 'name' // tên team
+          select: 'name assignedLeader',
+          populate: {
+            path: 'assignedLeader',
+            select: 'name' // Lấy tên của leader
+          }
         }
       })
       .lean();
@@ -83,7 +87,13 @@ const getMyTasks = async (req, res) => {
           name: task.projectId.name,
           team: {
             id: task.projectId.assignedTeam._id,
-            name: task.projectId.assignedTeam.name
+            name: task.projectId.assignedTeam.name,
+            assignedLeader: task.projectId.assignedTeam.assignedLeader
+              ? {
+                id: task.projectId.assignedTeam.assignedLeader._id,
+                name: task.projectId.assignedTeam.assignedLeader.name
+              }
+              : null
           }
         }
       }))
@@ -376,11 +386,12 @@ const createReport = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+
 // xem chi tiêt task
 const viewTask = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { id } = req.params; 
+    const { id } = req.params;
 
     // Lấy task và populate project + team
     const task = await Task.findOne({ _id: id, assignedMember: userId })
@@ -406,9 +417,9 @@ const viewTask = async (req, res) => {
     // Trả về task với thời gian Việt Nam
     const assignedAtVN = task.assignedAt
       ? new Date(task.assignedAt.getTime() + 7 * 60 * 60 * 1000)
-          .toISOString()
-          .replace('T', ' ')
-          .slice(0, 19)
+        .toISOString()
+        .replace('T', ' ')
+        .slice(0, 19)
       : null;
 
     res.status(200).json({

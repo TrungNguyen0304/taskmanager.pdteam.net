@@ -15,8 +15,6 @@ try {
   const decodedJsonString = Buffer.from(firebaseServiceAccountBase64, 'base64').toString('utf8');
 
   serviceAccount = JSON.parse(decodedJsonString);
-
-  console.log('Firebase Service Account loaded successfully from Base64.');
 } catch (error) {
   console.error('Lỗi khi giải mã hoặc parse biến FIREBASE_SERVICE_ACCOUNT_BASE64:', error.message);
   process.exit(1);

@@ -1402,6 +1402,43 @@ const viewProject = async (req, res) => {
   }
 }
 
+const showAllRoprtProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+   const project = await Project.findById(id).select("_id name").lean();
+
+    if (!project) {
+      res.status(404).json({ massage: "project khong ton tai" })
+    }
+    const reports = await Report.find({ project: id })
+      .select("content difficulties taskProgress project team createdAt assignedMembers assignedLeader")
+      .populate("project", "name description")
+      .populate("assignedLeader", "name email")
+      .populate("assignedMembers", "name email")
+      .populate("team", "name")
+      .populate("task", "name deadline")
+      .lean();
+    if (!reports || reports.length === 0) {
+      return res.status(404).json({
+        massege: "Không có báo cáo nào cho dự án này."
+      })
+    }
+    res.status(200).json({
+      message: `Danh sách báo cáo của dự án: ${project.name}`,
+      project: {
+        project: {
+          id: project._id,
+          name: project.name,
+        },
+        reports,
+      }
+    })
+  } catch (error) {
+    console.error("Lỗi khi lấy báo cáo của dự án:", error);
+    res.status(500).json({message: "Lỗi server.", error: error.message});
+  }
+
+}
 //
 module.exports = {
   createUser,
@@ -1434,5 +1471,6 @@ module.exports = {
   showAllReportLeader,
   viewReportTeam,
   evaluateLeaderReport,
-  viewProject
+  viewProject,
+  showAllRoprtProject
 };

@@ -24,6 +24,8 @@ const {
 } = require("../controller/leader.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
+const upload = require('../middleware/upload.js');
+
 
 const router = express.Router();
 // xem task của mình được giao
@@ -78,7 +80,7 @@ router.get("/showAllReportTask/:id/",authenticateJWT,authorize("leader"),showAll
 router.post("/evaluateMemberReport/:id",authenticateJWT,authorize("leader"),evaluateMemberReport);
 
 // tạo báo cáo của leader dành cho company
-router.post("/createReportCompany/",authenticateJWT,authorize("leader"),createReportCompany);
+router.post("/createReportCompany/:id",upload.single('file') ,authenticateJWT,authorize("leader"),createReportCompany);
 
 // xem tất cả đánh giá của leader
 router.get("/showAllFeedback/", authenticateJWT,authorize("leader"),showAllFeedback);
