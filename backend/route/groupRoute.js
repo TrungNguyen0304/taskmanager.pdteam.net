@@ -11,7 +11,7 @@ const {
     startCall,
     getCallStatus,
     startScreenShare,
-    startFileTransfer
+    startFileTransfer,
 } = require('../controller/group');
 const authenticateJWT = require('../middleware/auth.js');
 
@@ -21,6 +21,7 @@ router.post('/create', authenticateJWT, createGroup);
 
 // Lấy danh sách nhóm
 router.get('/', authenticateJWT, getGroups);
+
 
 // Thêm thành viên vào nhóm
 router.post('/:groupId/members', authenticateJWT, addMember);
@@ -48,5 +49,6 @@ router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
 
 // Khởi tạo truyền file P2P
 router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
+
 
 module.exports = router;

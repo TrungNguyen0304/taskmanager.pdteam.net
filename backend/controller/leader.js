@@ -72,7 +72,7 @@ const viewTeam = async (req, res) => {
         phoneNumber: member.phoneNumber,
         address: member.address,
       })),
-      assignedLeader:{
+      assignedLeader: {
         _id: team.assignedLeader._id,
         name: team.assignedLeader.name,
         role: team.assignedLeader.role
@@ -174,27 +174,55 @@ const viewAssignedProject = async (req, res) => {
 const viewProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user._id
+    const userId = req.user._id;
 
     const project = await Project.findById(id)
       .populate("assignedTeam", "_id name assignedLeader")
       .lean();
     if (!project) {
-      return res.status(404).json({ massegae: "project khong ton tai" })
+      return res.status(404).json({ message: "project khong ton tai" });
     }
-    // Kiểm tra project có gan  team không
+    // Kiểm tra project có gan team không
     if (!project.assignedTeam) {
       return res.status(403).json({ message: "Bạn không có quyền xem thông tin project này" });
     }
-    //  Kiểm tra user có phải là leader của team không
+    // Kiểm tra user có phải là leader của team không
     const team = await Team.findById(project.assignedTeam._id);
     if (!team.assignedLeader || team.assignedLeader._id.toString() !== userId.toString()) {
       return res.status(403).json({ message: "Bạn không có quyền xem thông tin team này." });
     }
-    // laay tat ca cac task thuoc project
+    // Lấy tất cả các task thuộc project
     const tasks = await Task.find({ projectId: id })
       .populate("assignedMember", "_id name")
       .lean();
+
+    // Cập nhật status của tasks dựa trên progress
+    const updatedTasks = await Promise.all(tasks.map(async (task) => {
+      let updatedStatus = task.status;
+      if (task.progress === 100 && task.status !== 'completed') {
+        updatedStatus = 'completed';
+        await Task.findByIdAndUpdate(task._id, { status: 'completed' });
+      } else if (task.progress < 100 && task.status === 'completed') {
+        updatedStatus = 'in_progress';
+        await Task.findByIdAndUpdate(task._id, { status: 'in_progress' });
+      }
+
+      return {
+        _id: task._id,
+        name: task.name,
+        description: task.description,
+        status: updatedStatus,
+        priority: task.priority,
+        progress: task.progress,
+        deadline: task.deadline,
+        assignedMember: task.assignedMember ? {
+          _id: task.assignedMember._id,
+          name: task.assignedMember.name
+        } : null,
+        assignedAt: task.assignedAt
+      };
+    }));
+
     res.status(200).json({
       message: "Lấy thông tin dự án và danh sách task thành công.",
       project: {
@@ -210,27 +238,14 @@ const viewProject = async (req, res) => {
           leaderId: project.assignedTeam.assignedLeader
         }
       },
-      tasks: tasks.map(task => ({
-        _id: task._id,
-        name: task.name,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        progress: task.progress,
-        deadline: task.deadline,
-        assignedMember: task.assignedMember ? {
-          _id: task.assignedMember._id,
-          name: task.assignedMember.name
-        } : null,
-        assignedAt: task.assignedAt
-      }))
-    })
+      tasks: updatedTasks
+    });
 
   } catch (error) {
     console.error("Lỗi trong viewProject:", error);
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
-}
+};
 
 const viewTask = async (req, res) => {
   try {
@@ -1044,31 +1059,30 @@ const evaluateMemberReport = async (req, res) => {
 
 const createReportCompany = async (req, res) => {
   try {
-    const { projectId, content, projectProgress, difficulties, feedback } = req.body;
+    const { content, projectProgress, difficulties } = req.body;
     const userId = req.user._id;
+    const projectId = req.params.id;
 
-    // Validate req.user
-    if (!req.user || !userId) {
-      return res.status(401).json({ message: "Không tìm thấy thông tin người dùng." });
-    }
-
-    // Kiểm tra dữ liệu bắt buộc
+    // 1. Validate inputs
     if (!projectId || !content || projectProgress === undefined) {
       return res.status(400).json({ message: "Thiếu projectId, nội dung hoặc tiến độ công việc." });
     }
 
-    // Xử lý tiến độ nếu dạng string có dấu %
+    if (!mongoose.isValidObjectId(projectId)) {
+      return res.status(400).json({ message: "Project ID không hợp lệ." });
+    }
+
+    // 2. Parse and validate project progress
     let progress = projectProgress;
     if (typeof projectProgress === "string" && projectProgress.includes("%")) {
       progress = parseInt(projectProgress.replace("%", ""), 10);
     }
 
-    // Kiểm tra tiến độ hợp lệ
     if (isNaN(progress) || progress < 0 || progress > 100) {
-      return res.status(400).json({ message: "Tiến độ công việc không hợp lệ." });
+      return res.status(400).json({ message: "Tiến độ công việc phải từ 0 đến 100." });
     }
 
-    // Tìm dự án và populate thông tin team và leader
+    // 3. Find project and verify leadership
     const project = await Project.findById(projectId).populate({
       path: 'assignedTeam',
       populate: {
@@ -1088,36 +1102,48 @@ const createReportCompany = async (req, res) => {
       return res.status(400).json({ message: "Không tìm thấy team hoặc leader của dự án." });
     }
 
-    // Kiểm tra quyền: chỉ leader của team mới được báo cáo
     if (String(assignedLeader._id) !== String(userId)) {
-      return res.status(403).json({ message: "Chỉ leader của team được báo cáo tiến độ dự án." });
+      return res.status(403).json({ message: "Chỉ leader của team được phép gửi báo cáo." });
     }
 
-    // Tìm companyManager (người dùng với role: 'company')
-    const companyManager = await User.findOne({ role: 'company' });
+    // 4. Find company manager
+    const companyManager = await User.findOne({ role: 'company' }).select('_id name');
     if (!companyManager) {
-      return res.status(400).json({ message: "Không tìm thấy thông tin quản lý công ty." });
+      return res.status(400).json({ message: "Không tìm thấy quản lý công ty." });
     }
 
-    // Tạo báo cáo
+    // 5. Handle file upload (if any)
+    let fileUrl = null;
+    if (req.file) {
+      fileUrl = `/uploads/reports/${req.file.filename}`;
+    }
+
+    // 6. Create report
     const report = new Report({
       content,
-      difficulties,
+      difficulties: difficulties || '',
       projectProgress: progress,
       project: projectId,
       team: team._id,
       assignedLeader: userId,
-      feedback,
-      assignedMembers: []
+      file: fileUrl
     });
 
+    // 7. Save report and update project progress
     await report.save();
 
-    // Cập nhật tiến độ dự án
+    // 8. Populate report for response
+    await report.populate([
+      { path: 'assignedLeader', select: 'name _id' },
+      { path: 'team', select: 'name _id' },
+      { path: 'project', select: 'name _id' }
+    ]);
+
+    // 9. Update project progress
     project.progress = progress;
     await project.save();
 
-    // Gửi thông báo
+    // 10. Send notification
     await notifyReportCompany({
       userId: companyManager._id.toString(),
       project,
@@ -1125,28 +1151,16 @@ const createReportCompany = async (req, res) => {
       leader: req.user.name || 'Leader'
     });
 
-    // Populate lại báo cáo vừa lưu
-    const savedReport = await report.populate([
-      { path: "team", select: "name" },
-      { path: "assignedLeader", select: "name" }
-    ]);
-
-    // Xóa trường assignedMember nếu có
-    if (savedReport._doc?.assignedMember) {
-      delete savedReport._doc.assignedMember;
-    }
-
-    // Trả về phản hồi với companyManager ID
+    // 11. Send response
     res.status(201).json({
       message: "Gửi báo cáo dự án thành công.",
-      report: savedReport,
-      companyManagerId: companyManager._id.toString() // Hiển thị ID của companyManager
+      report
     });
 
   } catch (error) {
     console.error("createReportCompany error:", error);
     res.status(500).json({
-      message: "Lỗi server.",
+      message: "Lỗi server khi tạo báo cáo.",
       error: error.message
     });
   }
