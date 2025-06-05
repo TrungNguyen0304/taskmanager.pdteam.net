@@ -32,6 +32,7 @@ const {
   showAllReportLeader,
   viewReportTeam,
   evaluateLeaderReport,
+  viewProject
 } = require("../controller/company.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -195,6 +196,13 @@ router.get(
   authenticateJWT,
   authorize("company"),
   viewTeamProject
+);
+// 
+router.get(
+  "/viewProject/:id",
+  authenticateJWT,
+  authorize("company"),
+  viewProject
 );
 
 // Lấy ra toàn bộ task chưa giao
