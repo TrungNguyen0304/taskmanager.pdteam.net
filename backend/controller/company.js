@@ -1335,7 +1335,7 @@ const evaluateLeaderReport = async (req, res) => {
 // xem tien do du an 
 const viewProject = async (req, res) => {
   try {
-    const { id } = params;
+    const { id } = req.params;
 
     const project = await Project.findById(id)
       .populate({
@@ -1352,7 +1352,7 @@ const viewProject = async (req, res) => {
     }
 
     const tasks = await Task.find({ projectId: id })
-      .select("name description assignedMember status deadline priority")
+      .select("name description assignedMember status deadline priority progress")
       .populate("assignedMember", "name email")
       .lean();
 
@@ -1360,6 +1360,14 @@ const viewProject = async (req, res) => {
       ? project.assignedTeam.assignedMembers.length
       : 0;
     const taskCount = tasks.length;
+
+
+    // Tính tiến độ trung bình của dự án
+    let averageProgress = 0;
+    if (taskCount > 0) {
+      const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
+      averageProgress = (totalProgress / taskCount).toFixed(2);
+    }
 
     res.status(200).json({
       massege: "Thông tin dự án: ${project.name}",
@@ -1381,6 +1389,7 @@ const viewProject = async (req, res) => {
           : null,
         tasks,
         taskCount,
+        averageTaskProgress: parseFloat(averageProgress),
       }
     })
 
