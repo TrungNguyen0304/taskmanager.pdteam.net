@@ -13,7 +13,7 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
     const fetchTeams = async () => {
       try {
         const response = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/leader/showallTeam",
+          "http://localhost:8001/api/leader/showallTeam",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -110,7 +110,7 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
                 return (
                   <tr
                     key={team.id}
-                    className="bg-white rounded-xl shadow transition hover:bg-[#eaf1fb] text-center"
+                    className="bg-white rounded-xl shadow transition text-center"
                   >
                     <td className="px-4 py-3 text-[#323338]">{team.name}</td>
                     <td className="px-4 py-3 text-[#676879]">{team.leader}</td>
@@ -119,9 +119,9 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
                     </td>
                     <td className="px-4 py-3 rounded-r-xl">
                       <NavLink
-                        to="/team-detail"
-                        state={{ team, index: globalIndex, originPage }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#009aff] text-white rounded-lg font-medium shadow hover:bg-[#0077c2] transition"
+                        to={`/team-detail/${team.id}`}
+                        state={{ index, originPage }}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium shadow hover:bg-blue-600 transition"
                       >
                         <Eye className="w-4 h-4" />
                         Xem chi tiết

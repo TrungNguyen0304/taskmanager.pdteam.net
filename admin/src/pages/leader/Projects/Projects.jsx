@@ -326,7 +326,7 @@ const Projects = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xl font-medium text-gray-700">
@@ -340,7 +340,7 @@ const Projects = () => {
 
   if (projects.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center bg-white rounded-3xl shadow-lg p-12 max-w-md mx-4">
           <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
             <ClipboardList className="w-10 h-10 text-gray-400" />
@@ -358,7 +358,7 @@ const Projects = () => {
   }
 
   return (
-    <div className="w-full mx-auto p-4">
+    <div className="w-full mx-auto p-0 md:p-4">
       {/* Project Cards */}
       <div className="space-y-8">
         {currentProjects.map((project) => (

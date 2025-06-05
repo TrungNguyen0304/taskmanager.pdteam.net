@@ -70,7 +70,7 @@ const UnassignedTasks = () => {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-2 md:p-4">
       <div className="w-full mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">

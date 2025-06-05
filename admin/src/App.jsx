@@ -107,7 +107,7 @@ const LeaderLayout = () => {
           <Routes>
             <Route path="/" element={<HomeLeader />} />
             <Route path="/teams-table" element={<TeamTable />} />
-            <Route path="/team-detail" element={<TeamDetail />} />
+            <Route path="/team-detail/:id" element={<TeamDetail />} />
             <Route path="/member-detail" element={<MemberDetailLeader />} />
 
             <Route path="/assigned-tasks" element={<AssignedTasks />} />
