@@ -23,93 +23,81 @@ const ProjectDetailLeader = () => {
   const currentTasks = filteredTasks.slice(indexOfFirstTask, indexOfLastTask);
 
   useEffect(() => {
-    // Sample data for testing
-    const sampleProject = {
-      id: projectId,
-      name: "Dự án phát triển website",
-      description: "Xây dựng website thương mại điện tử với tính năng hiện đại",
-      deadline: new Date("2025-12-31").toLocaleDateString("vi-VN"),
-      status: "Đang thực hiện",
-      teamId: "TEAM001",
+    const fetchProjectData = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8001/api/leader/viewProject/${projectId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Không thể lấy dữ liệu từ API.");
+        }
+        const data = await response.json();
+
+        // Transform API data to match component's expected format
+        const transformedProject = {
+          id: data.project._id,
+          name: data.project.name,
+          description: data.project.description,
+          deadline: new Date(data.project.deadline).toLocaleDateString("vi-VN"),
+          status: mapStatus(data.project.status),
+          teamName: data.project.team.name,
+        };
+
+        const transformedTasks = data.tasks.map((task) => ({
+          id: task._id,
+          name: task.name,
+          description: task.description,
+          status: mapStatus(task.status),
+          progress: task.progress,
+          priority: mapPriority(task.priority),
+          deadline: new Date(task.deadline).toLocaleDateString("vi-VN"),
+          assignedMember: task.assignedMember?.name || "Chưa phân công",
+        }));
+
+        setProject(transformedProject);
+        setTasks(transformedTasks);
+        setFilteredTasks(transformedTasks);
+      } catch (err) {
+        setError(err.message || "Đã xảy ra lỗi khi lấy dữ liệu.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const sampleTasks = [
-      {
-        id: "1",
-        name: "Thiết kế giao diện",
-        description: "Thiết kế UI/UX cho trang chủ và trang sản phẩm",
-        status: "Hoàn thành",
-        progress: 100,
-        priority: "Cao",
-        deadline: new Date("2025-06-15").toLocaleDateString("vi-VN"),
-        assignedMember: "Nguyễn Văn A",
-      },
-      {
-        id: "2",
-        name: "Phát triển backend",
-        description: "Xây dựng API cho hệ thống thanh toán",
-        status: "Đang thực hiện",
-        progress: 60,
-        priority: "Trung bình",
-        deadline: new Date("2025-07-01").toLocaleDateString("vi-VN"),
-        assignedMember: "Trần Thị B",
-      },
-      {
-        id: "3",
-        name: "Kiểm thử hệ thống",
-        description: "Kiểm thử tích hợp và bảo mật",
-        status: "Chưa bắt đầu",
-        progress: 0,
-        priority: "Thấp",
-        deadline: new Date("2025-08-01").toLocaleDateString("vi-VN"),
-        assignedMember: "Chưa phân công",
-      },
-      {
-        id: "4",
-        name: "Tối ưu SEO",
-        description: "Tối ưu hóa công cụ tìm kiếm",
-        status: "Đang thực hiện",
-        progress: 30,
-        priority: "Trung bình",
-        deadline: new Date("2025-07-15").toLocaleDateString("vi-VN"),
-        assignedMember: "Lê Văn C",
-      },
-      {
-        id: "5",
-        name: "Triển khai server",
-        description: "Cấu hình và triển khai server sản phẩm",
-        status: "Chưa bắt đầu",
-        progress: 0,
-        priority: "Cao",
-        deadline: new Date("2025-09-01").toLocaleDateString("vi-VN"),
-        assignedMember: "Phạm Thị D",
-      },
-      {
-        id: "6",
-        name: "Tích hợp thanh toán",
-        description: "Tích hợp cổng thanh toán trực tuyến",
-        status: "Đang thực hiện",
-        progress: 75,
-        priority: "Cao",
-        deadline: new Date("2025-06-30").toLocaleDateString("vi-VN"),
-        assignedMember: "Hoàng Văn E",
-      },
-    ];
-
-    try {
-      // Simulate finding project by ID
-      if (!sampleProject || sampleProject.id !== projectId) {
-        throw new Error("Không tìm thấy dự án.");
+    // Helper function to map status to Vietnamese
+    const mapStatus = (status) => {
+      switch (status.toLowerCase()) {
+        case "pending":
+          return "Chưa bắt đầu";
+        case "in_progress":
+          return "Đang thực hiện";
+        case "completed":
+          return "Hoàn thành";
+        default:
+          return status;
       }
+    };
 
-      setProject(sampleProject);
-      setTasks(sampleTasks);
-      setFilteredTasks(sampleTasks);
-    } catch (err) {
-      setError(err.message || "Đã xảy ra lỗi khi lấy dữ liệu.");
-    } finally {
-      setLoading(false);
-    }
+    // Helper function to map priority to Vietnamese
+    const mapPriority = (priority) => {
+      switch (priority) {
+        case 1:
+          return "Cao";
+        case 2:
+          return "Trung bình";
+        case 3:
+          return "Thấp";
+        default:
+          return "Không xác định";
+      }
+    };
+
+    fetchProjectData();
   }, [projectId]);
 
   useEffect(() => {
@@ -184,7 +172,7 @@ const ProjectDetailLeader = () => {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-lg mb-6">
+      <div className="grid grid-cols-1  gap-4 text-lg mb-6">
         <div>
           <strong>Tên Dự Án:</strong> {project.name}
         </div>
@@ -195,11 +183,10 @@ const ProjectDetailLeader = () => {
           <strong>Deadline:</strong> {project.deadline}
         </div>
         <div>
-          <strong>Trạng Thái:</strong>{" "}
-          <span className="capitalize">{project.status}</span>
+          <strong>Trạng Thái:</strong> {project.status}
         </div>
         <div>
-          <strong>ID Team:</strong> {project.teamId}
+          <strong>Team:</strong> {project.teamName}
         </div>
       </div>
 
