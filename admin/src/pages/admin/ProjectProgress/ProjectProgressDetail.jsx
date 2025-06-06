@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { projects } from "../../../data/projects";
+import { ArrowLeft } from "lucide-react";
 
 // Utility functions (unchanged)
 const getDaysBetween = (start, end) => {
@@ -254,9 +255,9 @@ const ProjectProgressDetail = () => {
       <div className="w-full mx-auto space-y-6">
         <button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors duration-200"
-          aria-label="Quay lại"
+          className="flex items-center text-blue-600 hover:underline text-base md:text-xl"
         >
+          <ArrowLeft className="w-6 h-6 mr-1" />
           Quay lại
         </button>
         <div className="bg-white rounded-xl shadow-md p-6">
