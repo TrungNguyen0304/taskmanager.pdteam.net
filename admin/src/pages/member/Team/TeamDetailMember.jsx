@@ -63,12 +63,12 @@ const TeamDetailMember = () => {
       <div className="flex justify-between items-center mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-blue-600 hover:underline"
+          className="inline-flex items-center gap-2 text-blue-600 hover:underline text-xl"
         >
           <ArrowLeft className="w-5 h-5" />
           Quay lại
         </button>
-        <h2 className="text-3xl font-bold text-gray-800">Chi tiết đội nhóm</h2>
+        <h2 className="text-3xl font-bold text-blue-600">Chi tiết đội nhóm</h2>
       </div>
 
       <div className="space-y-8">
@@ -78,14 +78,14 @@ const TeamDetailMember = () => {
               <Users className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-2xl font-semibold text-gray-900">{team.name}</h3>
+              <h3 className="text-2xl font-bold text-blue-600">{team.name}</h3>
               <p className="text-gray-600 text-sm">{team.description}</p>
             </div>
           </div>
         </section>
 
         <section>
-          <h4 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-2">
+          <h4 className="text-lg font-bold text-blue-600 flex items-center gap-2 mb-2">
             <User className="w-5 h-5" />
             Trưởng nhóm
           </h4>
@@ -96,7 +96,7 @@ const TeamDetailMember = () => {
         </section>
 
         <section>
-          <h4 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-2">
+          <h4 className="text-lg font-bold text-blue-600 flex items-center gap-2 mb-2">
             <Users className="w-5 h-5" />
             Thành viên
           </h4>
@@ -117,7 +117,7 @@ const TeamDetailMember = () => {
         </section>
 
         <section>
-          <h4 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-2">
+          <h4 className="text-lg font-bold text-blue-600 flex items-center gap-2 mb-2">
             <Briefcase className="w-5 h-5" />
             Dự án
           </h4>

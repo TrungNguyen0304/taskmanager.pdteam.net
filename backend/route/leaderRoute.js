@@ -73,6 +73,7 @@ router.get("/viewReport/", authenticateJWT, authorize("leader"), showallReport);
 // lấy ra report của từng member theo id
 router.get("/viewReportMember/:id/",authenticateJWT,authorize("leader"),showAllReportMember);
 
+// xem tất cả báo cáo theo id
 router.get("/showAllReportTask/:id/",authenticateJWT,authorize("leader"),showAllReportTask);
 
 // đánh giá báo cáo của member theo id

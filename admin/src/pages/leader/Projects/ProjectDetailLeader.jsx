@@ -159,15 +159,15 @@ const ProjectDetailLeader = () => {
 
   return (
     <div className="w-full mx-auto p-6 bg-white shadow-md rounded-2xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center text-blue-600 hover:underline text-xl"
+          className="flex items-center text-blue-600 hover:underline text-base md:text-xl"
         >
-          <ArrowLeft className="w-5 h-5 mr-1" />
+          <ArrowLeft className="w-6 h-6 mr-1" />
           Quay lại
         </button>
-        <h2 className="text-3xl font-bold mb-6 text-[#183d5d]">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#183d5d] text-center md:text-right">
           Thông Tin Chi Tiết Dự Án
         </h2>
       </div>

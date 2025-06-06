@@ -1,15 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, FileText } from "lucide-react";
+import { FileText, Clock, Flag, Users } from "lucide-react";
 import { GrUpdate } from "react-icons/gr";
 import axios from "axios";
+import { FaUser } from "react-icons/fa";
 
 const PAGE_SIZE = 3;
 
-const STATUS_SEQUENCE = ["Chưa bắt đầu", "Đang tiến hành", "Hoàn thành"];
+const STATUS_MAP = {
+  not_started: "Chưa bắt đầu",
+  in_progress: "Đang tiến hành",
+  completed: "Hoàn thành",
+};
+
+const PRIORITY_MAP = {
+  1: {
+    text: "Thấp",
+    color: "text-green-600",
+    bg: "bg-green-100",
+    border: "border-green-200",
+  },
+  2: {
+    text: "Trung bình",
+    color: "text-yellow-600",
+    bg: "bg-yellow-100",
+    border: "border-yellow-200",
+  },
+  3: {
+    text: "Cao",
+    color: "text-red-600",
+    bg: "bg-red-100",
+    border: "border-red-200",
+  },
+};
 
 const TaskMember = () => {
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -18,7 +43,7 @@ const TaskMember = () => {
     const fetchTasks = async () => {
       try {
         const response = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/member/showallTask",
+          "http://localhost:8001/api/member/showallTask",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -27,16 +52,27 @@ const TaskMember = () => {
         );
 
         if (Array.isArray(response.data.tasks)) {
-          const formatted = response.data.tasks.map((task, index) => ({
-            id: task._id || `task-${index}`,
+          const formatted = response.data.tasks.map((task) => ({
+            id: task.id,
             name: task.name || "N/A",
             description: task.description || "N/A",
-            status: task.status || "N/A",
+            status: STATUS_MAP[task.status] || "N/A",
             priority: task.priority || 0,
             deadline: task.deadline
-              ? new Date(task.deadline).toLocaleDateString("vi-VN")
+              ? new Date(task.deadline).toLocaleDateString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
               : "N/A",
-            projectId: task.projectId || "N/A",
+            project: {
+              id: task.project?.id || "N/A",
+              name: task.project?.name || "N/A",
+              team: {
+                name: task.project?.team?.name || "N/A",
+                leader: task.project?.team?.assignedLeader?.name || "N/A",
+              },
+            },
           }));
           setTasks(formatted);
         } else {
@@ -62,27 +98,23 @@ const TaskMember = () => {
     setCurrentPage(page);
   };
 
-  const handleView = (id) => {
-    navigate(`/task-detail/${id}`);
-  };
-
   const handleReport = (task) => {
     alert(`Báo cáo nhiệm vụ: ${task.name}`);
   };
 
-  // Hàm thay đổi trạng thái
   const handleChangeStatus = async (task) => {
-    // Lấy trạng thái hiện tại
-    const currentIndex = STATUS_SEQUENCE.indexOf(task.status);
-    // Tính trạng thái tiếp theo, nếu không tìm thấy thì quay lại đầu
-    const nextIndex = (currentIndex + 1) % STATUS_SEQUENCE.length;
-    const newStatus = STATUS_SEQUENCE[nextIndex];
+    const statusSequence = Object.values(STATUS_MAP);
+    const currentIndex = statusSequence.indexOf(task.status);
+    const nextIndex = (currentIndex + 1) % statusSequence.length;
+    const newStatus = statusSequence[nextIndex];
+    const apiStatus = Object.keys(STATUS_MAP).find(
+      (key) => STATUS_MAP[key] === newStatus
+    );
 
     try {
-      // Gọi API cập nhật trạng thái nhiệm vụ
       await axios.put(
-        `https://apitaskmanager.pdteam.net/api/member/updateTaskStatus/${task.id}`,
-        { status: newStatus },
+        `http://localhost:8001/api/member/updateTaskStatus/${task.id}`,
+        { status: apiStatus },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -90,7 +122,6 @@ const TaskMember = () => {
         }
       );
 
-      // Cập nhật trạng thái trong state để UI cập nhật luôn
       setTasks((prev) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
       );
@@ -100,112 +131,199 @@ const TaskMember = () => {
     }
   };
 
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case "Chưa bắt đầu":
+        return "bg-gray-100 text-gray-600 border-gray-200";
+      case "Đang tiến hành":
+        return "bg-blue-100 text-blue-600 border-blue-200";
+      case "Hoàn thành":
+        return "bg-green-100 text-green-600 border-green-200";
+      default:
+        return "bg-gray-100 text-gray-600 border-gray-200";
+    }
+  };
+
   return (
-    <div className="w-full mx-auto bg-white p-4 rounded-lg shadow-md">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center text-blue-600 hover:underline text-sm sm:text-base"
-          aria-label="Quay lại"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Quay lại
-        </button>
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-          Nhiệm Vụ Thành Viên
-        </h2>
-      </div>
-
-      {/* Content */}
-      {loading ? (
-        <p className="text-gray-500 text-center py-8">Đang tải dữ liệu...</p>
-      ) : paginatedTasks.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">Không có nhiệm vụ nào.</p>
-      ) : (
-        <div className="space-y-6">
-          {paginatedTasks.map((task, index) => (
-            <div
-              key={task.id}
-              className="border rounded-lg p-4 sm:p-6 hover:shadow transition flex flex-col sm:flex-row justify-between"
-            >
-              {/* Task info */}
-              <div className="flex-1 mb-4 sm:mb-0">
-                <div className="text-sm text-gray-500 mb-1">
-                  #{(currentPage - 1) * PAGE_SIZE + index + 1}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                  <strong>Nhiệm vụ:</strong> {task.name}
-                </h3>
-                <p className="text-gray-700 mb-1">
-                  <strong>Mô tả:</strong> {task.description}
-                </p>
-                <p className="text-gray-700 mb-1">
-                  <strong>Trạng thái:</strong> {task.status}
-                </p>
-                <p className="text-gray-700 mb-1">
-                  <strong>Độ ưu tiên:</strong> {task.priority}
-                </p>
-                <p className="text-gray-700 mb-1">
-                  <strong>Hạn chót:</strong> {task.deadline}
-                </p>
-                <p className="text-gray-700">
-                  <strong>Mã dự án:</strong> {task.projectId}
-                </p>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-3 items-end justify-start sm:justify-end min-w-[160px]">
-                <button
-                  onClick={() => handleReport(task)}
-                  className="flex items-center px-4 py-2 border border-blue-500 text-blue-600 rounded hover:bg-blue-50 transition text-sm sm:text-base"
-                  aria-label={`Báo cáo nhiệm vụ ${task.name}`}
-                >
-                  <FileText className="w-5 h-5 mr-1" />
-                  Báo cáo
-                </button>
-                <button
-                  onClick={() => handleView(task.id)}
-                  className="flex items-center px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 transition text-sm sm:text-base"
-                  aria-label={`Xem chi tiết nhiệm vụ ${task.name}`}
-                >
-                  <Eye className="w-5 h-5 mr-2" />
-                  Xem chi tiết
-                </button>
-                {/* Nút thay đổi trạng thái */}
-                <button
-                  onClick={() => handleChangeStatus(task)}
-                  className="flex items-center px-4 py-2 border border-green-500 text-green-600 rounded hover:bg-green-50 transition text-sm sm:text-base"
-                  aria-label={`Thay đổi trạng thái nhiệm vụ ${task.name}`}
-                >
-                  <GrUpdate className="w-4 h-4 mr-2" /> Thay đổi trạng thái
-                </button>
-              </div>
+    <div className="p-0 md:p-4">
+      <div className="w-full mx-auto">
+        {/* Header */}
+        <div className="mb-6 bg-white rounded-2xl shadow-sm p-6 sm:p-8">
+          <div className="flex items-center gap-4">
+            <FileText className="w-8 h-8 text-indigo-600" />
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-blue-600">
+                Danh Sách Nhiệm Vụ
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
+                Tổng cộng: {tasks.length} nhiệm vụ
+              </p>
             </div>
-          ))}
+          </div>
         </div>
-      )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center sm:justify-end mt-8 space-x-2 flex-wrap">
-          {Array.from({ length: totalPages }).map((_, idx) => (
+        {/* Content */}
+        {loading ? (
+          <div className="flex justify-center items-center min-h-[300px]">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+              <p className="text-gray-600 text-base sm:text-lg font-medium">
+                Đang tải...
+              </p>
+            </div>
+          </div>
+        ) : paginatedTasks.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+              Không có nhiệm vụ
+            </h3>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Nhiệm vụ sẽ được hiển thị khi được giao.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {paginatedTasks.map((task, index) => (
+              <div
+                key={task.id}
+                className="bg-white rounded-2xl shadow-sm p-6 sm:p-8"
+              >
+                <div className="flex flex-col gap-6">
+                  {/* Task Header */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <span className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-semibold">
+                        {(currentPage - 1) * PAGE_SIZE + index + 1}
+                      </span>
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                        Nhiệm vụ: {task.name}
+                      </h2>
+                    </div>
+                    <div className="flex gap-3">
+                      <span
+                        className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-medium border ${getStatusStyle(
+                          task.status
+                        )}`}
+                      >
+                        {task.status}
+                      </span>
+                      <span
+                        className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-medium border flex items-center gap-2 ${
+                          PRIORITY_MAP[task.priority]?.bg || "bg-gray-100"
+                        } ${
+                          PRIORITY_MAP[task.priority]?.color || "text-gray-600"
+                        } ${
+                          PRIORITY_MAP[task.priority]?.border ||
+                          "border-gray-200"
+                        }`}
+                      >
+                        <Flag className="w-4 h-4" />
+                        {PRIORITY_MAP[task.priority]?.text || "Không xác định"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Task Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base text-gray-600">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-indigo-600" />
+                      <span className="font-medium">{task.project.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5 text-indigo-600" />
+                      <span className="font-medium">
+                        {task.project.team.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <FaUser className="w-5 h-5 text-indigo-600" />
+                      <span className="font-medium">
+                        Trưởng nhóm: {task.project.team.leader}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 flex items-center gap-3">
+                      Mô tả nhiệm vụ
+                    </h3>
+                    <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
+                      {task.description}
+                    </p>
+                  </div>
+
+                  {/* Project Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base text-gray-600">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-500" />
+                      <span>Hạn: {task.deadline}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => handleReport(task)}
+                      className="flex-1 py-2 px-4 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-indigo-200 hover:border-indigo-300 transition-all"
+                      aria-label={`Báo cáo nhiệm vụ ${task.name}`}
+                    >
+                      <FileText className="w-5 h-5" />
+                      Báo cáo
+                    </button>
+                    <button
+                      onClick={() => handleChangeStatus(task)}
+                      className="flex-1 py-2 px-4 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-green-200 hover:border-green-300 transition-all"
+                      aria-label={`Thay đổi trạng thái nhiệm vụ ${task.name}`}
+                    >
+                      <GrUpdate className="w-5 h-5" />
+                      Cập nhật trạng thái
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
             <button
-              key={idx}
-              onClick={() => handlePageChange(idx + 1)}
-              className={`px-4 py-2 mb-2 border rounded transition text-sm sm:text-base ${
-                currentPage === idx + 1
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100"
-              }`}
-              aria-current={currentPage === idx + 1 ? "page" : undefined}
-              aria-label={`Trang ${idx + 1}`}
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
+              aria-label="Trang trước"
             >
-              {idx + 1}
+              ←
             </button>
-          ))}
-        </div>
-      )}
+            {Array.from({ length: totalPages }).map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => handlePageChange(idx + 1)}
+                className={`w-10 h-10 rounded-lg text-sm sm:text-base font-medium ${
+                  currentPage === idx + 1
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+                aria-current={currentPage === idx + 1 ? "page" : undefined}
+                aria-label={`Trang ${idx + 1}`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
+              aria-label="Trang sau"
+            >
+              →
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

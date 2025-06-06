@@ -28,9 +28,10 @@ router.post("/createReport/:id",upload.single('file') ,authenticateJWT, createRe
 // cập nhật trạng thái task
 router.put("/updateStatus/:id", authenticateJWT, updateTaskStatus);
 
+// xem chi tiết team
 router.get("/viewTeam/:id", authenticateJWT, viewTeam);
-router.get("/viewTask/:id", authenticateJWT, viewTask);
 
+// xem chi tiết task
 router.get("/viewTask/:id", authenticateJWT, viewTask);
 
 module.exports = router;

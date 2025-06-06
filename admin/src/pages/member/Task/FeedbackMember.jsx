@@ -238,7 +238,7 @@ const FeedbackMember = () => {
           <ArrowLeft className="w-5 h-5 mr-2" />
           Quay lại
         </button>
-        <h2 className="text-xl md:text-3xl font-bold text-gray-800">Đánh Giá Từ Leader</h2>
+        <h2 className="text-xl md:text-3xl font-bold text-blue-600">Đánh Giá Từ Leader</h2>
       </div>
 
       {loading ? (
