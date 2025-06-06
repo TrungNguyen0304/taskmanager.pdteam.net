@@ -726,6 +726,7 @@ const revokeTaskAssignment = async (req, res) => {
 
     // 3. Thu hồi task
     task.assignedMember = null;
+    task.status = "pending";
 
     await task.save();
 
@@ -1364,7 +1365,7 @@ const showallMember = async (req, res) => {
 
     // 5. Lấy thông tin chi tiết của các thành viên
     const members = await User.find({ _id: { $in: memberIds } })
-      .select('_id name email')
+      .select('_id name email role ')
       .lean();
 
     // 6. Định dạng dữ liệu trả về
@@ -1372,6 +1373,7 @@ const showallMember = async (req, res) => {
       _id: member._id,
       name: member.name,
       email: member.email,
+      role: member.role,
     }));
 
     // 7. Trả về phản hồi
