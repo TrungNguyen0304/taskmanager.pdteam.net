@@ -14,7 +14,7 @@ const ProjectAssigned = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalProjects, setTotalProjects] = useState(0);
   const [limit] = useState(3);
-  const [isProcessing, setIsProcessing] = useState(false); // Thêm state loading cho xóa/thu hồi
+  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,7 +28,7 @@ const ProjectAssigned = () => {
         }
 
         const response = await axios.post(
-          "https://apitaskmanager.pdteam.net/api/company/paginationgetassigned",
+          "http://localhost:8001/api/company/paginationgetassigned",
           { page: currentPage, limit },
           {
             headers: {
@@ -72,7 +72,7 @@ const ProjectAssigned = () => {
       const token = localStorage.getItem("token");
       if (actionType === "delete") {
         await axios.delete(
-          `https://apitaskmanager.pdteam.net/api/company/deleteProject/${selectedProject}`,
+          `http://localhost:8001/api/company/deleteProject/${selectedProject}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setProjects(projects.filter((p) => p.id !== selectedProject));
@@ -84,7 +84,7 @@ const ProjectAssigned = () => {
         }
       } else if (actionType === "revoke") {
         await axios.put(
-          `https://apitaskmanager.pdteam.net/api/company/revokeProject/${selectedProject}/revoke`,
+          `http://localhost:8001/api/company/revokeProject/${selectedProject}/revoke`,
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );

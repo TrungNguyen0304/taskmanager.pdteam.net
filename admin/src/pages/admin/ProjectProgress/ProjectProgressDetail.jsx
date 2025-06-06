@@ -222,6 +222,7 @@ const ProjectProgressDetail = () => {
     setGanttPage(1);
     setSummaryPage(1);
     setSelectedTask(null);
+    window.scrollTo(0, 0); // Cuộn trang lên đầu khi component được mount
   }, [projectId]);
 
   if (!selectedProject) {
