@@ -56,7 +56,8 @@ const reportSchema = new Schema({
     file: {
         type: String,
         default: null
-    }
+    },
+    feedback: { type: mongoose.Schema.Types.ObjectId, ref: 'Feedback' },
 });
 
 module.exports = mongoose.model('Report', reportSchema);

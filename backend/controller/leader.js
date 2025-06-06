@@ -596,7 +596,7 @@ const paginationTask = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
-
+``
 // gan task cho member
 const assignTask = async (req, res) => {
   try {
@@ -642,7 +642,7 @@ const assignTask = async (req, res) => {
     }
 
     task.assignedMember = memberId;
-    task.assignedAt = new Date(); // 👈 Thêm dòng này để set ngày gán task
+    task.assignedAt = new Date();
 
     await task.save();
     await notifyTask({ userId: memberId.toString(), task });
@@ -1334,6 +1334,58 @@ const getStatistics = async (req, res) => {
   }
 };
 
+const showallMember = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Tìm tất cả team mà user là leader
+    const teams = await Team.find({ assignedLeader: userId })
+      .populate('assignedMembers', '_id name email ')
+      .lean();
+
+    // 2. Kiểm tra xem có team nào không
+    if (!teams || teams.length === 0) {
+      return res.status(404).json({ message: "Bạn không quản lý team nào." });
+    }
+
+    // 3. Gộp danh sách thành viên từ tất cả team và loại bỏ trùng lặp
+    const memberIds = [
+      ...new Set(
+        teams.flatMap(team =>
+          team.assignedMembers.map(member => member._id.toString())
+        )
+      )
+    ].filter(id => id !== userId.toString()); // Loại bỏ ID của leader
+
+    // 4. Kiểm tra xem có thành viên nào không
+    if (memberIds.length === 0) {
+      return res.status(404).json({ message: "Không có thành viên nào trong team của bạn." });
+    }
+
+    // 5. Lấy thông tin chi tiết của các thành viên
+    const members = await User.find({ _id: { $in: memberIds } })
+      .select('_id name email')
+      .lean();
+
+    // 6. Định dạng dữ liệu trả về
+    const formattedMembers = members.map(member => ({
+      _id: member._id,
+      name: member.name,
+      email: member.email,
+    }));
+
+    // 7. Trả về phản hồi
+    res.status(200).json({
+      message: "Lấy danh sách thành viên thành công.",
+      members: formattedMembers
+    });
+
+  } catch (error) {
+    console.error("Lỗi trong showallMember:", error);
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
 module.exports = {
   getMyTeam,
   viewAssignedProject,
@@ -1355,5 +1407,6 @@ module.exports = {
   showAllReportTask,
   viewTeam,
   viewProject,
-  getStatistics
+  getStatistics,
+  showallMember
 };
