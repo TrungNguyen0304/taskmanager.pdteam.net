@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, Trash2, Pencil } from "lucide-react";
+import { ArrowLeft, Eye, Trash2, Pencil, UserPlus } from "lucide-react";
 import { MdAddTask } from "react-icons/md";
 import axios from "axios";
 
@@ -11,23 +11,34 @@ const UnassignedTasks = () => {
   const [tasks, setTasks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [selectedMemberId, setSelectedMemberId] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [assignError, setAssignError] = useState("");
 
+  // Fetch unassigned tasks
   useEffect(() => {
     const fetchTasks = async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("Token không tồn tại. Vui lòng đăng nhập lại.");
+          navigate("/login");
+          return;
+        }
+     
         const response = await axios.get(
           "http://localhost:8001/api/leader/unassignedTask",
           {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
-        const formatted = response.data.tasks?.map((task, i) => ({
+        const formatted = response.data.tasks?.map((task) => ({
           id: task._id,
           name: task.name || "N/A",
           description: task.description || "N/A",
@@ -39,6 +50,7 @@ const UnassignedTasks = () => {
         }));
         setTasks(formatted || []);
       } catch (error) {
+        console.error("Error fetching tasks:", error.response?.data);
         alert("Không thể tải danh sách nhiệm vụ.");
       } finally {
         setLoading(false);
@@ -46,28 +58,97 @@ const UnassignedTasks = () => {
     };
 
     fetchTasks();
-  }, []);
+  }, [navigate]);
+
+  // Fetch team members when assign modal is opened
+  useEffect(() => {
+    if (isAssignModalOpen) {
+      const fetchMembers = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get(
+            "http://localhost:8001/api/leader/showallMember",
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          setMembers(response.data.members || []);
+        } catch (error) {
+          console.error("Error fetching members:", error.response?.data);
+          setAssignError("Không thể tải danh sách thành viên.");
+        }
+      };
+      fetchMembers();
+    }
+  }, [isAssignModalOpen]);
+
+  // Handle task deletion
+  const handleDelete = async (id) => {
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:8001/api/leader/deleteTask/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Delete task error:", error.response?.data);
+      setDeleteError(error.response?.data?.message || "Không thể xóa nhiệm vụ.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Open assign modal
+  const handleAssign = (id) => {
+   
+    setSelectedTaskId(id);
+    setIsAssignModalOpen(true);
+    setAssignError("");
+    setSelectedMemberId("");
+  };
+
+  // Handle task assignment
+  const handleConfirmAssign = async () => {
+    if (!selectedMemberId) {
+      setAssignError("Vui lòng chọn một thành viên.");
+      return;
+    }
+    if (!selectedTaskId) {
+      setAssignError("Không có nhiệm vụ được chọn.");
+      return;
+    }
+    const token = localStorage.getItem("token");
+    setIsAssigning(true);
+    try {
+      await axios.put(
+        `http://localhost:8001/api/leader/assignTask/${selectedTaskId}`,
+        { memberId: selectedMemberId },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setTasks((prev) => prev.filter((task) => task.id !== selectedTaskId));
+      setIsAssignModalOpen(false);
+      alert("Gán nhiệm vụ thành công!");
+    } catch (error) {
+    
+      setAssignError(
+        error.response?.status === 404
+          ? "API endpoint không tồn tại. Vui lòng kiểm tra server."
+          : error.response?.data?.message || "Không thể gán nhiệm vụ."
+      );
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   const totalPages = Math.ceil(tasks.length / PAGE_SIZE);
   const paginatedTasks = tasks.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
-
-  const handleDelete = async (id) => {
-    setIsDeleting(true);
-    try {
-      await axios.delete(`http://localhost:8001/api/leader/deleteTask/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      setTasks((prev) => prev.filter((task) => task.id !== id));
-      setIsModalOpen(false);
-    } catch (error) {
-      setDeleteError("Không thể xóa nhiệm vụ.");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   return (
     <div className="p-2 md:p-4">
@@ -94,14 +175,10 @@ const UnassignedTasks = () => {
                 <th className="px-4 py-3 text-left font-semibold">#</th>
                 <th className="px-4 py-3 text-left font-semibold">Tên</th>
                 <th className="px-4 py-3 text-left font-semibold">Mô tả</th>
-                <th className="px-4 py-3 text-left font-semibold">
-                  Trạng thái
-                </th>
+                <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
                 <th className="px-4 py-3 text-left font-semibold">Ưu tiên</th>
                 <th className="px-4 py-3 text-left font-semibold">Deadline</th>
-                <th className="px-4 py-3 text-center font-semibold">
-                  Hành động
-                </th>
+                <th className="px-4 py-3 text-center font-semibold">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -189,11 +266,11 @@ const UnassignedTasks = () => {
                         <Trash2 className="w-5 h-5 text-red-500" />
                       </button>
                       <button
-                        onClick={() => navigate(`/assign-task/${task.id}`)}
-                        title="Giao nhiệm vụ"
+                        onClick={() => handleAssign(task.id)}
+                        title="Gán nhiệm vụ"
                         className="p-2 rounded hover:bg-green-100 group"
                       >
-                        <MdAddTask className="w-5 h-5 text-green-600" />
+                        <UserPlus className="w-5 h-5 text-green-600" />
                       </button>
                     </td>
                   </tr>
@@ -222,7 +299,7 @@ const UnassignedTasks = () => {
           </div>
         )}
 
-        {/* Modal */}
+        {/* Delete Confirmation Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-lg p-8 w-96 max-w-full">
@@ -251,6 +328,62 @@ const UnassignedTasks = () => {
                   className="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
                 >
                   {isDeleting ? "Đang xóa..." : "Xác nhận"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Assign Task Modal */}
+        {isAssignModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-lg p-8 w-96 max-w-full">
+              <h3 className="text-xl font-semibold text-center mb-4 text-gray-800">
+                Gán nhiệm vụ
+              </h3>
+              {assignError && (
+                <p className="text-sm text-red-500 mb-3 text-center">
+                  {assignError}
+                </p>
+              )}
+              <div className="mb-6">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Chọn thành viên
+                </label>
+                <select
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Chọn thành viên --</option>
+                  {members.length === 0 ? (
+                    <option disabled>Không có thành viên nào</option>
+                  ) : (
+                    members.map((member) => (
+                      <option key={member._id} value={member._id}>
+                        {member.name} ({member.email})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setIsAssignModalOpen(false)}
+                  className="px-5 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-700 font-medium"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleConfirmAssign}
+                  disabled={isAssigning || !selectedMemberId}
+                  className={`px-5 py-2 rounded-lg font-medium ${
+                    isAssigning || !selectedMemberId
+                      ? "bg-green-300 text-white cursor-not-allowed"
+                      : "bg-green-600 text-white hover:bg-green-700"
+                  }`}
+                >
+                  {isAssigning ? "Đang gán..." : "Xác nhận"}
                 </button>
               </div>
             </div>
