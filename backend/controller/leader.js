@@ -596,7 +596,7 @@ const paginationTask = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
-
+``
 // gan task cho member
 const assignTask = async (req, res) => {
   try {
@@ -642,7 +642,7 @@ const assignTask = async (req, res) => {
     }
 
     task.assignedMember = memberId;
-    task.assignedAt = new Date(); // 👈 Thêm dòng này để set ngày gán task
+    task.assignedAt = new Date();
 
     await task.save();
     await notifyTask({ userId: memberId.toString(), task });
