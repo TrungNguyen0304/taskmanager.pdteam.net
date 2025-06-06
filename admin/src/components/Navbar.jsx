@@ -57,14 +57,18 @@ const Navbar = ({ userId }) => {
 
   return (
     <nav className="w-full bg-white shadow-md px-4 sm:px-6 py-5 flex items-center justify-end sticky top-0 z-10">
-      <div className="flex items-center gap-2 sm:gap-4 relative" ref={dropdownRef}>
+      <div
+        className="flex items-center gap-2 sm:gap-4 relative"
+        ref={dropdownRef}
+      >
         {userId && <NotificationPanel userId={userId} />}
         <div
           className="flex items-center gap-1 cursor-pointer"
           onClick={() => setIsDropdownOpen((prev) => !prev)}
         >
           <p className="text-gray-700 text-sm sm:text-base">
-            Xin chào! <span className="font-semibold capitalize">{userRole}</span>
+            Xin chào!{" "}
+            <span className="font-semibold capitalize">{userRole}</span>
           </p>
           <MdOutlineArrowDropDown className="text-xl sm:text-2xl text-gray-600" />
         </div>
