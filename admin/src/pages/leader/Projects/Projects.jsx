@@ -268,17 +268,19 @@ const Projects = () => {
           const formattedProjects = response.data.projects.map((p) => ({
             id: p._id,
             name: p.name || "N/A",
-            description: p.description || "N/A",
+            description: p.description || "Chưa có mô tả",
             deadline: p.deadline
-              ? new Date(p.deadline).toLocaleDateString("vi-VN")
-              : "N/A",
-            status: p.status || "N/A",
-            teamId: p.teamId || "N/A",
-            averageTaskProgress: response.data.averageTaskProgress || 0,
+              ? new Date(p.deadline).toLocaleDateString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
+              : "Chưa xác định",
+            status: p.status || "Không xác định",
+            teamId: p.teamId || "Chưa phân nhóm",
+            averageTaskProgress: p.averageTaskProgress || 0,
             taskStats: {
-              totalTasks: response.data.taskStats?.totalTasks || 0,
-              unassignedTasks: response.data.taskStats?.unassignedTasks || 0,
-              assignedTasks: response.data.taskStats?.assignedTasks || 0,
+              totalTasks: p.taskStats?.totalTasks || 0,
             },
           }));
           setProjects(formattedProjects);
