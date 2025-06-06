@@ -189,6 +189,9 @@ const NotificationPanel = ({ userId }) => {
                   backgroundColor: notif.isRead
                     ? "inherit"
                     : "rgba(0, 0, 0, 0.04)",
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.08)",
+                  },
                 }}
               >
                 <ListItemText

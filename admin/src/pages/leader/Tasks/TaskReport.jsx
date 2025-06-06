@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Filter,
   Loader,
+  X,
 } from "lucide-react";
 
 const TaskReport = () => {
@@ -90,6 +91,11 @@ const TaskReport = () => {
     setCurrentPage(1);
   };
 
+  const handleResetFilter = () => {
+    setSelectedDate("");
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen gap-4">
@@ -141,6 +147,15 @@ const TaskReport = () => {
               onChange={handleDateChange}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
             />
+            {selectedDate && (
+              <button
+                onClick={handleResetFilter}
+                className="mt-2 flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
+              >
+                <X className="w-5 h-5" />
+                Xóa bộ lọc
+              </button>
+            )}
           </div>
         </div>
       </div>
