@@ -20,7 +20,8 @@ const {
   showAllReportTask,
   viewTeam,
   viewProject,
-  getStatistics
+  getStatistics,
+  showallMember
 } = require("../controller/leader.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -30,6 +31,8 @@ const upload = require('../middleware/upload.js');
 const router = express.Router();
 // xem task của mình được giao
 router.get("/showallTeam/", authenticateJWT, getMyTeam);
+
+router.get("/showallMember/", authenticateJWT, showallMember);
 
 router.get("/getStatistics/", authenticateJWT, getStatistics);
 
