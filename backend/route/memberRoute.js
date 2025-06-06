@@ -6,7 +6,9 @@ const {
   showAllFeedback,
   updateTaskStatus,
   viewTeam,
-  viewTask
+  viewTask,
+  showAllFeedbackTask,
+  getReportTask
 } = require("../controller/member.js");
 const authenticateJWT = require("../middleware/auth.js");
 const upload = require('../middleware/upload.js');
@@ -33,5 +35,9 @@ router.get("/viewTeam/:id", authenticateJWT, viewTeam);
 
 // xem chi tiết task
 router.get("/viewTask/:id", authenticateJWT, viewTask);
+
+router.get("/showAllFeedbackTask/:id", authenticateJWT, showAllFeedbackTask);
+
+router.get("/getReportTask/:id", authenticateJWT, getReportTask);
 
 module.exports = router;
