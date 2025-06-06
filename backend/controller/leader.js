@@ -93,7 +93,7 @@ const viewAssignedProject = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Tìm các team mà user là trưởng nhóm
+    // 1. Tìm các team mà user là trưởng nhóm
     const teams = await Team.find({ assignedLeader: userId }).select("_id name");
 
     if (!teams.length) {
@@ -102,74 +102,60 @@ const viewAssignedProject = async (req, res) => {
 
     const teamIds = teams.map(team => team._id);
 
-    // Tìm các project có assignedTeam là 1 trong các team mà user là leader
+    // 2. Tìm các project có assignedTeam là 1 trong các team mà user là leader
     const projects = await Project.find({ assignedTeam: { $in: teamIds } });
 
     if (!projects.length) {
       return res.status(404).json({ message: "Không có nhiệm vụ nào được giao cho nhóm bạn phụ trách." });
     }
-    //Lấy tất cả các task thuộc các project đó
-    const projectIds = projects.map(project => project._id);
-    const tasks = await Task.find({ projectId: { $in: projectIds } }).select("progress")
 
-    let averageProgress = 0;
-    if (tasks.length > 0) {
-      const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
-      averageProgress = (totalProgress / tasks.length).toFixed(2); // Làm tròn đến 2 chữ số thập phân
-    }
-    // 5. Đếm số lượng task
-    const totalTasks = tasks.length
-    // const unassignedTasks = tasks.filter(task => !task.assignedMember).length;
-    // const assignedTasks = tasks.filter(task => task.assignedMember).length;
+    // 3. Tính toán dữ liệu chi tiết cho từng project
+    const detailedProjects = await Promise.all(projects.map(async (project) => {
+      const projectTasks = await Task.find({ projectId: project._id }).select("progress");
 
-    if (tasks.length > 0) {
-      if (parseFloat(averageProgress) === 100) {
-        // Nếu averageProgress là 100, cập nhật tất cả project thành completed
-        await Project.updateMany(
-          { _id: { $in: projectIds }, status: { $ne: "completed" } }, // Chỉ cập nhật nếu chưa completed
-          { $set: { status: "completed" } }
-        );
-        // Cập nhật trạng thái trong mảng projects
-        projects.forEach(project => {
-          project.status = "completed";
-        });
-      } else {
-        // Nếu averageProgress < 100, chuyển các project completed về pending
-        await Project.updateMany(
-          { _id: { $in: projectIds }, status: "completed" }, // Chỉ cập nhật nếu đang completed
-          { $set: { status: "in_progress" } }
-        );
-        // Cập nhật trạng thái trong mảng projects
-        projects.forEach(project => {
-          if (project.status === "completed") {
-            project.status = "in_progress";
-          }
-        });
+      const totalTasks = projectTasks.length;
+      let averageProgress = 0;
+
+      if (totalTasks > 0) {
+        const totalProgress = projectTasks.reduce((sum, task) => sum + (task.progress || 0), 0);
+        averageProgress = parseFloat((totalProgress / totalTasks).toFixed(2));
       }
-    }
 
-    res.status(200).json({
-      message: "Danh sách nhiệm vụ nhóm bạn phụ trách:",
-      projects: projects.map(project => ({
+      // 4. Cập nhật trạng thái của project nếu cần
+      if (averageProgress === 100 && project.status !== "completed") {
+        await Project.updateOne({ _id: project._id }, { $set: { status: "completed" } });
+        project.status = "completed";
+      } else if (averageProgress < 100 && project.status === "completed") {
+        await Project.updateOne({ _id: project._id }, { $set: { status: "in_progress" } });
+        project.status = "in_progress";
+      }
+
+      return {
         _id: project._id,
         name: project.name,
         description: project.description,
         deadline: project.deadline,
         status: project.status,
-        teamId: project.assignedTeam
-      })),
-      averageTaskProgress: parseFloat(averageProgress),
-      taskStats: {
-        totalTasks,
-        // unassignedTasks,
-        // assignedTasks
-      }
+        teamId: project.assignedTeam,
+        averageTaskProgress: averageProgress,
+        taskStats: {
+          totalTasks
+        }
+      };
+    }));
+
+    // 5. Trả kết quả
+    res.status(200).json({
+      message: "Danh sách nhiệm vụ nhóm bạn phụ trách:",
+      projects: detailedProjects
     });
+
   } catch (error) {
     console.error("Lỗi khi lấy danh sách project:", error);
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+
 
 const viewProject = async (req, res) => {
   try {

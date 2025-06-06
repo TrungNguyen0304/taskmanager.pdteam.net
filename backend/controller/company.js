@@ -893,7 +893,7 @@ const assignProject = async (req, res) => {
           id: team._id,
           name: team.name,
         },
-        assignedAt: new Date(task.assignedAt.getTime() + 7 * 60 * 60 * 1000),
+        assignedAt: new Date(project.assignedAt.getTime() + 7 * 60 * 60 * 1000),
         deadline: project.deadline,
         status: project.status,
       },
