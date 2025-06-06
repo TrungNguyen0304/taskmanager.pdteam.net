@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, Flag, Users } from "lucide-react";
+import { FileText, Clock, Flag, Users, X } from "lucide-react";
 import { GrUpdate } from "react-icons/gr";
 import axios from "axios";
 import { FaUser } from "react-icons/fa";
 
 const PAGE_SIZE = 3;
 
+// Align STATUS_MAP with API's allowed statuses
 const STATUS_MAP = {
-  not_started: "Chưa bắt đầu",
+  pending: "Chưa bắt đầu",
   in_progress: "Đang tiến hành",
   completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+  revoked: "Đã thu hồi",
 };
 
 const PRIORITY_MAP = {
@@ -35,9 +38,15 @@ const PRIORITY_MAP = {
 };
 
 const TaskMember = () => {
+  const navigate = useNavigate(); // Add useNavigate
   const [tasks, setTasks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [newStatus, setNewStatus] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -80,6 +89,7 @@ const TaskMember = () => {
         }
       } catch (error) {
         console.error("Lỗi khi tải danh sách nhiệm vụ:", error);
+        setErrorMessage("Không thể tải danh sách nhiệm vụ.");
       } finally {
         setLoading(false);
       }
@@ -99,35 +109,58 @@ const TaskMember = () => {
   };
 
   const handleReport = (task) => {
-    alert(`Báo cáo nhiệm vụ: ${task.name}`);
+    navigate(`/create-report/${task.id}`); // Navigate to CreateReport with task ID
   };
 
-  const handleChangeStatus = async (task) => {
-    const statusSequence = Object.values(STATUS_MAP);
-    const currentIndex = statusSequence.indexOf(task.status);
-    const nextIndex = (currentIndex + 1) % statusSequence.length;
-    const newStatus = statusSequence[nextIndex];
+  const openStatusModal = (task) => {
+    setSelectedTask(task);
+    setNewStatus(task.status);
+    setErrorMessage("");
+    setIsModalOpen(true);
+  };
+
+  const closeStatusModal = () => {
+    setIsModalOpen(false);
+    setSelectedTask(null);
+    setNewStatus("");
+    setErrorMessage("");
+    setIsUpdating(false);
+  };
+
+  const handleChangeStatus = async () => {
+    if (!selectedTask || !newStatus) return;
+
     const apiStatus = Object.keys(STATUS_MAP).find(
       (key) => STATUS_MAP[key] === newStatus
     );
 
     try {
-      await axios.put(
-        `http://localhost:8001/api/member/updateTaskStatus/${task.id}`,
+      setIsUpdating(true);
+      const response = await axios.put(
+        `http://localhost:8001/api/member/updateStatus/${selectedTask.id}`,
         { status: apiStatus },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
           },
         }
       );
 
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
+        prev.map((t) =>
+          t.id === selectedTask.id ? { ...t, status: newStatus } : t
+        )
       );
+      closeStatusModal();
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái nhiệm vụ:", error);
-      alert("Cập nhật trạng thái thất bại, vui lòng thử lại.");
+      const errorMsg =
+        error.response?.data?.message ||
+        "Cập nhật trạng thái thất bại, vui lòng thử lại.";
+      setErrorMessage(errorMsg);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -139,6 +172,10 @@ const TaskMember = () => {
         return "bg-blue-100 text-blue-600 border-blue-200";
       case "Hoàn thành":
         return "bg-green-100 text-green-600 border-green-200";
+      case "Đã hủy":
+        return "bg-red-100 text-red-600 border-red-200";
+      case "Đã thu hồi":
+        return "bg-yellow-100 text-yellow-600 border-yellow-200";
       default:
         return "bg-gray-100 text-gray-600 border-gray-200";
     }
@@ -147,7 +184,6 @@ const TaskMember = () => {
   return (
     <div className="p-0 md:p-4">
       <div className="w-full mx-auto">
-        {/* Header */}
         <div className="mb-6 bg-white rounded-2xl shadow-sm p-6 sm:p-8">
           <div className="flex items-center gap-4">
             <FileText className="w-8 h-8 text-indigo-600" />
@@ -162,7 +198,12 @@ const TaskMember = () => {
           </div>
         </div>
 
-        {/* Content */}
+        {errorMessage && !isModalOpen && (
+          <div className="bg-red-100 text-red-600 p-4 rounded-lg mb-4">
+            {errorMessage}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center items-center min-h-[300px]">
             <div className="flex flex-col items-center gap-4">
@@ -190,7 +231,6 @@ const TaskMember = () => {
                 className="bg-white rounded-2xl shadow-sm p-6 sm:p-8"
               >
                 <div className="flex flex-col gap-6">
-                  {/* Task Header */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <span className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-semibold">
@@ -224,16 +264,17 @@ const TaskMember = () => {
                     </div>
                   </div>
 
-                  {/* Task Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base text-gray-600">
                     <div className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-indigo-600" />
-                      <span className="font-medium">{task.project.name}</span>
+                      <span className="font-medium">
+                        Dự án: {task.project.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Users className="w-5 h-5 text-indigo-600" />
                       <span className="font-medium">
-                        {task.project.team.name}
+                        Nhóm: {task.project.team.name}
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -244,7 +285,6 @@ const TaskMember = () => {
                     </div>
                   </div>
 
-                  {/* Description */}
                   <div>
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 flex items-center gap-3">
                       Mô tả nhiệm vụ
@@ -254,7 +294,6 @@ const TaskMember = () => {
                     </p>
                   </div>
 
-                  {/* Project Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base text-gray-600">
                     <div className="flex items-center gap-3">
                       <Clock className="w-5 h-5 text-gray-500" />
@@ -262,7 +301,6 @@ const TaskMember = () => {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={() => handleReport(task)}
@@ -273,12 +311,19 @@ const TaskMember = () => {
                       Báo cáo
                     </button>
                     <button
-                      onClick={() => handleChangeStatus(task)}
+                      onClick={() => openStatusModal(task)}
                       className="flex-1 py-2 px-4 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-green-200 hover:border-green-300 transition-all"
                       aria-label={`Thay đổi trạng thái nhiệm vụ ${task.name}`}
                     >
                       <GrUpdate className="w-5 h-5" />
                       Cập nhật trạng thái
+                    </button>
+                    <button
+                      onClick={() => navigate(`/report-history/${task.id}`)}
+                      className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-gray-200 hover:border-gray-300 transition-all"
+                    >
+                      <Clock className="w-5 h-5" />
+                      Lịch sử báo cáo
                     </button>
                   </div>
                 </div>
@@ -287,7 +332,76 @@ const TaskMember = () => {
           </div>
         )}
 
-        {/* Pagination */}
+        {isModalOpen && selectedTask && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-lg relative">
+              {isUpdating && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p className="text-gray-600 text-base font-medium">
+                      Đang cập nhật...
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Cập nhật trạng thái: {selectedTask.name}
+                </h2>
+                <button
+                  onClick={closeStatusModal}
+                  className="text-gray-600 hover:text-gray-800"
+                  aria-label="Đóng modal"
+                  disabled={isUpdating}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chọn trạng thái mới
+                </label>
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={isUpdating}
+                >
+                  {Object.values(STATUS_MAP).map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {errorMessage && (
+                <div className="bg-red-100 text-red-600 p-2 rounded-lg mb-4 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={closeStatusModal}
+                  className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm sm:text-base transition-all"
+                  aria-label="Hủy cập nhật trạng thái"
+                  disabled={isUpdating}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleChangeStatus}
+                  className="flex-1 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm sm:text-base transition-all"
+                  aria-label={`Xác nhận cập nhật trạng thái cho ${selectedTask.name}`}
+                  disabled={isUpdating}
+                >
+                  Xác nhận
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {totalPages > 1 && (
           <div className="mt-8 flex justify-center items-center gap-2 flex-wrap">
             <button
@@ -296,7 +410,7 @@ const TaskMember = () => {
               className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
               aria-label="Trang trước"
             >
-              ←
+              Trước
             </button>
             {Array.from({ length: totalPages }).map((_, idx) => (
               <button
@@ -319,7 +433,7 @@ const TaskMember = () => {
               className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
               aria-label="Trang sau"
             >
-              →
+              Sau
             </button>
           </div>
         )}

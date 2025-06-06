@@ -11,7 +11,7 @@ const {
   getReportTask
 } = require("../controller/member.js");
 const authenticateJWT = require("../middleware/auth.js");
-const upload = require('../middleware/upload.js');
+const upload = require("../middleware/upload.js");
 
 const router = express.Router();
 
@@ -25,7 +25,12 @@ router.get("/showAllFeedback/", authenticateJWT, showAllFeedback);
 router.get("/showallTask/", authenticateJWT, getMyTasks);
 
 // tạo báo cáo
-router.post("/createReport/:id",upload.single('file') ,authenticateJWT, createReport);
+router.post(
+  "/createReport/:id",
+  upload.single("file"),
+  authenticateJWT,
+  createReport
+);
 
 // cập nhật trạng thái task
 router.put("/updateStatus/:id", authenticateJWT, updateTaskStatus);

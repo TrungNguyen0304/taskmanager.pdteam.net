@@ -29,9 +29,6 @@ const TeamMember = () => {
             id: team.id || `team-${index}`,
             name: team.name || "N/A",
             assignedLeader: team.assignedLeader || "Chưa có trưởng nhóm",
-            assignedMembers: Array.isArray(team.assignedMembers)
-              ? team.assignedMembers.map((member) => member.name)
-              : [],
           }));
           setTeams(formatted);
         } else {
@@ -155,22 +152,6 @@ const TeamMember = () => {
                   </div>
                   <p className="text-gray-600 text-sm sm:text-base line-clamp-2">
                     {team.assignedLeader}
-                  </p>
-                </div>
-
-                <div className="bg-purple-50 rounded-lg p-3 sm:p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-white" />
-                    </div>
-                    <h3 className="text-sm sm:text-base font-semibold text-purple-900">
-                      Thành viên
-                    </h3>
-                  </div>
-                  <p className="text-gray-600 text-sm sm:text-base line-clamp-3">
-                    {team.assignedMembers.length > 0
-                      ? team.assignedMembers.join(", ")
-                      : "Không có thành viên"}
                   </p>
                 </div>
 

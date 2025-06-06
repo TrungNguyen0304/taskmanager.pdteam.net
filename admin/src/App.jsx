@@ -49,6 +49,7 @@ import TeamMember from "./pages/member/Team/TeamMember";
 import TeamDetailMember from "./pages/member/Team/TeamDetailMember";
 import ProjectDetailLeader from "./pages/leader/Projects/ProjectDetailLeader";
 import TaskReport from "./pages/leader/Tasks/TaskReport";
+import CreateReport from "./pages/member/Task/CreateReport";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -155,6 +156,7 @@ const MemberLayout = () => {
             <Route path="/team-member" element={<TeamMember />} />
             <Route path="/team-detail/:id" element={<TeamDetailMember />} />
             <Route path="/feedback-member" element={<FeedbackMember />} />
+            <Route path="/create-report/:id" element={<CreateReport />} />
 
             <Route path="/chat" element={<ChatMember />} />
             <Route path="/chat/requests" element={<JoinRequestsPageMember />} />

@@ -79,7 +79,7 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
   return (
     <div className="p-6 bg-[#f6f7fb] rounded-2xl shadow-md w-full mx-auto">
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-[#323338] flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-blue-600 flex items-center gap-2">
           {title}
         </h2>
       </div>
@@ -87,7 +87,7 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
       <div className="overflow-x-auto">
         <table className="min-w-[800px] w-full table-fixed border-separate border-spacing-y-2">
           <thead>
-            <tr className="bg-[#cce5ff] rounded-xl text-[#323338] text-base">
+            <tr className="bg-[#cce5ff] rounded-xl text-blue-600 text-base">
               <th className="w-[25%] px-4 py-3">Tên Nhóm</th>
               <th className="w-[25%] px-4 py-3">Trưởng Nhóm</th>
               <th className="w-[20%] px-4 py-3">Số Thành Viên</th>

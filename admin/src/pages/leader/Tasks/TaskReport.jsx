@@ -11,6 +11,8 @@ import {
   ArrowLeft,
   Filter,
   Loader,
+  X,
+  MessageSquare,
 } from "lucide-react";
 
 const TaskReport = () => {
@@ -22,6 +24,7 @@ const TaskReport = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [comments, setComments] = useState({});
   const reportsPerPage = 3;
 
   useEffect(() => {
@@ -38,12 +41,42 @@ const TaskReport = () => {
         setReportsData(response.data);
         setLoading(false);
       } catch (err) {
-        setError("Không thể tải dữ liệu báo cáo. Vui lòng thử lại sau.");
+        setError("Không có báo cáo nào của nhiệm vụ này.");
         setLoading(false);
       }
     };
     fetchReports();
   }, [id]);
+
+  const handleCommentChange = (reportId, value) => {
+    setComments((prev) => ({
+      ...prev,
+      [reportId]: value,
+    }));
+  };
+
+  const handleCommentSubmit = async (reportId) => {
+    if (!comments[reportId]?.trim()) return;
+
+    try {
+      await axios.post(
+        `http://localhost:8001/api/leader/addComment/${reportId}`,
+        { content: comments[reportId] },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setComments((prev) => ({
+        ...prev,
+        [reportId]: "",
+      }));
+      alert("Bình luận đã được gửi!");
+    } catch (err) {
+      alert("Không thể gửi bình luận. Vui lòng thử lại.");
+    }
+  };
 
   const getProgressColor = (progress) => {
     if (progress >= 100) return "#22c55e";
@@ -90,6 +123,11 @@ const TaskReport = () => {
     setCurrentPage(1);
   };
 
+  const handleResetFilter = () => {
+    setSelectedDate("");
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen gap-4">
@@ -103,8 +141,22 @@ const TaskReport = () => {
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p className="text-red-600 text-lg font-semibold">{error}</p>
+      <div className="flex flex-col justify-center items-center min-h-screen">
+        <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center gap-6 max-w-md w-full">
+          <div className="flex flex-col items-center gap-2">
+            <AlertCircle className="w-12 h-12 text-blue-500 mb-2" />
+            <p className="text-blue-700 text-xl font-bold text-center">
+              {error}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Quay lại
+          </button>
+        </div>
       </div>
     );
   }
@@ -141,6 +193,15 @@ const TaskReport = () => {
               onChange={handleDateChange}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
             />
+            {selectedDate && (
+              <button
+                onClick={handleResetFilter}
+                className="mt-2 flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
+              >
+                <X className="w-5 h-5" />
+                Xóa bộ lọc
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -248,6 +309,32 @@ const TaskReport = () => {
                       </a>
                     </div>
                   )}
+
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageSquare className="w-5 h-5 text-gray-600" />
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        Bình luận
+                      </h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={comments[report._id] || ""}
+                        onChange={(e) =>
+                          handleCommentChange(report._id, e.target.value)
+                        }
+                        placeholder="Nhập bình luận..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <button
+                        onClick={() => handleCommentSubmit(report._id)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
+                      >
+                        Gửi
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center">
