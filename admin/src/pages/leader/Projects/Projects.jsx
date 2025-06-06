@@ -230,18 +230,6 @@ const ProjectCard = ({ project, onViewReport }) => {
                     {project.taskStats?.totalTasks || 0}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Đã giao:</span>
-                  <span className="font-semibold text-emerald-600">
-                    {project.taskStats?.assignedTasks || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Chưa giao:</span>
-                  <span className="font-semibold text-amber-600">
-                    {project.taskStats?.unassignedTasks || 0}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -259,6 +247,9 @@ const Projects = () => {
   const projectsPerPage = 2;
 
   useEffect(() => {
+    // Cuộn lên đầu trang khi component được mount
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     const fetchProjects = async () => {
       try {
         const response = await axios.get(

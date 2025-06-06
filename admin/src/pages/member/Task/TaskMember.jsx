@@ -267,7 +267,9 @@ const TaskMember = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm sm:text-base text-gray-600">
                     <div className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-indigo-600" />
-                      <span className="font-medium">{task.project.name}</span>
+                      <span className="font-medium">
+                        Dự án: {task.project.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Users className="w-5 h-5 text-indigo-600" />
@@ -315,6 +317,13 @@ const TaskMember = () => {
                     >
                       <GrUpdate className="w-5 h-5" />
                       Cập nhật trạng thái
+                    </button>
+                    <button
+                      onClick={() => navigate(`/report-history/${task.id}`)}
+                      className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-gray-200 hover:border-gray-300 transition-all"
+                    >
+                      <Clock className="w-5 h-5" />
+                      Lịch sử báo cáo
                     </button>
                   </div>
                 </div>
