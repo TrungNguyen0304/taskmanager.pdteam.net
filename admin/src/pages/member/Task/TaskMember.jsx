@@ -38,7 +38,7 @@ const PRIORITY_MAP = {
 };
 
 const TaskMember = () => {
-  const navigate = useNavigate(); // Add useNavigate
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -109,7 +109,7 @@ const TaskMember = () => {
   };
 
   const handleReport = (task) => {
-    navigate(`/create-report/${task.id}`); // Navigate to CreateReport with task ID
+    navigate(`/create-report/${task.id}`);
   };
 
   const openStatusModal = (task) => {

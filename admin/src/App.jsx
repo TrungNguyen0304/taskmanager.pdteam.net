@@ -43,13 +43,15 @@ import Chat from "./pages/admin/Chat/Chat";
 import JoinRequestsPage from "./pages/admin/Chat/JoinRequestsPage";
 import VideoCallPage from "./pages/admin/Chat/VideoCallPage";
 import FeedbackMember from "./pages/member/Task/FeedbackMember";
-import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import SeeReportAdmin from "./pages/admin/ReportAdmin/SeeReportAdmin";
 import TeamMember from "./pages/member/Team/TeamMember";
 import TeamDetailMember from "./pages/member/Team/TeamDetailMember";
 import ProjectDetailLeader from "./pages/leader/Projects/ProjectDetailLeader";
 import TaskReport from "./pages/leader/Tasks/TaskReport";
 import CreateReport from "./pages/member/Task/CreateReport";
+import ReportHistory from "./pages/member/Task/ReportHistory";
+import ProjectProgressDetail from "./pages/admin/ProjectProgress/ProjectProgressDetail";
+import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -84,6 +86,12 @@ const CompanyLayout = () => {
             <Route path="/update-projects/:id" element={<UpdateProject />} />
             <Route path="/project-detail/:id" element={<ProjectDetail />} />
             <Route path="/projectprogress" element={<ProjectProgress />} />
+            {/* <Route
+              path="/projectprogress-detail"
+              element={<ProjectProgressDetail />}
+            /> */}
+
+            <Route path="/project/:projectId" element={<ProjectProgressDetail />} />
 
             <Route path="/seereport-admin" element={<SeeReportAdmin />} />
             <Route path="/chat" element={<Chat />} />
@@ -157,6 +165,7 @@ const MemberLayout = () => {
             <Route path="/team-detail/:id" element={<TeamDetailMember />} />
             <Route path="/feedback-member" element={<FeedbackMember />} />
             <Route path="/create-report/:id" element={<CreateReport />} />
+            <Route path="/report-history/:id" element={<ReportHistory />} />
 
             <Route path="/chat" element={<ChatMember />} />
             <Route path="/chat/requests" element={<JoinRequestsPageMember />} />
