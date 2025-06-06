@@ -87,6 +87,42 @@ function setupSocket(io) {
                 console.error("Lỗi khi join group room:", err);
             }
         });
+        
+        socket.on("user-logout", async (userId) => {
+            if (!mongoose.Types.ObjectId.isValid(userId)) return;
+
+            // Xóa người dùng khỏi danh sách online
+            onlineUsers.delete(userId);
+            socketToUser.delete(socket.id);
+
+            // Xử lý rời các nhóm
+            for (const [groupId, members] of groupMembers.entries()) {
+                if (!members.has(userId)) continue;
+
+                members.delete(userId);
+                await notifyNewMember(groupId, userId, userId, true);
+
+                // Xóa khỏi activeCalls
+                activeCalls.get(groupId)?.delete(userId);
+                if (activeCalls.get(groupId)?.size === 0) activeCalls.delete(groupId);
+                io.to(groupId).emit("call-ended", { groupId, userId });
+
+                // Xóa khỏi screenShares
+                screenShares.get(groupId)?.delete(userId);
+                if (screenShares.get(groupId)?.size === 0) screenShares.delete(groupId);
+                io.to(groupId).emit("screen-share-stopped", { groupId, userId });
+
+                // Xóa nhóm nếu không còn thành viên
+                if (members.size === 0) groupMembers.delete(groupId);
+            }
+
+            // Thông báo người dùng offline
+            io.emit("user-offline", userId);
+            console.log(`Người dùng ${userId} đã đăng xuất và ngắt kết nối`);
+
+            // Ngắt kết nối socket
+            socket.disconnect(true);
+        });
 
         socket.on("join-group", ({ userId, groupId }) => {
             if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
