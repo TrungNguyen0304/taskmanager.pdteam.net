@@ -262,6 +262,7 @@ router.get(
   viewReportTeam
 );
 
+// Xem tất cả report của project theo ID
 router.get(
   "/showAllRoprtProject/:id",
   authenticateJWT,
