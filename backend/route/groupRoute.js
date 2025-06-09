@@ -12,8 +12,10 @@ const {
     getCallStatus,
     startScreenShare,
     startFileTransfer,
+    sendImageMessage
 } = require('../controller/group');
 const authenticateJWT = require('../middleware/auth.js');
+const upload = require('../middleware/upload.js')
 
 
 // Tạo nhóm mới
@@ -49,6 +51,9 @@ router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
 
 // Khởi tạo truyền file P2P
 router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
+
+// gửi ảnh 
+router.post('/:groupId/sendImageMessage',upload.single("image"), authenticateJWT, sendImageMessage);
 
 
 module.exports = router;

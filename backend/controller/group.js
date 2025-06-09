@@ -224,6 +224,86 @@ const sendGroupMessage = async (req, res) => {
     }
 };
 
+const sendImageMessage = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const userId = req.user._id;
+        const file = req.file;
+
+        if (!mongoose.Types.ObjectId.isValid(groupId)) {
+            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "ID người dùng không hợp lệ" });
+        }
+
+        if (!file) {
+            return res.status(400).json({ message: "Hình ảnh là bắt buộc" });
+        }
+
+        const group = await Group.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ message: "Nhóm không tồn tại" });
+        }
+
+        const user = await User.findById(userId).select("name role");
+        if (!user) {
+            return res.status(404).json({ message: "Người dùng không tồn tại" });
+        }
+
+        if (user.role !== "company") {
+            const memberIds = group.members.map((id) => id.toString());
+            if (!memberIds.includes(userId.toString())) {
+                return res.status(403).json({ message: "Người dùng không có trong nhóm" });
+            }
+        }
+
+        const fileId = `image_${Date.now()}`;
+        const imageUrl = `/uploads/reports/${file.filename}`;
+
+        const newMessage = new Message({
+            groupId,
+            senderId: userId,
+            fileName: file.originalname,
+            fileSize: file.size,
+            fileId,
+            fileType: file.mimetype,
+            timestamp: new Date(),
+        });
+        await newMessage.save();
+
+        const io = getIO();
+        io.to(groupId).emit("group-image", {
+            senderId: userId,
+            senderName: user.name,
+            groupId,
+            imageUrl,
+            fileName: file.originalname,
+            fileSize: file.size,
+            fileId,
+            fileType: file.mimetype,
+            timestamp: newMessage.timestamp.toISOString(),
+        });
+
+        res.status(201).json({
+            _id: newMessage._id,
+            groupId,
+            senderId: userId,
+            senderName: user.name,
+            imageUrl,
+            fileName: file.originalname,
+            fileSize: file.size,
+            fileId,
+            fileType: file.mimetype,
+            timestamp: newMessage.timestamp,
+        });
+    } catch (error) {
+        console.error('Lỗi khi gửi hình ảnh:', error);
+        res.status(500).json({ message: "Lỗi khi gửi hình ảnh", error: error.message });
+    }
+};
+
 const getGroupMessages = async (req, res) => {
     try {
         const { groupId } = req.params;
@@ -244,13 +324,12 @@ const getGroupMessages = async (req, res) => {
             groupId: msg.groupId,
             senderId: msg.senderId._id,
             senderName: msg.senderId.name,
-            message: msg.message, // text message (nếu có)
+            message: msg.message,
             timestamp: msg.timestamp,
-
-            // Thông tin file (nếu là file message)
             fileId: msg.fileId,
             fileName: msg.fileName,
             fileSize: msg.fileSize,
+            fileType: msg.fileType,
         }));
 
         res.status(200).json(formattedMessages);
@@ -527,4 +606,5 @@ module.exports = {
     getCallStatus,
     startScreenShare,
     startFileTransfer,
+    sendImageMessage
 };

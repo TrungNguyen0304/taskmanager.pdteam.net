@@ -2,7 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const ConnectDB = require("./config/db");
 const cors = require("cors");
-
+const path = require('path');
 const { Server } = require("socket.io");
 const http = require("http");
 const { setupSocket } = require("./socket/socketHandler.js");
@@ -16,6 +16,7 @@ const memberRoute = require("./route/memberRoute.js");
 const leaderRoute = require("./route/leaderRoute.js");
 const notificationRoute = require("./route/notificationRoute.js");
 const groupRoute = require("./route/groupRoute.js");
+
 
 dotenv.config();
 const app = express();
@@ -42,6 +43,8 @@ app.use(
 app.use(express.json());
 
 app.use('/uploads', express.static('uploads'));
+// app.use("/uploads/reports", express.static("uploads/reports"));
+app.use('/uploads/reports', express.static(path.join(__dirname, 'uploads/reports')));
 
 ConnectDB();
 
