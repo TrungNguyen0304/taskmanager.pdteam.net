@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Eye,
   FileText,
@@ -7,7 +7,6 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle,
-  XCircle,
   MessageSquare,
   Star,
   Filter,
@@ -15,126 +14,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { FaFileDownload } from "react-icons/fa";
 
-// Sample report data (unchanged)
-const reports = [
-  {
-    id: 1,
-    projectName: "E-commerce Platform",
-    leaderName: "Nguyễn Văn A",
-    reportDate: "2024-06-01",
-    weekRange: "25/05 - 31/05/2024",
-    status: "pending",
-    progress: 75,
-    summary: "Hoàn thành module thanh toán và tích hợp API",
-    achievements: [
-      "Hoàn thành 3/4 tính năng chính",
-      "Tích hợp thành công payment gateway",
-      "Sửa 15 bugs quan trọng",
-    ],
-    challenges: [
-      "Gặp khó khăn với tối ưu database",
-      "Thiếu resource để test performance",
-    ],
-    nextWeekPlan: [
-      "Hoàn thiện module quản lý user",
-      "Thực hiện stress testing",
-      "Chuẩn bị deployment",
-    ],
-    rating: null,
-    adminFeedback: null,
-  },
-  {
-    id: 2,
-    projectName: "Mobile Banking App",
-    leaderName: "Trần Thị B",
-    reportDate: "2024-05-30",
-    weekRange: "24/05 - 30/05/2024",
-    status: "approved",
-    progress: 90,
-    summary: "Hoàn thành giai đoạn testing và security audit",
-    achievements: [
-      "Vượt qua security audit",
-      "Hoàn thành 100% test cases",
-      "Tối ưu hiệu suất ứng dụng",
-    ],
-    challenges: ["Một số thiết bị cũ có vấn đề tương thích"],
-    nextWeekPlan: ["Chuẩn bị release version 1.0", "Training team support"],
-    rating: 4,
-    adminFeedback:
-      "Báo cáo chi tiết và dự án tiến độ tốt. Cần chú ý vấn đề tương thích thiết bị.",
-  },
-  {
-    id: 3,
-    projectName: "AI Chatbot System",
-    leaderName: "Phạm Văn C",
-    reportDate: "2024-05-29",
-    weekRange: "22/05 - 29/05/2024",
-    status: "rejected",
-    progress: 45,
-    summary: "Gặp khó khăn trong training model AI",
-    achievements: [
-      "Hoàn thành data preprocessing",
-      "Setup infrastructure cơ bản",
-    ],
-    challenges: [
-      "Model accuracy chưa đạt yêu cầu",
-      "Thiếu data training chất lượng",
-      "Team thiếu kinh nghiệm về AI",
-    ],
-    nextWeekPlan: ["Tìm kiếm thêm data training", "Thuê consultant AI"],
-    rating: 2,
-    adminFeedback:
-      "Dự án gặp nhiều khó khăn. Cần có kế hoạch cụ thể để khắc phục vấn đề về AI model.",
-  },
-  {
-    id: 4,
-    projectName: "Inventory System",
-    leaderName: "Lê Văn D",
-    reportDate: "2024-05-28",
-    weekRange: "21/05 - 28/05/2024",
-    status: "pending",
-    progress: 60,
-    summary: "Hoàn thành giao diện quản lý kho",
-    achievements: ["Thiết kế UI/UX", "Tích hợp API kho"],
-    challenges: ["Tối ưu truy vấn database"],
-    nextWeekPlan: ["Hoàn thiện báo cáo kho", "Kiểm tra bảo mật"],
-    rating: null,
-    adminFeedback: null,
-  },
-  {
-    id: 5,
-    projectName: "CRM Platform",
-    leaderName: "Hoàng Thị E",
-    reportDate: "2024-05-27",
-    weekRange: "20/05 - 27/05/2024",
-    status: "approved",
-    progress: 85,
-    summary: "Hoàn thành module khách hàng",
-    achievements: ["Tích hợp CRM với email", "Hoàn thành dashboard"],
-    challenges: ["Đồng bộ dữ liệu real-time"],
-    nextWeekPlan: ["Tối ưu hiệu suất", "Triển khai thử nghiệm"],
-    rating: 5,
-    adminFeedback: "Báo cáo tốt, tiến độ vượt mong đợi.",
-  },
-  {
-    id: 6,
-    projectName: "HR Management",
-    leaderName: "Đỗ Văn F",
-    reportDate: "2024-05-26",
-    weekRange: "19/05 - 26/05/2024",
-    status: "rejected",
-    progress: 30,
-    summary: "Gặp vấn đề trong tích hợp API",
-    achievements: ["Hoàn thành thiết kế database"],
-    challenges: ["API bên thứ ba không ổn định"],
-    nextWeekPlan: ["Khắc phục lỗi API", "Tăng cường testing"],
-    rating: 3,
-    adminFeedback: "Cần cải thiện kế hoạch khắc phục lỗi.",
-  },
-];
+// Backend base URL (adjust based on your backend configuration)
+const BASE_URL = "http://localhost:8001";
 
 const SeeReportAdmin = () => {
+  const [reports, setReports] = useState([]);
   const [modalState, setModalState] = useState({
     isOpen: false,
     type: null, // "details" or "evaluation"
@@ -144,34 +30,86 @@ const SeeReportAdmin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [evaluation, setEvaluation] = useState({ rating: 5, feedback: "" });
   const [currentPage, setCurrentPage] = useState(1);
-  const [isProcessing, setIsProcessing] = useState(false); // For debouncing
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const reportsPerPage = 5;
 
-  // Status styling (Monday.com-inspired colors)
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-400";
-      case "approved":
-        return "bg-green-100 text-green-800 border-green-400";
-      case "rejected":
-        return "bg-red-100 text-red-800 border-red-400";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
+  // Fetch reports from API
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `${BASE_URL}/api/company/showAllReportLeader`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Failed to fetch reports");
+        }
+
+        // Map API data to component's expected format
+        const mappedReports = data.reports.map((report) => ({
+          id: report._id,
+          projectName: report.project?.name || "Unknown Project",
+          leaderName: report.assignedLeader?.name || "Unknown Leader",
+          reportDate: new Date(report.createdAt).toLocaleDateString("vi-VN"),
+          createdAt: new Date(report.createdAt), // Store the raw date for sorting
+          weekRange: calculateWeekRange(new Date(report.createdAt)),
+          status: "pending",
+          progress: report.projectProgress || 0,
+          summary: report.content || "No summary provided",
+          achievements: report.content
+            ? [report.content]
+            : ["No achievements reported"],
+          challenges: report.difficulties
+            ? [report.difficulties]
+            : ["No challenges reported"],
+          nextWeekPlan: ["Plan not specified"],
+          rating: null,
+          adminFeedback: null,
+          file: report.file ? `${BASE_URL}${report.file}` : null,
+        }));
+
+        // Sort reports by createdAt in descending order (newest first)
+        mappedReports.sort((a, b) => b.createdAt - a.createdAt);
+
+        setReports(mappedReports);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, []);
+
+  // Helper function to decode file name (to handle encoded characters)
+  const getFileName = (fileUrl) => {
+    if (!fileUrl) return "No file attached";
+    try {
+      const decodedUrl = decodeURIComponent(fileUrl.split("/").pop());
+      return decodedUrl;
+    } catch {
+      return fileUrl.split("/").pop();
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "pending":
-        return <AlertCircle className="w-4 h-4" />;
-      case "approved":
-        return <CheckCircle className="w-4 h-4" />;
-      case "rejected":
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <FileText className="w-4 h-4" />;
-    }
+  // Helper function to calculate week range based on report date
+  const calculateWeekRange = (date) => {
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    return `${startOfWeek.toLocaleDateString(
+      "vi-VN"
+    )} - ${endOfWeek.toLocaleDateString("vi-VN")}`;
   };
 
   const getProgressColor = (progress) => {
@@ -197,7 +135,7 @@ const SeeReportAdmin = () => {
     currentPage * reportsPerPage
   );
 
-  // Debounced handler to prevent rapid clicks
+  // Debounced handlers
   const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
@@ -208,7 +146,6 @@ const SeeReportAdmin = () => {
     };
   };
 
-  // Handlers
   const handleViewDetails = useCallback(
     debounce((report) => {
       if (isProcessing || modalState.isOpen) return;
@@ -246,6 +183,7 @@ const SeeReportAdmin = () => {
       rating: evaluation.rating,
       feedback: evaluation.feedback,
     });
+    // TODO: Add API call to submit evaluation
     closeModal();
     setTimeout(() => setIsProcessing(false), 300);
   }, [isProcessing, modalState.report, evaluation, closeModal]);
@@ -288,8 +226,24 @@ const SeeReportAdmin = () => {
     [totalPages]
   );
 
+  if (loading) {
+    return (
+      <div className="min-h-screen p-4 flex items-center justify-center">
+        <p className="text-gray-600">Đang tải báo cáo...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen p-4 flex items-center justify-center">
+        <p className="text-red-600">Lỗi: {error}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen p-4">
+    <div className="p-0 md:p-4">
       <div className="w-full mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -345,22 +299,6 @@ const SeeReportAdmin = () => {
                     <h3 className="text-lg font-semibold text-gray-800">
                       {report.projectName}
                     </h3>
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
-                        report.status
-                      )}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        {getStatusIcon(report.status)}
-                        <span>
-                          {report.status === "pending"
-                            ? "Chờ duyệt"
-                            : report.status === "approved"
-                            ? "Đã duyệt"
-                            : "Từ chối"}
-                        </span>
-                      </div>
-                    </span>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-2">
                     <div className="flex items-center gap-1">
@@ -477,7 +415,7 @@ const SeeReportAdmin = () => {
           >
             {modalState.type === "details" && (
               <div className="bg-white rounded-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto custom-scrollbar">
-                <div className="bg-blue-600 text-white p-4 rounded-t-r-lg flex justify-between items-center">
+                <div className="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
                   <div>
                     <h2 id="details-modal-title" className="text-xl font-bold">
                       {modalState.report.projectName}
@@ -566,6 +504,24 @@ const SeeReportAdmin = () => {
                       ))}
                     </ul>
                   </div>
+                  {modalState.report.file && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <FaFileDownload className="w-4 h-4 text-blue-600" />
+                        Tệp đính kèm
+                      </h3>
+                      <a
+                        href={modalState.report.file}
+                        download={getFileName(modalState.report.file)}
+                        className="text-blue-600 hover:underline text-sm"
+                        aria-label={`Tải xuống tệp ${getFileName(
+                          modalState.report.file
+                        )}`}
+                      >
+                        {getFileName(modalState.report.file)}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
