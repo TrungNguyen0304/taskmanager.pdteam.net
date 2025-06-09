@@ -191,14 +191,15 @@ router.put(
   assignProject
 );
 
-// Xem chi tiết thông tin của một dự án theo ID
+// Xem chi tiết dự án của một team theo ID
 router.get(
   "/viewTeamProject/:id",
   authenticateJWT,
   authorize("company"),
   viewTeamProject
 );
-// 
+
+// Xem chi tiết thông tin của một dự án theo ID
 router.get(
   "/viewProject/:id",
   authenticateJWT,
@@ -262,6 +263,7 @@ router.get(
   viewReportTeam
 );
 
+// Xem tất cả report của project theo ID
 router.get(
   "/showAllRoprtProject/:id",
   authenticateJWT,

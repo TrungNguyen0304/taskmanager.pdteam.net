@@ -17,7 +17,7 @@ const CreateTask = () => {
   const [errors, setErrors] = useState({});
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  const [project, setProject] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [loadingProject, setLoadingProject] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,19 +32,20 @@ const CreateTask = () => {
             },
           }
         );
-        if (
-          Array.isArray(response.data.projects) &&
-          response.data.projects.length > 0
-        ) {
-          const defaultProject = response.data.projects[0];
-          setProject(defaultProject);
-          setFormData((prev) => ({
-            ...prev,
-            projectId: defaultProject._id,
-          }));
+        if (Array.isArray(response.data.projects)) {
+          const activeProjects = response.data.projects.filter(
+            (project) => project.averageTaskProgress < 100
+          );
+          setProjects(activeProjects);
+          if (activeProjects.length > 0) {
+            setFormData((prev) => ({
+              ...prev,
+              projectId: activeProjects[0]._id,
+            }));
+          }
         }
       } catch (error) {
-        setSubmitError("Không thể tải dự án mặc định.");
+        setSubmitError("Không thể tải danh sách dự án.");
       } finally {
         setLoadingProject(false);
       }
@@ -178,24 +179,40 @@ const CreateTask = () => {
               htmlFor="projectId"
               className="block mb-2 font-semibold text-[#222D45] text-lg"
             >
-              Dự án
+              Dự án <span className="text-red-500">*</span>
             </label>
-            <div className="flex items-center">
-              <input
-                id="projectId"
-                type="text"
-                disabled
-                value={
-                  loadingProject
-                    ? "Loading project..."
-                    : project?.name || "No project available"
-                }
-                className="w-full rounded-lg border bg-gray-50 px-4 py-3 text-sm text-[#7A869A] border-gray-200"
-              />
-              {loadingProject && (
-                <Loader2 className="w-5 h-5 ml-3 text-gray-400 animate-spin" />
+            <select
+              id="projectId"
+              name="projectId"
+              value={formData.projectId}
+              onChange={handleChange}
+              disabled={loadingProject || projects.length === 0}
+              className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
+                errors.projectId
+                  ? "border-red-500 focus:ring-red-400"
+                  : "border-gray-300 focus:ring-blue-500"
+              } ${loadingProject || projects.length === 0 ? "bg-gray-50" : ""}`}
+            >
+              {loadingProject ? (
+                <option value="">Đang tải dự án...</option>
+              ) : projects.length === 0 ? (
+                <option value="">Không có dự án khả dụng</option>
+              ) : (
+                projects.map((project) => (
+                  <option key={project._id} value={project._id}>
+                    {project.name}
+                  </option>
+                ))
               )}
-            </div>
+            </select>
+            {loadingProject && (
+              <Loader2 className="w-5 h-5 mt-2 text-gray-400 animate-spin" />
+            )}
+            {errors.projectId && (
+              <p className="mt-1 text-xs text-red-600 font-medium">
+                {errors.projectId}
+              </p>
+            )}
           </div>
 
           <div>

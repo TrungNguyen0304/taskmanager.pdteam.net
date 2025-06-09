@@ -86,12 +86,12 @@ const CompanyLayout = () => {
             <Route path="/update-projects/:id" element={<UpdateProject />} />
             <Route path="/project-detail/:id" element={<ProjectDetail />} />
             <Route path="/projectprogress" element={<ProjectProgress />} />
-            {/* <Route
-              path="/projectprogress-detail"
+            <Route
+              path="/projectprogress-detail/:id"
               element={<ProjectProgressDetail />}
-            /> */}
+            />
 
-            <Route path="/project/:projectId" element={<ProjectProgressDetail />} />
+            {/* <Route path="/project/:projectId" element={<ProjectProgressDetail />} /> */}
 
             <Route path="/seereport-admin" element={<SeeReportAdmin />} />
             <Route path="/chat" element={<Chat />} />

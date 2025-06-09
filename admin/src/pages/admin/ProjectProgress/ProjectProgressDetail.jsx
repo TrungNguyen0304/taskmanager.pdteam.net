@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { projects } from "../../../data/projects";
 import { ArrowLeft } from "lucide-react";
+import axios from "axios";
 
 // Utility functions (unchanged)
 const getDaysBetween = (start, end) => {
@@ -34,11 +34,11 @@ const getStatusColor = (progress) => {
 
 const getPriorityColor = (priority) => {
   switch (priority) {
-    case "Cao":
+    case 1:
       return "bg-red-100 text-red-800";
-    case "Trung bình":
+    case 2:
       return "bg-yellow-100 text-yellow-800";
-    case "Thấp":
+    case 3:
       return "bg-green-100 text-green-800";
     default:
       return "bg-gray-100 text-gray-800";
@@ -125,7 +125,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
 const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
   const { offset, width } = getProgressWidth(task, projectStart);
-  const isSelected = selectedTask?.id === task.id;
+  const isSelected = selectedTask?._id === task._id;
 
   return (
     <div
@@ -153,7 +153,11 @@ const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
               task.priority
             )}`}
           >
-            {task.priority}
+            {task.priority === 1
+              ? "Cao"
+              : task.priority === 2
+              ? "Trung bình"
+              : "Thấp"}
           </span>
           <span className="text-xs text-gray-500">
             {formatDate(task.start)} - {formatDate(task.end)}
@@ -192,7 +196,14 @@ const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
                 </div>
                 <div className="text-gray-600 space-y-1">
                   <div>Người thực hiện: {task.assignee}</div>
-                  <div>Ưu tiên: {task.priority}</div>
+                  <div>
+                    Ưu tiên:{" "}
+                    {task.priority === 1
+                      ? "Cao"
+                      : task.priority === 2
+                      ? "Trung bình"
+                      : "Thấp"}
+                  </div>
                   <div>
                     Thời gian: {getDaysBetween(task.start, task.end)} ngày
                   </div>
@@ -208,26 +219,72 @@ const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
 };
 
 const ProjectProgressDetail = () => {
-  const { projectId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [ganttPage, setGanttPage] = useState(1);
   const [summaryPage, setSummaryPage] = useState(1);
   const [tasksPerPage, setTasksPerPage] = useState(3);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const project = projects.find((p) => p.id === parseInt(projectId));
-    setSelectedProject(project);
-    setGanttPage(1);
-    setSummaryPage(1);
-    setSelectedTask(null);
-  }, [projectId]);
+    const fetchProject = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:8001/api/company/viewProject/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        const projectData = response.data.project;
+
+        // Map API data to component's expected format
+        const formattedProject = {
+          _id: projectData.id,
+          name: projectData.name,
+          description: projectData.description,
+          status: projectData.status,
+          startDate: new Date(projectData.deadline).toISOString(),
+          endDate: projectData.deadline,
+          manager: projectData.assignedTeam?.leader?.name || "Chưa chỉ định",
+          team: projectData.assignedTeam?.name || "Chưa chỉ định",
+          tasks: projectData.tasks.map((task) => ({
+            _id: task._id,
+            name: task.name,
+            description: task.description,
+            status: task.status,
+            progress: task.progress,
+            priority: task.priority,
+            assignee: task.assignedMember?.name || "Chưa chỉ định",
+            start: task.deadline,
+            end: task.deadline,
+          })),
+        };
+
+        setSelectedProject(formattedProject);
+        setGanttPage(1);
+        setSummaryPage(1);
+        setSelectedTask(null);
+        setError(null);
+        window.scrollTo(0, 0);
+      } catch (err) {
+        setError(err.response?.data?.message || "Lỗi khi tải thông tin dự án");
+        setSelectedProject(null);
+      }
+    };
+
+    fetchProject();
+  }, [id]);
+
+  if (error) {
+    return <div className="text-center py-6 text-red-500">{error}</div>;
+  }
 
   if (!selectedProject) {
-    return (
-      <div className="text-center py-6 text-gray-500">Dự án không tồn tại</div>
-    );
+    return <div className="text-center py-6 text-gray-500">Đang tải...</div>;
   }
 
   const ganttTotalPages = Math.ceil(
@@ -418,7 +475,7 @@ const ProjectProgressDetail = () => {
                   {ganttTasks.length ? (
                     ganttTasks.map((task) => (
                       <TaskItem
-                        key={task.id}
+                        key={task._id}
                         task={task}
                         projectStart={selectedProject.startDate}
                         selectedTask={selectedTask}
@@ -452,21 +509,23 @@ const ProjectProgressDetail = () => {
             {summaryTasks.length ? (
               summaryTasks.map((task) => (
                 <div
-                  key={task.id}
+                  key={task._id}
                   className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
-                    selectedTask?.id === task.id
+                    selectedTask?._id === task._id
                       ? "border-blue-500 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                   onClick={() =>
-                    setSelectedTask(selectedTask?.id === task.id ? null : task)
+                    setSelectedTask(
+                      selectedTask?._id === task._id ? null : task
+                    )
                   }
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       setSelectedTask(
-                        selectedTask?.id === task.id ? null : task
+                        selectedTask?._id === task._id ? null : task
                       );
                     }
                   }}
@@ -481,7 +540,11 @@ const ProjectProgressDetail = () => {
                         task.priority
                       )}`}
                     >
-                      {task.priority}
+                      {task.priority === 1
+                        ? "Cao"
+                        : task.priority === 2
+                        ? "Trung bình"
+                        : "Thấp"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center mb-2">

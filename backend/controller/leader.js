@@ -1044,6 +1044,7 @@ const evaluateMemberReport = async (req, res) => {
   }
 };
 
+// Tạo báo cáo cho công ty
 const createReportCompany = async (req, res) => {
   try {
     const { content, projectProgress, difficulties } = req.body;
