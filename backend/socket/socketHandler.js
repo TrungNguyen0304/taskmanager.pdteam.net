@@ -87,7 +87,7 @@ function setupSocket(io) {
                 console.error("Lỗi khi join group room:", err);
             }
         });
-        
+
         socket.on("user-logout", async (userId) => {
             if (!mongoose.Types.ObjectId.isValid(userId)) return;
 
@@ -142,6 +142,20 @@ function setupSocket(io) {
                 groupId,
                 message,
                 timestamp: new Date().toISOString(),
+            });
+        });
+
+        socket.on("group-image", ({ senderId, groupId, imageUrl, fileName, fileSize, fileType, timestamp }) => {
+            if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
+
+            io.to(groupId).emit("group-image", {
+                senderId,
+                groupId,
+                imageUrl,
+                fileName,
+                fileSize,
+                fileType,
+                timestamp
             });
         });
 

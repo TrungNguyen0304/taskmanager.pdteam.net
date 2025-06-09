@@ -772,6 +772,7 @@ const getAssignedTask = async (req, res) => {
       assignedMember: { $ne: null }
     })
       .populate('assignedMember', 'name')
+      .populate('projectId', 'name')
       .sort(sortOption);
 
     res.status(200).json({

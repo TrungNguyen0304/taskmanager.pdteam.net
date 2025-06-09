@@ -25,12 +25,7 @@ router.get("/showAllFeedback/", authenticateJWT, showAllFeedback);
 router.get("/showallTask/", authenticateJWT, getMyTasks);
 
 // tạo báo cáo
-router.post(
-  "/createReport/:id",
-  upload.single("file"),
-  authenticateJWT,
-  createReport
-);
+router.post("/createReport/:id",upload.single("file"),authenticateJWT,createReport);
 
 // cập nhật trạng thái task
 router.put("/updateStatus/:id", authenticateJWT, updateTaskStatus);
