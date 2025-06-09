@@ -53,14 +53,6 @@ const formatDate = (dateString) => {
   });
 };
 
-const getDaysRemaining = (endDate) => {
-  const today = new Date();
-  const end = new Date(endDate);
-  const diffTime = end - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
-};
-
 const getDateHeaders = (startDate, endDate) => {
   const days = getDaysBetween(startDate, endDate);
   const headers = [];
@@ -160,7 +152,7 @@ const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
               : "Thấp"}
           </span>
           <span className="text-xs text-gray-500">
-            {formatDate(task.start)} - {formatDate(task.end)}
+            Thời hạn: {formatDate(task.end)}
           </span>
         </div>
       </div>
@@ -310,13 +302,15 @@ const ProjectProgressDetail = () => {
   return (
     <div className="min-h-screen p-4">
       <div className="w-full mx-auto space-y-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center text-blue-600 hover:underline text-base md:text-xl"
-        >
-          <ArrowLeft className="w-6 h-6 mr-1" />
-          Quay lại
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-blue-600 hover:underline text-base md:text-xl"
+          >
+            <ArrowLeft className="w-6 h-6 mr-1" />
+            Quay lại
+          </button>
+        </div>
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -327,6 +321,13 @@ const ProjectProgressDetail = () => {
                 Theo dõi và quản lý tiến độ các dự án một cách hiệu quả
               </p>
             </div>
+
+            <button
+              onClick={() => navigate(`/project-report/${id}`)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-200"
+            >
+              Xem Báo Cáo
+            </button>
           </div>
         </div>
 
@@ -365,21 +366,9 @@ const ProjectProgressDetail = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Bắt đầu:</span>
-                    <span className="font-medium text-gray-900">
-                      {formatDate(selectedProject.startDate)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Kết thúc:</span>
+                    <span className="text-gray-600">Thời hạn:</span>
                     <span className="font-medium text-gray-900">
                       {formatDate(selectedProject.endDate)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Còn lại:</span>
-                    <span className="font-medium text-blue-600">
-                      {getDaysRemaining(selectedProject.endDate)} ngày
                     </span>
                   </div>
                 </div>
@@ -566,7 +555,7 @@ const ProjectProgressDetail = () => {
                     </span>
                   </div>
                   <div className="text-xs sm:text-sm text-gray-500 mb-2">
-                    {formatDate(task.start)} - {formatDate(task.end)}
+                    Thời hạn: {formatDate(task.end)}
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div

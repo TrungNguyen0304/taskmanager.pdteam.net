@@ -26,9 +26,6 @@ const ChatMemberMain = ({
   setSidebarOpen,
   showMembers,
   setShowMembers,
-  selectedMemberIndex,
-  setSelectedMemberIndex,
-  handleRemoveMember,
   currentUser,
   typingUsers,
   onlineUsers,
@@ -88,7 +85,6 @@ const ChatMemberMain = ({
       {/* Right Sidebar (Slides in from Right) */}
       {sidebarOpen && (
         <>
-          {/* Backdrop for mobile */}
           <div
             className="fixed inset-0 bg-black/50 sm:hidden z-40"
             onClick={() => setSidebarOpen(false)}
