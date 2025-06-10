@@ -888,7 +888,7 @@ const assignProject = async (req, res) => {
       message: "Gán công việc thành công.",
       project: {
         id: project._id,
-        name: project.name, 
+        name: project.name,
         assignedTeam: {
           id: team._id,
           name: team.name,
@@ -1405,7 +1405,7 @@ const viewProject = async (req, res) => {
 const showAllRoprtProject = async (req, res) => {
   try {
     const { id } = req.params;
-   const project = await Project.findById(id).select("_id name").lean();
+    const project = await Project.findById(id).select("_id name").lean();
 
     if (!project) {
       res.status(404).json({ massage: "project khong ton tai" })
@@ -1435,10 +1435,273 @@ const showAllRoprtProject = async (req, res) => {
     })
   } catch (error) {
     console.error("Lỗi khi lấy báo cáo của dự án:", error);
-    res.status(500).json({message: "Lỗi server.", error: error.message});
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 
 }
+
+const getCompanyStatistics = async (req, res) => {
+  try {
+    // Aggregate statistics using MongoDB pipelines
+    const [
+      userStats,
+      teamStats,
+      projectStats,
+      taskStats,
+      reportStats,
+    ] = await Promise.all([
+      // User statistics
+      User.aggregate([
+        {
+          $group: {
+            _id: "$role",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            roles: {
+              $push: {
+                role: "$_id",
+                count: "$count",
+              },
+            },
+            totalUsers: { $sum: "$count" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalUsers: 1,
+            roles: 1,
+          },
+        },
+      ]),
+
+      // Team statistics
+      Team.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "assignedLeader",
+            foreignField: "_id",
+            as: "leader",
+          },
+        },
+        {
+          $unwind: {
+            path: "$leader",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalTeams: { $sum: 1 },
+            totalMembers: { $sum: { $size: "$assignedMembers" } },
+            teamsWithLeader: {
+              $sum: { $cond: [{ $ne: ["$leader", null] }, 1, 0] },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalTeams: 1,
+            totalMembers: 1,
+            teamsWithLeader: 1,
+          },
+        },
+      ]),
+
+      // Project statistics
+      Project.aggregate([
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            statuses: {
+              $push: {
+                status: "$_id",
+                count: "$count",
+              },
+            },
+            totalProjects: { $sum: "$count" },
+            assignedProjects: {
+              $sum: {
+                $cond: [{ $ne: ["$_id", null] }, "$count", 0],
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalProjects: 1,
+            assignedProjects: 1,
+            statuses: 1,
+          },
+        },
+      ]),
+
+      // Task statistics
+      Task.aggregate([
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+            averageProgress: { $avg: "$progress" },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            statuses: {
+              $push: {
+                status: "$_id",
+                count: "$count",
+                averageProgress: "$averageProgress",
+              },
+            },
+            totalTasks: { $sum: "$count" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalTasks: 1,
+            statuses: 1,
+          },
+        },
+      ]),
+
+      // Report statistics
+      Report.aggregate([
+        {
+          $lookup: {
+            from: "feedbacks",
+            localField: "feedback",
+            foreignField: "_id",
+            as: "feedback",
+          },
+        },
+        {
+          $unwind: {
+            path: "$feedback",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalReports: { $sum: 1 },
+            reportsWithFeedback: {
+              $sum: { $cond: [{ $ne: ["$feedback", null] }, 1, 0] },
+            },
+            averageFeedbackScore: { $avg: "$feedback.score" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalReports: 1,
+            reportsWithFeedback: 1,
+            averageFeedbackScore: 1,
+          },
+        },
+      ]),
+    ]);
+
+    // Format the response
+    const statistics = {
+      users: {
+        total: userStats[0]?.totalUsers || 0,
+        roles: userStats[0]?.roles || [],
+      },
+      teams: {
+        total: teamStats[0]?.totalTeams || 0,
+        totalMembers: teamStats[0]?.totalMembers || 0,
+        teamsWithLeader: teamStats[0]?.teamsWithLeader || 0,
+      },
+      projects: {
+        total: projectStats[0]?.totalProjects || 0,
+        assigned: projectStats[0]?.assignedProjects || 0,
+        statuses: projectStats[0]?.statuses || [],
+      },
+      tasks: {
+        total: taskStats[0]?.totalTasks || 0,
+        statuses: taskStats[0]?.statuses.map(status => ({
+          ...status,
+          averageProgress: status.averageProgress
+            ? parseFloat(status.averageProgress.toFixed(2))
+            : 0,
+        })) || [],
+      },
+      reports: {
+        total: reportStats[0]?.totalReports || 0,
+        withFeedback: reportStats[0]?.reportsWithFeedback || 0,
+        averageFeedbackScore: reportStats[0]?.averageFeedbackScore
+          ? parseFloat(reportStats[0].averageFeedbackScore.toFixed(2))
+          : 0,
+      },
+    };
+
+    // Optional: Create a chart for project status distribution
+    const projectStatusChart = {
+      type: "pie",
+      data: {
+        labels: projectStats[0]?.statuses.map(s => s.status) || [],
+        datasets: [{
+          data: projectStats[0]?.statuses.map(s => s.count) || [],
+          backgroundColor: [
+            '#36A2EB', // Blue for pending
+            '#FF6384', // Red for in_progress
+            '#4BC0C0', // Cyan for completed
+            '#FF9F40', // Orange for cancelled
+            '#9966FF', // Purple for revoke
+          ],
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: '#333333', // Dark text for light theme
+            },
+          },
+          title: {
+            display: true,
+            text: 'Project Status Distribution',
+            color: '#333333',
+          },
+        },
+      },
+    };
+
+    res.status(200).json({
+      message: "Company statistics retrieved successfully",
+      statistics,
+      charts: {
+        projectStatusDistribution: projectStatusChart,
+      },
+    });
+  } catch (error) {
+    console.error("getCompanyStatistics error:", error);
+    res.status(500).json({
+      message: "Error retrieving company statistics",
+      error: error.message,
+    });
+  }
+};
+
 //
 module.exports = {
   createUser,
@@ -1472,5 +1735,6 @@ module.exports = {
   viewReportTeam,
   evaluateLeaderReport,
   viewProject,
-  showAllRoprtProject
+  showAllRoprtProject,
+  getCompanyStatistics
 };

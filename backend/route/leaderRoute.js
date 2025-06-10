@@ -33,8 +33,6 @@ router.get("/showallTeam/", authenticateJWT, getMyTeam);
 
 router.get("/showallMember/", authenticateJWT, showallMember);
 
-router.get("/getStatistics/", authenticateJWT, getStatistics);
-
 router.get("/viewTeam/:id", authenticateJWT, viewTeam);
 
 // xem tất cả các project của mình
@@ -146,5 +144,8 @@ router.get(
 
 // view taskid
 router.get(`/viewTask/:id`, authenticateJWT, authorize("leader"), viewTask);
+
+// thong ke 
+router.get("/getStatistics/", authenticateJWT, getStatistics);
 
 module.exports = router;

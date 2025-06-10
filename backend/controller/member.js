@@ -643,6 +643,248 @@ const getReportTask = async (req, res) => {
   }
 };
 
+const getMemberStatistics = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+
+    // 1. Tìm tất cả team mà user là thành viên
+    const teams = await Team.find({ assignedMembers: userId }).select('_id name');
+    if (!teams || teams.length === 0) {
+      return res.status(404).json({ message: "Bạn không tham gia team nào." });
+    }
+
+    const teamIds = teams.map(team => team._id);
+
+    // 2. Tìm tất cả project thuộc các team này
+    const projects = await Project.find({ assignedTeam: { $in: teamIds } }).select('_id name');
+    const projectIds = projects.map(project => project._id);
+
+    if (projectIds.length === 0) {
+      return res.status(200).json({
+        message: "Không có project nào thuộc team của bạn.",
+        statistics: {
+          taskStatus: {},
+          reportStats: { total: 0, evaluated: 0, unevaluated: 0 },
+          feedbackStats: { total: 0, averageScore: 0 },
+          projectTaskCount: [],
+          chartData: {
+            taskStatus: { labels: [], datasets: [] },
+            reportStats: { labels: [], datasets: [] },
+            projectTaskCount: { labels: [], datasets: [] }
+          }
+        }
+      });
+    }
+
+    // 3. Aggregation pipelines cho thống kê
+    // Thống kê số lượng task theo trạng thái
+    const taskStatusStats = await Task.aggregate([
+      { $match: { assignedMember: userId, projectId: { $in: projectIds } } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          status: '$_id',
+          count: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    // Thống kê báo cáo đã và chưa được đánh giá
+    const reportStats = await Report.aggregate([
+      { $match: { assignedMembers: userId, team: { $in: teamIds } } },
+      {
+        $facet: {
+          evaluated: [
+            { $match: { feedback: { $ne: null } } },
+            { $count: 'count' }
+          ],
+          unevaluated: [
+            { $match: { feedback: null } },
+            { $count: 'count' }
+          ],
+          total: [
+            { $count: 'count' }
+          ]
+        }
+      },
+      {
+        $project: {
+          total: { $arrayElemAt: ['$total.count', 0] },
+          evaluated: { $arrayElemAt: ['$evaluated.count', 0] },
+          unevaluated: { $arrayElemAt: ['$unevaluated.count', 0] }
+        }
+      }
+    ]);
+
+    // Thống kê feedback
+    const feedbackStats = await Report.aggregate([
+      { $match: { assignedMembers: userId, team: { $in: teamIds }, feedback: { $ne: null } } },
+      {
+        $lookup: {
+          from: 'feedbacks',
+          localField: 'feedback',
+          foreignField: '_id',
+          as: 'feedback'
+        }
+      },
+      { $unwind: '$feedback' },
+      {
+        $group: {
+          _id: null,
+          averageScore: { $avg: '$feedback.score' },
+          totalFeedbacks: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          averageScore: { $round: ['$averageScore', 2] },
+          totalFeedbacks: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    // Thống kê số lượng task trong mỗi project
+    const projectTaskCount = await Task.aggregate([
+      { $match: { assignedMember: userId, projectId: { $in: projectIds } } },
+      {
+        $group: {
+          _id: '$projectId',
+          taskCount: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'projects',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'project'
+        }
+      },
+      { $unwind: '$project' },
+      {
+        $project: {
+          projectId: '$_id',
+          projectName: '$project.name',
+          taskCount: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    // Định dạng dữ liệu thống kê taskStatus
+    const taskStatusFormatted = taskStatusStats.reduce((acc, stat) => {
+      acc[stat.status] = stat.count;
+      return acc;
+    }, { pending: 0, in_progress: 0, completed: 0, cancelled: 0 });
+
+    // Tạo cấu hình Chart.js
+    const chartData = {
+      taskStatus: {
+        type: 'pie',
+        data: {
+          labels: ['Pending', 'In Progress', 'Completed', 'Cancelled'],
+          datasets: [{
+            label: 'Task Status',
+            data: [
+              taskStatusFormatted.pending,
+              taskStatusFormatted.in_progress,
+              taskStatusFormatted.completed,
+              taskStatusFormatted.cancelled
+            ],
+            backgroundColor: ['#FF6384', '#36A2EB', '#4BC0C0', '#FFCE56'],
+            borderColor: ['#FF6384', '#36A2EB', '#4BC0C0', '#FFCE56'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Phân bố trạng thái task' }
+          }
+        }
+      },
+      reportStats: {
+        type: 'pie',
+        data: {
+          labels: ['Evaluated', 'Unevaluated'],
+          datasets: [{
+            label: 'Report Status',
+            data: [
+              reportStats[0]?.evaluated || 0,
+              reportStats[0]?.unevaluated || 0
+            ],
+            backgroundColor: ['#36A2EB', '#FF6384'],
+            borderColor: ['#36A2EB', '#FF6384'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Trạng thái đánh giá báo cáo' }
+          }
+        }
+      },
+      projectTaskCount: {
+        type: 'bar',
+        data: {
+          labels: projectTaskCount.map(project => project.projectName),
+          datasets: [{
+            label: 'Số lượng task',
+            data: projectTaskCount.map(project => project.taskCount),
+            backgroundColor: ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'],
+            borderColor: ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: 'Số lượng task trong mỗi project' }
+          },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Số task' } },
+            x: { title: { display: true, text: 'Project' } }
+          }
+        }
+      }
+    };
+
+    // 4. Trả về kết quả thống kê
+    res.status(200).json({
+      message: "Thống kê thành công.",
+      statistics: {
+        taskStatus: taskStatusFormatted,
+        reportStats: {
+          total: reportStats[0]?.total || 0,
+          evaluated: reportStats[0]?.evaluated || 0,
+          unevaluated: reportStats[0]?.unevaluated || 0
+        },
+        feedbackStats: {
+          total: feedbackStats[0]?.totalFeedbacks || 0,
+          averageScore: feedbackStats[0]?.averageScore || 0
+        },
+        projectTaskCount,
+        chartData
+      }
+    });
+
+  } catch (error) {
+    console.error("Lỗi trong getMemberStatistics:", error);
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
 module.exports = {
   getMyTeam,
   getMyTasks,
@@ -652,5 +894,6 @@ module.exports = {
   viewTeam,
   viewTask,
   showAllFeedbackTask,
-  getReportTask
+  getReportTask,
+  getMemberStatistics
 };
