@@ -36,8 +36,10 @@ router.get("/viewTeam/:id", authenticateJWT, viewTeam);
 // xem chi tiết task
 router.get("/viewTask/:id", authenticateJWT, viewTask);
 
+// xem tất cả feedback của task
 router.get("/showAllFeedbackTask/:id", authenticateJWT, showAllFeedbackTask);
 
+// lấy báo cáo của task
 router.get("/getReportTask/:id", authenticateJWT, getReportTask);
 
 module.exports = router;

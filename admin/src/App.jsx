@@ -52,6 +52,7 @@ import CreateReport from "./pages/member/Task/CreateReport";
 import ReportHistory from "./pages/member/Task/ReportHistory";
 import ProjectProgressDetail from "./pages/admin/ProjectProgress/ProjectProgressDetail";
 import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
+import ProjectReport from "./pages/admin/ProjectProgress/ProjectReport";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -90,6 +91,8 @@ const CompanyLayout = () => {
               path="/projectprogress-detail/:id"
               element={<ProjectProgressDetail />}
             />
+
+            <Route path="/project-report/:id" element={<ProjectReport />} />
 
             {/* <Route path="/project/:projectId" element={<ProjectProgressDetail />} /> */}
 

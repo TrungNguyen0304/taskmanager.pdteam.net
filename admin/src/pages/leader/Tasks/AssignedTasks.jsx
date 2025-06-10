@@ -15,12 +15,14 @@ const AssignedTasks = () => {
   const [confirmAction, setConfirmAction] = useState(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [projectFilter, setProjectFilter] = useState(""); // State for project name filter
+  const [projectNames, setProjectNames] = useState([]); // State for unique project names
 
   useEffect(() => {
     const fetchAssignedTasks = async () => {
       try {
         const response = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/leader/getAssignedTask",
+          "http://localhost:8001/api/leader/getAssignedTask",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -33,6 +35,7 @@ const AssignedTasks = () => {
           name: task.name || "N/A",
           description: task.description || "N/A",
           assignedMember: task.assignedMember?.name || "N/A",
+          projectName: task.projectId?.name || "N/A", // Add project name
           deadline: task.deadline
             ? new Date(task.deadline).toLocaleDateString("vi-VN")
             : "N/A",
@@ -41,6 +44,12 @@ const AssignedTasks = () => {
         }));
 
         setTasks(formatted);
+
+        // Extract unique project names
+        const uniqueProjects = [
+          ...new Set(formatted.map((task) => task.projectName).filter((name) => name !== "N/A")),
+        ];
+        setProjectNames(uniqueProjects);
       } catch (error) {
         alert("Không thể tải danh sách nhiệm vụ.");
       } finally {
@@ -51,9 +60,15 @@ const AssignedTasks = () => {
     fetchAssignedTasks();
   }, []);
 
-  const assignedTasks = tasks.filter((task) => task.assignedMember !== null);
-  const totalPages = Math.ceil(assignedTasks.length / PAGE_SIZE);
-  const paginatedTasks = assignedTasks.slice(
+  // Filter tasks by project name and assigned member
+  const filteredTasks = tasks
+    .filter((task) => task.assignedMember !== "N/A")
+    .filter((task) =>
+      projectFilter ? task.projectName === projectFilter : true
+    );
+
+  const totalPages = Math.ceil(filteredTasks.length / PAGE_SIZE);
+  const paginatedTasks = filteredTasks.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
@@ -63,7 +78,7 @@ const AssignedTasks = () => {
     setActionError("");
     try {
       await axios.put(
-        `https://apitaskmanager.pdteam.net/api/leader/revokeTask/${id}/revoke`,
+        `http://localhost:8001/api/leader/revokeTask/${id}/revoke`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -100,6 +115,11 @@ const AssignedTasks = () => {
     else if (confirmAction === "revoke") handleRevoke(selectedTaskId);
   };
 
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [projectFilter]);
+
   return (
     <div className="p-0 md:p-4 w-full mx-auto">
       {/* Header */}
@@ -107,6 +127,25 @@ const AssignedTasks = () => {
         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
           Nhiệm Vụ Đang Làm
         </h2>
+        {/* Project Filter Dropdown */}
+        <div className="flex items-center gap-3">
+          <label htmlFor="projectFilter" className="text-lg font-medium text-gray-700">
+            Lọc theo dự án:
+          </label>
+          <select
+            id="projectFilter"
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="">Tất cả dự án</option>
+            {projectNames.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
@@ -122,6 +161,9 @@ const AssignedTasks = () => {
               </th>
               <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">
                 Mô tả
+              </th>
+              <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
+                Dự án
               </th>
               <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">
                 Giao cho
@@ -144,7 +186,7 @@ const AssignedTasks = () => {
             {loading ? (
               <tr>
                 <td
-                  colSpan="8"
+                  colSpan="9"
                   className="text-center py-8 text-sm sm:text-base text-gray-500"
                 >
                   Đang tải dữ liệu...
@@ -153,7 +195,7 @@ const AssignedTasks = () => {
             ) : paginatedTasks.length === 0 ? (
               <tr>
                 <td
-                  colSpan="8"
+                  colSpan="9"
                   className="text-center py-8 text-sm sm:text-base text-gray-400"
                 >
                   Không có nhiệm vụ nào đang làm.
@@ -173,6 +215,9 @@ const AssignedTasks = () => {
                   </td>
                   <td className="px-4 py-3 text-sm sm:text-base hidden sm:table-cell truncate max-w-[200px]">
                     {task.description}
+                  </td>
+                  <td className="px-4 py-3 text-sm sm:text-base truncate max-w-[150px] sm:max-w-[200px]">
+                    {task.projectName}
                   </td>
                   <td className="px-4 py-3 text-sm sm:text-base truncate max-w-[120px] sm:max-w-[150px]">
                     {task.assignedMember}

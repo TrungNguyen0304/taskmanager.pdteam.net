@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Users, ArrowLeft, MailPlus, Send } from "lucide-react";
 
 const ChatMemberHomeOut = ({ onBackToChat, onJoinApproved }) => {
-  const [requestStatus, setRequestStatus] = useState(null); // 'pending', 'approved', 'rejected'
+  const [requestStatus, setRequestStatus] = useState(null); 
   const [joiningNew, setJoiningNew] = useState(false);
   const [groupInput, setGroupInput] = useState("");
 
