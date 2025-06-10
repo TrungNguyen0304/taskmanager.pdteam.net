@@ -888,7 +888,7 @@ const assignProject = async (req, res) => {
       message: "Gán công việc thành công.",
       project: {
         id: project._id,
-        name: project.name,
+        name: project.name, 
         assignedTeam: {
           id: team._id,
           name: team.name,
