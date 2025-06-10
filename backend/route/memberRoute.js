@@ -8,7 +8,8 @@ const {
   viewTeam,
   viewTask,
   showAllFeedbackTask,
-  getReportTask
+  getReportTask,
+  getMemberStatistics
 } = require("../controller/member.js");
 const authenticateJWT = require("../middleware/auth.js");
 const upload = require("../middleware/upload.js");
@@ -41,5 +42,8 @@ router.get("/showAllFeedbackTask/:id", authenticateJWT, showAllFeedbackTask);
 
 // lấy báo cáo của task
 router.get("/getReportTask/:id", authenticateJWT, getReportTask);
+
+// thong ke 
+router.get("/getMemberStatistics/", authenticateJWT, getMemberStatistics);
 
 module.exports = router;

@@ -17,6 +17,7 @@
     "@mui/material": "^7.1.0",
     "axios": "^1.9.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "dompurify": "^3.2.6",
     "firebase": "^11.7.3",
     "formik": "^2.4.6",

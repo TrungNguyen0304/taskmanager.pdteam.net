@@ -1,50 +1,45 @@
-import React, { useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useState, useEffect } from "react";
+import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend } from "chart.js";
+import { Pie, Bar } from "react-chartjs-2";
+
+// Register Chart.js components
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 const HomeLeader = () => {
-  const chartData = [
-    { month: "T1", daGiao: 5, chuaGiao: 3 },
-    { month: "T2", daGiao: 8, chuaGiao: 4 },
-    { month: "T3", daGiao: 12, chuaGiao: 6 },
-    { month: "T4", daGiao: 15, chuaGiao: 3 },
-    { month: "T5", daGiao: 18, chuaGiao: 5 },
-  ];
-
-  const PAGE_SIZE = 3;
-
-  const tasks = Array.from({ length: 12 }, (_, i) => ({
-    id: i + 1,
-    name: `Nhiệm vụ ${i + 1}`,
-    status: i % 2 === 0 ? "Đã giao" : "Chưa giao",
-    deadline: "2025-06-01",
-  }));
-
-  const projects = Array.from({ length: 12 }, (_, i) => ({
-    id: i + 1,
-    name: `Dự án ${i + 1}`,
-    status: i % 3 === 0 ? "Đang thực hiện" : "Tạm dừng",
-    updatedAt: "2025-05-23",
-  }));
-
+  const [statistics, setStatistics] = useState(null);
   const [taskPage, setTaskPage] = useState(1);
   const [projectPage, setProjectPage] = useState(1);
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const PAGE_SIZE = 5;
 
-  const paginate = (data, page) =>
-    data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Fetch statistics from API
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        const response = await fetch("http://localhost:8001/api/leader/getStatistics", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        const data = await response.json();
+        if (data.message === "Thống kê thành công.") {
+          setStatistics(data.statistics);
+        } else {
+          console.error(data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching statistics:", error);
+      }
+    };
+    fetchStatistics();
+  }, []);
+
+  // Pagination logic
+  const paginate = (data, page) => data.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const renderPagination = (total, currentPage, setPage) => {
     const totalPages = Math.ceil(total / PAGE_SIZE);
     const pages = [];
-
     const startPage = Math.max(1, currentPage - 2);
     const endPage = Math.min(totalPages, currentPage + 2);
 
@@ -53,7 +48,7 @@ const HomeLeader = () => {
         <button
           key="prev"
           onClick={() => setPage(currentPage - 1)}
-          className="px-3 py-1 rounded border bg-white text-blue-600 hover:bg-blue-100"
+          className="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-300"
         >
           Trước
         </button>
@@ -65,17 +60,13 @@ const HomeLeader = () => {
         <button
           key={1}
           onClick={() => setPage(1)}
-          className="px-3 py-1 rounded border bg-white text-blue-600 hover:bg-blue-100"
+          className="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-300"
         >
           1
         </button>
       );
       if (startPage > 2) {
-        pages.push(
-          <span key="start-ellipsis" className="px-2">
-            ...
-          </span>
-        );
+        pages.push(<span key="start-ellipsis" className="px-2 text-gray-500">...</span>);
       }
     }
 
@@ -84,11 +75,11 @@ const HomeLeader = () => {
         <button
           key={i}
           onClick={() => setPage(i)}
-          className={`px-3 py-1 rounded border ${
+          className={`px-4 py-2 rounded-full border border-gray-300 ${
             currentPage === i
-              ? "bg-blue-600 text-white"
-              : "bg-white text-blue-600 hover:bg-blue-100"
-          }`}
+              ? "bg-indigo-600 text-white"
+              : "bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+          } transition-all duration-300`}
         >
           {i}
         </button>
@@ -97,17 +88,13 @@ const HomeLeader = () => {
 
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
-        pages.push(
-          <span key="end-ellipsis" className="px-2">
-            ...
-          </span>
-        );
+        pages.push(<span key="end-ellipsis" className="px-2 text-gray-500">...</span>);
       }
       pages.push(
         <button
           key={totalPages}
           onClick={() => setPage(totalPages)}
-          className="px-3 py-1 rounded border bg-white text-blue-600 hover:bg-blue-100"
+          className="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-300"
         >
           {totalPages}
         </button>
@@ -119,129 +106,238 @@ const HomeLeader = () => {
         <button
           key="next"
           onClick={() => setPage(currentPage + 1)}
-          className="px-3 py-1 rounded border bg-white text-blue-600 hover:bg-blue-100"
+          className="px-4 py-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all duration-300"
         >
           Sau
         </button>
       );
     }
 
-    return <div className="flex flex-wrap gap-2 mt-4 justify-end">{pages}</div>;
+    return <div className="flex flex-wrap gap-2 mt-6 justify-end">{pages}</div>;
   };
 
+  if (!statistics) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-xl font-semibold text-gray-600 animate-pulse">Đang tải dữ liệu...</div>
+      </div>
+    );
+  }
+
+  // Combine assigned and unassigned tasks for table display
+  const taskAssignmentData = statistics.assignedTasks.map((assigned) => ({
+    projectId: assigned.projectId,
+    projectName: assigned.projectName,
+    assignedCount: assigned.assignedCount || 0,
+    unassignedCount:
+      statistics.unassignedTasks.find((u) => u.projectId.toString() === assigned.projectId.toString())
+        ?.unassignedCount || 0,
+  }));
+
   return (
-    <div className="p-2 md:p-4 space-y-6 w-full mx-auto">
-      <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
-          Trang Chủ Leader
-        </h2>
+    <div className="p-6 md:p-10 lg:p-12 space-y-10 w-full max-w-7xl mx-auto bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen font-sans">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
+        <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Trang Chủ Leader</h2>
+        <div className="text-sm text-gray-500 italic">Cập nhật: {new Date().toLocaleDateString('vi-VN')}</div>
       </div>
 
-      {/* Thẻ tổng quan */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: "Tổng Nhân Viên", value: 42 },
-          { title: "Nhiệm Vụ Đã Giao", value: 24 },
-          { title: "Nhiệm Vụ Chưa Giao", value: 18 },
-          { title: "Dự Án Đang Thực Hiện", value: 6 },
+          { title: "Tổng Nhân Viên", value: statistics.teamMembers.reduce((sum, team) => sum + team.memberCount, 0), icon: "👥" },
+          { title: "Nhiệm Vụ Hoàn Thành", value: statistics.taskStatus.completed, icon: "✅" },
+          { title: "Báo Cáo Chưa Đánh Giá", value: statistics.reports.unevaluated, icon: "📝" },
+          { title: "Dự Án Đang Thực Hiện", value: statistics.projectProgress.length, icon: "🚀" },
         ].map((item, idx) => (
-          <div key={idx} className="bg-white p-4 rounded-xl shadow text-center">
-            <p className="text-2xl font-bold text-blue-600">{item.value}</p>
-            <h3 className="text-sm md:text-base font-semibold text-gray-700">
-              {item.title}
-            </h3>
+          <div
+            key={idx}
+            className="relative bg-white p-6 rounded-2xl shadow-lg text-center transform hover:-translate-y-1 hover:shadow-xl transition-all duration-300 overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-indigo-600"></div>
+            <span className="text-3xl mb-2">{item.icon}</span>
+            <p className="text-4xl font-bold text-indigo-600">{item.value}</p>
+            <h3 className="text-base font-semibold text-gray-700 mt-2">{item.title}</h3>
           </div>
         ))}
       </div>
 
-      {/* Biểu đồ */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <h3 className="text-lg md:text-xl font-bold mb-4 text-gray-800">
-          Biểu Đồ Nhiệm Vụ Theo Tháng
-        </h3>
-        <div className="w-full h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="daGiao"
-                stroke="#1D4ED8"
-                name="Đã Giao"
-              />
-              <Line
-                type="monotone"
-                dataKey="chuaGiao"
-                stroke="#F59E0B"
-                name="Chưa Giao"
-              />
-            </LineChart>
-          </ResponsiveContainer>
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Task Status Pie Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Phân Bố Trạng Thái Nhiệm Vụ</h3>
+          <div className="h-[350px] relative">
+            <Pie data={statistics.chartData.taskStatus.data} options={{
+              ...statistics.chartData.taskStatus.options,
+              plugins: {
+                ...statistics.chartData.taskStatus.options.plugins,
+                legend: { position: 'right', labels: { boxWidth: 20, padding: 20 } },
+              },
+            }} />
+          </div>
+        </div>
+
+        {/* Team Members Bar Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Số Lượng Thành Viên Mỗi Team</h3>
+          <div className="h-[350px] relative">
+            <Bar data={statistics.chartData.teamMembers.data} options={{
+              ...statistics.chartData.teamMembers.options,
+              plugins: {
+                ...statistics.chartData.teamMembers.options.plugins,
+                legend: { position: 'top', labels: { boxWidth: 20, padding: 20 } },
+              },
+            }} />
+          </div>
+        </div>
+
+        {/* Report Status Pie Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Trạng Thái Đánh Giá Báo Cáo</h3>
+          <div className="h-[350px] relative">
+            <Pie data={statistics.chartData.reports.data} options={{
+              ...statistics.chartData.reports.options,
+              plugins: {
+                ...statistics.chartData.reports.options.plugins,
+                legend: { position: 'right', labels: { boxWidth: 20, padding: 20 } },
+              },
+            }} />
+          </div>
+        </div>
+
+        {/* Task Assignment Bar Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Phân Bố Task Đã/Chưa Giao</h3>
+          <div className="h-[350px] relative">
+            <Bar data={statistics.chartData.taskAssignment.data} options={{
+              ...statistics.chartData.taskAssignment.options,
+              plugins: {
+                ...statistics.chartData.taskAssignment.options.plugins,
+                legend: { position: 'top', labels: { boxWidth: 20, padding: 20 } },
+              },
+            }} />
+          </div>
+        </div>
+
+        {/* Project Progress Bar Chart */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300 lg:col-span-2">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Tiến Độ Dự Án</h3>
+          <div className="h-[350px] relative">
+            <Bar
+              data={{
+                labels: statistics.projectProgress.map((proj) => proj.projectName),
+                datasets: [
+                  {
+                    label: "Tiến Độ Trung Bình (%)",
+                    data: statistics.projectProgress.map((proj) => proj.averageProgress),
+                    backgroundColor: "#4F46E5",
+                    borderColor: "#4F46E5",
+                    borderWidth: 1,
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { position: "top", labels: { boxWidth: 20, padding: 20 } },
+                  title: { display: true, text: "Tiến Độ Trung Bình Các Dự Án", font: { size: 16 } },
+                },
+                scales: {
+                  y: { beginAtZero: true, max: 100, title: { display: true, text: "Tiến Độ (%)" } },
+                  x: { title: { display: true, text: "Dự Án" } },
+                },
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Nhiệm vụ gần nhất */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <h3 className="text-lg md:text-xl font-bold mb-4 text-gray-800">
-          Nhiệm Vụ Gần Nhất
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto border text-xs sm:text-sm">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-2 border">#</th>
-                <th className="p-2 border">Tên Nhiệm Vụ</th>
-                <th className="p-2 border">Trạng Thái</th>
-                <th className="p-2 border">Deadline</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginate(tasks, taskPage).map((task) => (
-                <tr key={task.id} className="hover:bg-gray-50">
-                  <td className="p-2 border">{task.id}</td>
-                  <td className="p-2 border">{task.name}</td>
-                  <td className="p-2 border">{task.status}</td>
-                  <td className="p-2 border">{task.deadline}</td>
+      {/* Tables Section */}
+      <div className="space-y-10">
+        {/* Member Reports Table */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Báo Cáo Của Thành Viên</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border-collapse text-sm">
+              <thead>
+                <tr className="bg-indigo-50 text-left text-gray-700">
+                  <th className="p-4 border-b font-semibold">ID Thành Viên</th>
+                  <th className="p-4 border-b font-semibold">Tên Thành Viên</th>
+                  <th className="p-4 border-b font-semibold">Số Báo Cáo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginate(statistics.memberReports, taskPage).map((report) => (
+                  <tr key={report.memberId} className="hover:bg-indigo-50/50 transition-all duration-200">
+                    <td className="p-4 border-b text-gray-600">{report.memberId}</td>
+                    <td className="p-4 border-b text-gray-600">{report.memberName}</td>
+                    <td className="p-4 border-b text-gray-600">{report.reportCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {renderPagination(statistics.memberReports.length, taskPage, setTaskPage)}
         </div>
-        {renderPagination(tasks.length, taskPage, setTaskPage)}
-      </div>
 
-      {/* Dự án mới nhất */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <h3 className="text-lg md:text-xl font-bold mb-4 text-gray-800">
-          Dự Án Mới Nhất
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto border text-xs sm:text-sm">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-2 border">#</th>
-                <th className="p-2 border">Tên Dự Án</th>
-                <th className="p-2 border">Trạng Thái</th>
-                <th className="p-2 border">Cập Nhật</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginate(projects, projectPage).map((project) => (
-                <tr key={project.id} className="hover:bg-gray-50">
-                  <td className="p-2 border">{project.id}</td>
-                  <td className="p-2 border">{project.name}</td>
-                  <td className="p-2 border">{project.status}</td>
-                  <td className="p-2 border">{project.updatedAt}</td>
+        {/* Project Progress Table */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Dự Án Mới Nhất</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border-collapse text-sm">
+              <thead>
+                <tr className="bg-indigo-50 text-left text-gray-700">
+                  <th className="p-4 border-b font-semibold">ID Dự Án</th>
+                  <th className="p-4 border-b font-semibold">Tên Dự Án</th>
+                  <th className="p-4 border-b font-semibold">Tiến Độ Trung Bình (%)</th>
+                  <th className="p-4 border-b font-semibold">Tổng Nhiệm Vụ</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginate(statistics.projectProgress, projectPage).map((project) => (
+                  <tr key={project.projectId} className="hover:bg-indigo-50/50 transition-all duration-200">
+                    <td className="p-4 border-b text-gray-600">{project.projectId}</td>
+                    <td className="p-4 border-b text-gray-600">{project.projectName}</td>
+                    <td className="p-4
+
+ border-b text-gray-600">{project.averageProgress}%</td>
+                    <td className="p-4 border-b text-gray-600">{project.totalTasks}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {renderPagination(statistics.projectProgress.length, projectPage, setProjectPage)}
         </div>
-        {renderPagination(projects.length, projectPage, setProjectPage)}
+
+        {/* Task Assignment Table */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg transform hover:shadow-xl transition-all duration-300">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Phân Bố Nhiệm Vụ Đã/Chưa Giao</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border-collapse text-sm">
+              <thead>
+                <tr className="bg-indigo-50 text-left text-gray-700">
+                  <th className="p-4 border-b font-semibold">ID Dự Án</th>
+                  <th className="p-4 border-b font-semibold">Tên Dự Án</th>
+                  <th className="p-4 border-b font-semibold">Nhiệm Vụ Đã Giao</th>
+                  <th className="p-4 border-b font-semibold">Nhiệm Vụ Chưa Giao</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginate(taskAssignmentData, assignmentPage).map((project) => (
+                  <tr key={project.projectId} className="hover:bg-indigo-50/50 transition-all duration-200">
+                    <td className="p-4 border-b text-gray-600">{project.projectId}</td>
+                    <td className="p-4 border-b text-gray-600">{project.projectName}</td>
+                    <td className="p-4 border-b text-gray-600">{project.assignedCount}</td>
+                    <td className="p-4 border-b text-gray-600">{project.unassignedCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {renderPagination(taskAssignmentData.length, assignmentPage, setAssignmentPage)}
+        </div>
       </div>
     </div>
   );

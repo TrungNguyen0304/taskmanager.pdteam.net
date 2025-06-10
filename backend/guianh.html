@@ -1,166 +1,140 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Test Chat Nhóm</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <meta charset="UTF-8" />
+    <title>Test Group Image Message</title>
 </head>
 <body>
-  <h2>🔐 Nhập Thông Tin Người Dùng</h2>
-  <label>Token:</label><br>
-  <input type="text" id="token" placeholder="Nhập JWT Token..." style="width: 500px;"><br><br>
+    <h1>Test Group Image Message</h1>
 
-  <label>User ID:</label><br>
-  <input type="text" id="userId" placeholder="Nhập userId..." style="width: 300px;"><br><br>
+    <div>
+        <label>User ID:</label>
+        <input type="text" id="userIdInput" placeholder="User ID" /><br />
+        <label>Token:</label>
+        <input type="text" id="tokenInput" placeholder="JWT Token" style="width: 400px;" /><br />
+    </div>
 
-  <label>Group ID:</label><br>
-  <input type="text" id="groupId" placeholder="Nhập groupId..." style="width: 300px;"><br><br>
+    <hr />
 
-  <button onclick="connect()">🔌 Kết nối và Tải tin nhắn</button>
+    <div>
+        <button id="getGroupsBtn">Get Groups</button>
+        <ul id="groupsList"></ul>
+    </div>
 
-  <hr>
-  <h3>💬 Tin nhắn</h3>
-  <div id="chatBox" style="border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll;"></div>
+    <hr />
 
-  <form id="textForm">
-    <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." required />
-    <button type="submit">Gửi</button>
-  </form>
+    <div>
+        <label>Group ID:</label>
+        <input type="text" id="groupIdInput" placeholder="Group ID" /><br />
+        <button id="getMessagesBtn">Get Group Messages</button>
+        <ul id="messagesList"></ul>
+    </div>
 
-  <form id="imageForm" enctype="multipart/form-data">
-    <input type="file" name="image" required />
-    <button type="submit">Gửi ảnh/File</button>
-  </form>
+    <hr />
 
-  <script>
-    let socket;
-    let currentGroupId = null;
-    let currentUserId = null;
-    let currentToken = null;
+    <div>
+        <h3>Send Image Message</h3>
+        <input type="file" id="imageInput" accept="image/jpeg,image/png" /><br />
+        <button id="sendImageBtn">Send Image</button>
+    </div>
 
-    // ✅ Luôn trả về URL tuyệt đối cho ảnh hoặc file
-    function getAbsoluteUrl(url) {
-      if (!url) return "";
-      if (url.startsWith("http")) return url;
-      return `http://localhost:8001${url}`;
-    }
+    <script>
+        const API_BASE = "http://localhost:8001/api/group";
 
-    function connect() {
-      currentToken = document.getElementById("token").value.trim();
-      currentUserId = document.getElementById("userId").value.trim();
-      currentGroupId = document.getElementById("groupId").value.trim();
+        document.getElementById("getGroupsBtn").addEventListener("click", async () => {
+            const token = document.getElementById("tokenInput").value;
 
-      if (!currentToken || !currentUserId || !currentGroupId) {
-        alert("Vui lòng nhập đủ Token, User ID và Group ID");
-        return;
-      }
+            try {
+                const res = await fetch(API_BASE, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const data = await res.json();
+                console.log("Groups:", data);
 
-      socket = io("http://localhost:8001", {
-        auth: { token: currentToken }
-      });
+                const groupsList = document.getElementById("groupsList");
+                groupsList.innerHTML = "";
+                data.forEach(group => {
+                    const li = document.createElement("li");
+                    li.textContent = `${group._id} - ${group.name || "No Name"} (Members: ${group.members.length})`;
+                    groupsList.appendChild(li);
+                });
+            } catch (err) {
+                console.error("Error getting groups:", err);
+                alert("Error getting groups.");
+            }
+        });
 
-      socket.on("connect", () => {
-        console.log("✅ Socket connected");
-        socket.emit("join-group", currentGroupId);
-        loadMessages(currentGroupId);
-      });
+        document.getElementById("getMessagesBtn").addEventListener("click", async () => {
+            const token = document.getElementById("tokenInput").value;
+            const groupId = document.getElementById("groupIdInput").value;
 
-      socket.on("group-message", (msg) => {
-        if (msg.groupId !== currentGroupId) return;
-        const chatBox = document.getElementById("chatBox");
-        chatBox.innerHTML += `<p><b>${msg.senderName}:</b> ${msg.message}</p>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-      });
+            try {
+                const res = await fetch(`${API_BASE}/${groupId}/messages`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const data = await res.json();
+                console.log("Messages:", data);
 
-      socket.on("group-image", (msg) => {
-        if (msg.groupId !== currentGroupId) return;
-        const chatBox = document.getElementById("chatBox");
+                const messagesList = document.getElementById("messagesList");
+                messagesList.innerHTML = "";
+                data.forEach(msg => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `
+                        <strong>${msg.senderName}</strong> (${new Date(msg.timestamp).toLocaleString()})<br/>
+                        ${msg.message || ""}<br/>
+                        ${msg.imageUrl ? `<img src="http://localhost:8001${msg.imageUrl}" alt="Image" style="max-width:200px; max-height:200px;" />` : ""}
+                        <hr/>
+                    `;
+                    messagesList.appendChild(li);
+                });
+            } catch (err) {
+                console.error("Error getting messages:", err);
+                alert("Error getting messages.");
+            }
+        });
 
-        const fileLink = getAbsoluteUrl(msg.imageUrl);
-        const isImage = msg.fileType && msg.fileType.startsWith("image/");
+        document.getElementById("sendImageBtn").addEventListener("click", async () => {
+            const token = document.getElementById("tokenInput").value;
+            const groupId = document.getElementById("groupIdInput").value;
+            const imageFile = document.getElementById("imageInput").files[0];
 
-        if (isImage) {
-          chatBox.innerHTML += `
-            <p><b>${msg.senderName}:</b><br/>
-              <a href="${fileLink}" target="_blank">${msg.fileName || "Xem ảnh"}</a><br/>
-              <img src="${fileLink}" style="max-width: 200px;" />
-            </p>`;
-        } else {
-          chatBox.innerHTML += `
-            <p><b>${msg.senderName}:</b> 📎 
-              <a href="${fileLink}" target="_blank">${msg.fileName || "Tệp đính kèm"}</a>
-            </p>`;
-        }
+            if (!imageFile) {
+                alert("Please select an image.");
+                return;
+            }
 
-        chatBox.scrollTop = chatBox.scrollHeight;
-      });
-    }
+            const formData = new FormData();
+            formData.append("image", imageFile);
 
-    async function loadMessages(groupId) {
-      const res = await fetch(`http://localhost:8001/api/group/${groupId}/messages`, {
-        headers: { Authorization: `Bearer ${currentToken}` },
-      });
-      const data = await res.json();
-      const chatBox = document.getElementById("chatBox");
-      chatBox.innerHTML = "";
+            try {
+                const res = await fetch(`${API_BASE}/${groupId}/sendImageMessage`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: formData
+                });
 
-      data.forEach(msg => {
-        const sender = msg.senderName || "Ẩn danh";
+                let data;
+                try {
+                    data = await res.json();
+                } catch (jsonErr) {
+                    console.warn("Could not parse JSON:", jsonErr);
+                    data = {};
+                }
 
-        if (msg.fileName || msg.imageUrl) {
-          const fileLink = getAbsoluteUrl(msg.imageUrl);
-          const isImage = msg.fileType && msg.fileType.startsWith("image/");
-
-          if (isImage) {
-            chatBox.innerHTML += `
-              <p><b>${sender}:</b><br/>
-                <a href="${fileLink}" target="_blank">${msg.fileName || "Xem ảnh"}</a><br/>
-                <img src="${fileLink}" style="max-width: 200px;" />
-              </p>`;
-          } else {
-            chatBox.innerHTML += `
-              <p><b>${sender}:</b> 📎 
-                <a href="${fileLink}" target="_blank">${msg.fileName || "Tệp đính kèm"}</a>
-              </p>`;
-          }
-        } else {
-          chatBox.innerHTML += `<p><b>${sender}:</b> ${msg.message}</p>`;
-        }
-      });
-
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    document.getElementById("textForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const message = document.getElementById("messageInput").value;
-      if (!currentGroupId || !message) return;
-
-      await fetch(`http://localhost:8001/api/group/${currentGroupId}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${currentToken}`
-        },
-        body: JSON.stringify({ message })
-      });
-
-      document.getElementById("messageInput").value = "";
-    });
-
-    document.getElementById("imageForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!currentGroupId) return;
-
-      const formData = new FormData(document.getElementById("imageForm"));
-      await fetch(`http://localhost:8001/api/group/${currentGroupId}/sendImageMessage`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${currentToken}` },
-        body: formData
-      });
-
-      document.getElementById("imageForm").reset();
-    });
-  </script>
+                if (res.ok) {
+                    alert("Image sent successfully.");
+                    console.log("Image API response:", data);
+                } else {
+                    console.error("Error sending image:", data);
+                    alert(`Error sending image: ${data.message || "Unknown error"}`);
+                }
+            } catch (err) {
+                console.error("Network or JS error sending image:", err);
+                alert(`Network or JS error: ${err.message}`);
+            }
+        });
+    </script>
 </body>
 </html>

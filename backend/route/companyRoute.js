@@ -33,7 +33,8 @@ const {
   viewReportTeam,
   evaluateLeaderReport,
   viewProject,
-  showAllRoprtProject
+  showAllRoprtProject,
+  getCompanyStatistics
 } = require("../controller/company.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -277,6 +278,14 @@ router.post(
   authenticateJWT,
   authorize("company"),
   evaluateLeaderReport
+);
+
+// thong ke
+router.get(
+  "/getCompanyStatistics/",
+  authenticateJWT,
+  authorize("company"),
+  getCompanyStatistics
 );
 
 module.exports = router;
