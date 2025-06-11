@@ -4,6 +4,7 @@ import { FileText, Clock, Flag, Users, X } from "lucide-react";
 import { GrUpdate } from "react-icons/gr";
 import axios from "axios";
 import { FaUser } from "react-icons/fa";
+import { IoIosSend } from "react-icons/io";
 
 const PAGE_SIZE = 3;
 
@@ -299,6 +300,35 @@ const TaskMember = () => {
                       <Clock className="w-5 h-5 text-gray-500" />
                       <span>Hạn: {task.deadline}</span>
                     </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">
+                      Bình luận:
+                    </h3>
+
+                    <div className="bg-gray-50 p-4 rounded-xl shadow-sm mb-3">
+                      <p className="text-gray-600 text-sm sm:text-base break-words">
+                        {task.comments && task.comments.length > 0
+                          ? task.comments.join(", ")
+                          : "Không có bình luận nào."}
+                      </p>
+                    </div>
+
+                    <form className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch">
+                      <input
+                        type="text"
+                        placeholder="Nhập bình luận..."
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                      />
+                      <button
+                        type="submit"
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all text-sm sm:text-base"
+                      >
+                        <IoIosSend className="w-5 h-5" />
+                        <span className="hidden sm:inline">Gửi</span>
+                      </button>
+                    </form>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3">

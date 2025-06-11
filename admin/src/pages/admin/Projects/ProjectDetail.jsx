@@ -13,7 +13,7 @@ const ProjectDetail = () => {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          `https://apitaskmanager.pdteam.net/api/company/viewTeamProject/${id}`,
+          `http://localhost:8001/api/company/viewTeamProject/${id}`,
           {
             method: "GET",
             headers: {
@@ -43,10 +43,36 @@ const ProjectDetail = () => {
     loadProjectDetail();
   }, [id, navigate]);
 
+  // Priority mapping
+  const getPriorityText = (priority) => {
+    switch (priority) {
+      case 3:
+        return "Cao";
+      case 2:
+        return "Trung bình";
+      case 1:
+        return "Thấp";
+      default:
+        return "Không xác định";
+    }
+  };
+
+  // Status mapping
+  const getStatusText = (status) => {
+    const statusMap = {
+      pending: "Đang chờ",
+      "in-progress": "Đang thực hiện",
+      completed: "Hoàn thành",
+      "on-hold": "Tạm dừng",
+      cancelled: "Đã hủy",
+    };
+    return statusMap[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg font-medium text-gray-600 animate-pulse">
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-xl font-semibold text-blue-600 animate-pulse">
           Đang tải dữ liệu...
         </div>
       </div>
@@ -55,8 +81,8 @@ const ProjectDetail = () => {
 
   if (error || !project) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg font-medium text-red-600">
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-xl font-semibold text-red-500">
           Dự án không tồn tại.
         </div>
       </div>
@@ -64,81 +90,126 @@ const ProjectDetail = () => {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="w-full mx-auto bg-white rounded-2xl shadow-md p-6 sm:p-10 space-y-10">
+    <div className="p-0 md:p-4">
+      <div className="w-full mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 lg:p-10">
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+        <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
+          >
+            Quay lại
+          </button>
+          <h2 className="text-2xl sm:text-3xl font-bold text-blue-700">
             Chi Tiết Dự Án
           </h2>
         </div>
 
         {/* Project Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           {/* Left Column: Project Info */}
-          <div className="space-y-5 text-lg text-gray-700">
-            <div>
-              <h3 className="font-semibold text-gray-800">Tên Dự Án</h3>
-              <p className="mt-1">{project.name}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Mô Tả</h3>
-              <p className="mt-1 whitespace-pre-wrap">{project.description}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Trạng Thái</h3>
-              <p className="mt-1 capitalize">{project.status}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Ưu Tiên</h3>
-              <p className="mt-1">{project.priority}</p>
-            </div>
-            {/* Chỉ hiển thị Hạn Chót nếu deadline tồn tại và hợp lệ */}
-            {project.deadline && !isNaN(new Date(project.deadline).getTime()) && (
+          <div className="bg-gray-50 rounded-lg p-6 space-y-6">
+            <h3 className="text-xl font-semibold text-blue-600">
+              Thông Tin Dự Án
+            </h3>
+            <div className="space-y-4 text-gray-700">
               <div>
-                <h3 className="font-semibold text-gray-800">Hạn Chót</h3>
-                <p className="mt-1">
-                  {new Date(project.deadline).toLocaleString("vi-VN")}
+                <h4 className="font-medium text-gray-800">Tên Dự Án</h4>
+                <p className="mt-1 text-base sm:text-lg">{project.name}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-800">Mô Tả</h4>
+                <p className="mt-1 text-base sm:text-lg whitespace-pre-wrap">
+                  {project.description}
                 </p>
               </div>
-            )}
+              <div>
+                <h4 className="font-medium text-gray-800">Trạng Thái</h4>
+                <p className="mt-1 text-base sm:text-lg">
+                  {getStatusText(project.status)}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-800">Ưu Tiên</h4>
+                <p className="mt-1 text-base sm:text-lg">
+                  {getPriorityText(project.priority)}
+                </p>
+              </div>
+              {project.createdAt &&
+                !isNaN(new Date(project.createdAt).getTime()) && (
+                  <div>
+                    <h4 className="font-medium text-gray-800">Ngày Tạo</h4>
+                    <p className="mt-1 text-base sm:text-lg">
+                      {new Date(project.createdAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                )}
+              {project.deadline &&
+                !isNaN(new Date(project.deadline).getTime()) && (
+                  <div>
+                    <h4 className="font-medium text-gray-800">Hạn Chót</h4>
+                    <p className="mt-1 text-base sm:text-lg">
+                      {new Date(project.deadline).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                )}
+              <div>
+                <h4 className="font-medium text-gray-800">Thông Báo Quá Hạn</h4>
+                <p className="mt-1 text-base sm:text-lg">
+                  {project.isOverdueNotified
+                    ? "Đã thông báo"
+                    : "Chưa thông báo"}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Right Column: Team Info */}
           {(project.assignedTeam?.assignedLeader?.name ||
             project.assignedTeam?.assignedMembers?.length > 0 ||
             project.assignedTeam?.name) && (
-              <div className="space-y-5 text-lg text-gray-700">
-                <h3 className="font-semibold text-gray-800 text-lg mb-2">
-                  Nhóm Phụ Trách
-                </h3>
+            <div className="bg-gray-50 rounded-lg p-6 space-y-6">
+              <h3 className="text-xl font-semibold text-blue-600">
+                Nhóm Phụ Trách
+              </h3>
+              <div className="space-y-4 text-gray-700">
+                {project.assignedTeam?.name && (
+                  <p className="text-base sm:text-lg">
+                    <span className="font-medium">Phòng ban:</span>{" "}
+                    {project.assignedTeam.name}
+                  </p>
+                )}
                 {project.assignedTeam?.assignedLeader?.name && (
-                  <p>
+                  <p className="text-base sm:text-lg">
                     <span className="font-medium">Leader:</span>{" "}
                     {project.assignedTeam.assignedLeader.name}
                   </p>
                 )}
                 {project.assignedTeam?.assignedMembers?.length > 0 && (
-                  <p>
-                    <span className="font-medium">Nhân viên:</span>{" "}
-                    {project.assignedTeam.assignedMembers
-                      .map((member) => member.name)
-                      .join(", ")}
-                  </p>
-                )}
-                {project.assignedTeam?.name && (
-                  <p>
-                    <span className="font-medium">Phòng ban:</span>{" "}
-                    {project.assignedTeam.name}
-                  </p>
+                  <div>
+                    <p className="text-base sm:text-lg font-medium">
+                      Nhân viên:
+                    </p>
+                    <div className="mt-1">
+                      {project.assignedTeam.assignedMembers.map((member) => (
+                        <span
+                          key={member._id}
+                          className="block text-base sm:text-lg"
+                        >
+                          {member.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
         </div>
 
         {/* Tasks Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800">
+        <div className="mt-8 bg-gray-50 rounded-lg p-6">
+          <h3 className="text-xl font-semibold text-blue-600 mb-4">
             Danh Sách Công Việc
           </h3>
           {project.tasks?.length > 0 ? (
@@ -146,14 +217,16 @@ const ProjectDetail = () => {
               {project.tasks.map((task) => (
                 <div
                   key={task._id}
-                  className="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-white hover:shadow-md transition"
+                  className="border border-gray-200 rounded-md p-4 bg-white hover:shadow-md transition-shadow duration-200"
                 >
-                  <h4 className="font-medium text-gray-900">{task.taskName}</h4>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h4 className="font-medium text-gray-800 text-base sm:text-lg">
+                    {task.taskName}
+                  </h4>
+                  <p className="text-sm sm:text-base text-gray-600 mt-1">
                     <span className="font-medium">Trạng thái:</span>{" "}
                     {task.status}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm sm:text-base text-gray-600 mt-1">
                     <span className="font-medium">Người thực hiện:</span>{" "}
                     {task.assignee?.name || "Chưa phân công"}
                   </p>
@@ -161,20 +234,10 @@ const ProjectDetail = () => {
               ))}
             </div>
           ) : (
-            <p className="text-base text-gray-500 italic">
+            <p className="text-base sm:text-lg text-gray-500 italic">
               Chưa có công việc nào được thêm.
             </p>
           )}
-        </div>
-
-        {/* Back Button */}
-        <div className="pt-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="px-5 py-2.5 bg-gray-700 text-white font-medium rounded-lg hover:bg-gray-800 transition"
-          >
-            Quay lại
-          </button>
         </div>
       </div>
     </div>
