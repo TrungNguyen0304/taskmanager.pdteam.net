@@ -1371,14 +1371,14 @@ const viewProject = async (req, res) => {
       const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
       averageProgress = (totalProgress / taskCount).toFixed(2);
     }
-
+    const projectStatus = parseFloat(averageProgress) === 100 ? "completed" : "in_progress";
     res.status(200).json({
       massege: "Thông tin dự án: ${project.name}",
       project: {
         id: project._id,
         name: project.name,
         description: project.description,
-        status: project.status,
+        status: projectStatus,
         priority: project.priority,
         deadline: project.deadline,
         assignedTeam: project.assignedTeam
