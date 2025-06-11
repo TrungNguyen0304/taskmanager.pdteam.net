@@ -142,7 +142,9 @@ const ProjectAssigned = () => {
       )}
 
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4 sm:gap-0">
-        <h2 className="text-2xl font-bold">Quản Lý Dự Án</h2>
+        <h2 className="md:text-3xl text-2xl text-blue-600 font-bold">
+          Quản Lý Dự Án
+        </h2>
       </div>
 
       {loading ? (

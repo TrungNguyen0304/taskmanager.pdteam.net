@@ -79,18 +79,29 @@ const ProjectReport = () => {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 md:p-8">
-            <h1 className="text-xl md:text-3xl font-bold text-white">
-              Báo Cáo Dự Án: {projectData.project.name}
-            </h1>
-            <p className="text-blue-100 mt-2 text-base md:text-lg">
-              {projectData.project.description ||
-                "Tổng quan và báo cáo chi tiết của dự án"}
-            </p>
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+          <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 p-4 md:p-8">
+            <div>
+              <h1 className="text-xl md:text-3xl font-bold text-white">
+                Báo Cáo Dự Án: {projectData.project.name}
+              </h1>
+              <p className="text-blue-100 mt-2 text-base md:text-lg">
+                {projectData.project.description ||
+                  "Tổng quan và báo cáo chi tiết của dự án"}
+              </p>
+            </div>
+
+            <div>
+              <button
+                onClick={() => navigate(`/project/review/${id}`)}
+                className="bg-white py-2 px-4 rounded-full font-medium"
+              >
+                Viết đánh giá
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 md:p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 md:p-6">
             {/* Project Overview */}
             <div className="lg:col-span-1">
               <div className="bg-gray-50 rounded-xl p-6 shadow-md">
