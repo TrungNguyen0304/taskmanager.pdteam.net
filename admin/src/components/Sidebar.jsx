@@ -72,11 +72,6 @@ const Sidebar = () => {
           icon: <GiProgression />,
         },
         {
-          label: "Báo Cáo",
-          icon: <VscFeedback />,
-          to: "/seereport-admin",
-        },
-        {
           label: "Trò chuyện",
           to: "/chat",
           icon: <IoChatbubbleEllipsesOutline />,

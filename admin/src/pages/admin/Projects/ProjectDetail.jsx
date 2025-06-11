@@ -1,5 +1,8 @@
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { format, isValid } from "date-fns";
+import { vi } from "date-fns/locale";
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -46,34 +49,49 @@ const ProjectDetail = () => {
   // Priority mapping
   const getPriorityText = (priority) => {
     switch (priority) {
-      case 3:
-        return "Cao";
-      case 2:
-        return "Trung bình";
       case 1:
-        return "Thấp";
+        return <span className="text-red-600 font-medium">Cao</span>;
+      case 2:
+        return <span className="text-yellow-600 font-medium">Trung bình</span>;
+      case 3:
+        return <span className="text-green-600 font-medium">Thấp</span>;
       default:
-        return "Không xác định";
+        return <span className="text-gray-600">Không xác định</span>;
     }
   };
 
   // Status mapping
   const getStatusText = (status) => {
     const statusMap = {
-      pending: "Đang chờ",
-      "in-progress": "Đang thực hiện",
-      completed: "Hoàn thành",
-      "on-hold": "Tạm dừng",
-      cancelled: "Đã hủy",
+      pending: <span className="text-gray-600">Đang chờ xử lý</span>,
+      "in-progress": <span className="text-blue-600">Đang thực hiện</span>,
+      completed: <span className="text-green-600">Hoàn thành</span>,
+      "on-hold": <span className="text-yellow-600">Tạm dừng</span>,
+      cancelled: <span className="text-red-600">Đã hủy</span>,
     };
-    return statusMap[status.toLowerCase()] || status.charAt(0).toUpperCase() + status.slice(1);
+    return (
+      statusMap[status.toLowerCase()] || (
+        <span>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+      )
+    );
+  };
+
+  // Format date with date-fns
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return isValid(date)
+      ? format(date, "HH:mm, dd/MM/yyyy", { locale: vi })
+      : "Không xác định";
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-xl font-semibold text-blue-600 animate-pulse">
-          Đang tải dữ liệu...
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xl font-semibold text-blue-600">
+            Đang tải dữ liệu...
+          </span>
         </div>
       </div>
     );
@@ -82,8 +100,17 @@ const ProjectDetail = () => {
   if (error || !project) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-xl font-semibold text-red-500">
-          Dự án không tồn tại.
+        <div className="text-center">
+          <p className="text-xl font-semibold text-red-500 mb-4">
+            Dự án không tồn tại.
+          </p>
+          <button
+            onClick={() => navigate("/projects")}
+            className="flex items-center mx-auto text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Quay về danh sách dự án
+          </button>
         </div>
       </div>
     );
@@ -91,13 +118,15 @@ const ProjectDetail = () => {
 
   return (
     <div className="p-0 md:p-4">
-      <div className="w-full mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 lg:p-10">
+      <div className="w-full mx-auto bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
+            className="flex items-center text-xl font-medium hover:underline text-blue-600 px-4 py-2 rounded-lg transition-colors duration-200"
+            aria-label="Quay lại danh sách dự án"
           >
+            <ArrowLeft className="w-6 h-6 mr-2" />
             Quay lại
           </button>
           <h2 className="text-2xl sm:text-3xl font-bold text-blue-700">
@@ -120,7 +149,7 @@ const ProjectDetail = () => {
               <div>
                 <h4 className="font-medium text-gray-800">Mô Tả</h4>
                 <p className="mt-1 text-base sm:text-lg whitespace-pre-wrap">
-                  {project.description}
+                  {project.description || "Chưa có mô tả."}
                 </p>
               </div>
               <div>
@@ -135,30 +164,30 @@ const ProjectDetail = () => {
                   {getPriorityText(project.priority)}
                 </p>
               </div>
-              {project.createdAt &&
-                !isNaN(new Date(project.createdAt).getTime()) && (
-                  <div>
-                    <h4 className="font-medium text-gray-800">Ngày Tạo</h4>
-                    <p className="mt-1 text-base sm:text-lg">
-                      {new Date(project.createdAt).toLocaleString("vi-VN")}
-                    </p>
-                  </div>
-                )}
-              {project.deadline &&
-                !isNaN(new Date(project.deadline).getTime()) && (
-                  <div>
-                    <h4 className="font-medium text-gray-800">Hạn Chót</h4>
-                    <p className="mt-1 text-base sm:text-lg">
-                      {new Date(project.deadline).toLocaleString("vi-VN")}
-                    </p>
-                  </div>
-                )}
+              {project.createdAt && (
+                <div>
+                  <h4 className="font-medium text-gray-800">Ngày Tạo</h4>
+                  <p className="mt-1 text-base sm:text-lg">
+                    {formatDate(project.createdAt)}
+                  </p>
+                </div>
+              )}
+              {project.deadline && (
+                <div>
+                  <h4 className="font-medium text-gray-800">Hạn Chót</h4>
+                  <p className="mt-1 text-base sm:text-lg">
+                    {formatDate(project.deadline)}
+                  </p>
+                </div>
+              )}
               <div>
                 <h4 className="font-medium text-gray-800">Thông Báo Quá Hạn</h4>
                 <p className="mt-1 text-base sm:text-lg">
-                  {project.isOverdueNotified
-                    ? "Đã thông báo"
-                    : "Chưa thông báo"}
+                  {project.isOverdueNotified ? (
+                    <span className="text-green-600">Đã thông báo</span>
+                  ) : (
+                    <span className="text-red-600">Chưa thông báo</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -190,53 +219,17 @@ const ProjectDetail = () => {
                     <p className="text-base sm:text-lg font-medium">
                       Nhân viên:
                     </p>
-                    <div className="mt-1">
+                    <ul className="mt-1 list-disc list-inside">
                       {project.assignedTeam.assignedMembers.map((member) => (
-                        <span
-                          key={member._id}
-                          className="block text-base sm:text-lg"
-                        >
+                        <li key={member._id} className="text-base sm:text-lg">
                           {member.name}
-                        </span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Tasks Section */}
-        <div className="mt-8 bg-gray-50 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-blue-600 mb-4">
-            Danh Sách Công Việc
-          </h3>
-          {project.tasks?.length > 0 ? (
-            <div className="space-y-4">
-              {project.tasks.map((task) => (
-                <div
-                  key={task._id}
-                  className="border border-gray-200 rounded-md p-4 bg-white hover:shadow-md transition-shadow duration-200"
-                >
-                  <h4 className="font-medium text-gray-800 text-base sm:text-lg">
-                    {task.taskName}
-                  </h4>
-                  <p className="text-sm sm:text-base text-gray-600 mt-1">
-                    <span className="font-medium">Trạng thái:</span>{" "}
-                    {task.status}
-                  </p>
-                  <p className="text-sm sm:text-base text-gray-600 mt-1">
-                    <span className="font-medium">Người thực hiện:</span>{" "}
-                    {task.assignee?.name || "Chưa phân công"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-base sm:text-lg text-gray-500 italic">
-              Chưa có công việc nào được thêm.
-            </p>
           )}
         </div>
       </div>

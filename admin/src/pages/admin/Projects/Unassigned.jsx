@@ -13,9 +13,9 @@ const Unassigned = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [assignedTeam, setAssignedTeam] = useState("");
   const [deadline, setDeadline] = useState("");
-  // Pagination states
+  const [assignmentError, setAssignmentError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit] = useState(3); // Default limit from API
+  const [limit] = useState(3);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProjects, setTotalProjects] = useState(0);
   const navigate = useNavigate();
@@ -84,12 +84,14 @@ const Unassigned = () => {
     setSelectedProject(id);
     setActionType("delete");
     setShowModal(true);
+    setAssignmentError("");
   };
 
   const handleAssign = (id) => {
     setSelectedProject(id);
     setActionType("assign");
     setShowModal(true);
+    setAssignmentError("");
   };
 
   const confirmAction = async () => {
@@ -106,7 +108,6 @@ const Unassigned = () => {
           }
         );
         setProjects(projects.filter((p) => p.id !== selectedProject));
-        // Adjust pagination if necessary
         if (projects.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1);
         } else {
@@ -115,28 +116,47 @@ const Unassigned = () => {
         }
       } else if (actionType === "assign") {
         if (!assignedTeam || !deadline) {
-          alert("Vui lòng chọn team và deadline.");
+          setAssignmentError("Vui lòng chọn team và deadline.");
           return;
         }
-        await axios.put(
-          `https://apitaskmanager.pdteam.net/api/company/assignProject/${selectedProject}`,
-          { assignedTeam, deadline },
+
+        // Format deadline to ISO string with timezone
+        const formattedDeadline = new Date(deadline).toISOString();
+
+        const response = await axios.put(
+          `http://localhost:8001/api/company/assignProject/${selectedProject}`,
+          { assignedTeam, deadline: formattedDeadline },
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           }
         );
+
+        // Update project list to reflect the assigned project
+        setProjects(projects.filter((p) => p.id !== selectedProject));
+        if (projects.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        } else {
+          setTotalProjects(totalProjects - 1);
+          setTotalPages(Math.ceil((totalProjects - 1) / limit));
+        }
         navigate("/project-assigned");
       }
 
       setShowModal(false);
       setAssignedTeam("");
       setDeadline("");
+      setAssignmentError("");
     } catch (error) {
       console.error("Lỗi khi thực hiện hành động:", error);
-      setError("Không thể thực hiện hành động.");
-      setShowModal(false);
+      if (error.response) {
+        setAssignmentError(
+          error.response.data.message || "Không thể thực hiện hành động."
+        );
+      } else {
+        setAssignmentError("Lỗi kết nối server.");
+      }
     }
   };
 
@@ -144,6 +164,7 @@ const Unassigned = () => {
     setShowModal(false);
     setAssignedTeam("");
     setDeadline("");
+    setAssignmentError("");
   };
 
   const handleViewProjectDetail = (id) => {
@@ -160,7 +181,9 @@ const Unassigned = () => {
   return (
     <div className="w-full mx-auto bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold">Quản Lý Dự Án</h2>
+        <h2 className="text-2xl md:text-3xl text-blue-600 font-bold">
+          Quản Lý Dự Án
+        </h2>
         <button
           onClick={handleAdd}
           className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
@@ -241,7 +264,6 @@ const Unassigned = () => {
             ))}
           </div>
 
-          {/* Pagination Controls */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
             <p>
               Hiển thị {projects.length} / {totalProjects} dự án
@@ -281,9 +303,8 @@ const Unassigned = () => {
         </>
       )}
 
-      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50 p-2">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             {actionType === "delete" ? (
               <>
@@ -311,6 +332,9 @@ const Unassigned = () => {
                 <h3 className="text-lg font-semibold mb-4">
                   Gán dự án cho team
                 </h3>
+                {assignmentError && (
+                  <p className="text-red-500 mb-4">{assignmentError}</p>
+                )}
                 <div className="mb-4">
                   <label
                     htmlFor="teamSelect"

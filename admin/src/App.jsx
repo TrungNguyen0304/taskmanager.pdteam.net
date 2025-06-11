@@ -43,7 +43,6 @@ import Chat from "./pages/admin/Chat/Chat";
 import JoinRequestsPage from "./pages/admin/Chat/JoinRequestsPage";
 import VideoCallPage from "./pages/admin/Chat/VideoCallPage";
 import FeedbackMember from "./pages/member/Task/FeedbackMember";
-import SeeReportAdmin from "./pages/admin/ReportAdmin/SeeReportAdmin";
 import TeamMember from "./pages/member/Team/TeamMember";
 import TeamDetailMember from "./pages/member/Team/TeamDetailMember";
 import ProjectDetailLeader from "./pages/leader/Projects/ProjectDetailLeader";
@@ -53,6 +52,7 @@ import ReportHistory from "./pages/member/Task/ReportHistory";
 import ProjectProgressDetail from "./pages/admin/ProjectProgress/ProjectProgressDetail";
 import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import ProjectReport from "./pages/admin/ProjectProgress/ProjectReport";
+import WriteReview from "./pages/admin/ProjectProgress/WriteReview";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -91,12 +91,8 @@ const CompanyLayout = () => {
               path="/projectprogress-detail/:id"
               element={<ProjectProgressDetail />}
             />
-
+            <Route path="/project/review/:id" element={<WriteReview />} />
             <Route path="/project-report/:id" element={<ProjectReport />} />
-
-            {/* <Route path="/project/:projectId" element={<ProjectProgressDetail />} /> */}
-
-            <Route path="/seereport-admin" element={<SeeReportAdmin />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/chat/requests" element={<JoinRequestsPage />} />
             <Route path="/chat/video-call" element={<VideoCallPage />} />
