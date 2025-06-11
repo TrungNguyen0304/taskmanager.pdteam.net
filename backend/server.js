@@ -16,7 +16,7 @@ const memberRoute = require("./route/memberRoute.js");
 const leaderRoute = require("./route/leaderRoute.js");
 const notificationRoute = require("./route/notificationRoute.js");
 const groupRoute = require("./route/groupRoute.js");
-
+const commentRoute = require("./route/commentRoute.js")
 
 dotenv.config();
 const app = express();
@@ -65,6 +65,7 @@ app.use("/api/member", memberRoute);
 app.use("/api/leader", leaderRoute);
 app.use("/api/notifications", notificationRoute);
 app.use("/api/group", groupRoute);
+app.use("/api/comment", commentRoute);
 
 // SOCKET setup
 setupSocket(io);

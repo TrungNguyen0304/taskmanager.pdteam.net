@@ -17,11 +17,6 @@ const FeedbackSchema = new Schema({
         ref: 'Report',
         required: true
     },
-    report: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Report',
-        required: true
-    },
     from: {
         type: String,
         enum: ['Company', 'Leader'],

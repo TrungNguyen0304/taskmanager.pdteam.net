@@ -156,7 +156,6 @@ const viewAssignedProject = async (req, res) => {
   }
 };
 
-
 const viewProject = async (req, res) => {
   try {
     const { id } = req.params;
@@ -399,7 +398,7 @@ const createTask = async (req, res) => {
 const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, status, priority } = req.body;
+    const { name, description, status, priority, deadline } = req.body;
     const userId = req.user._id;
 
     // 1. Tìm task
@@ -434,6 +433,15 @@ const updateTask = async (req, res) => {
     if (status !== undefined && allowedStatuses.includes(status)) task.status = status;
     if (priority !== undefined && allowedPriorities.includes(priority)) task.priority = priority;
 
+    // ✅ Cập nhật deadline nếu hợp lệ
+    if (deadline !== undefined) {
+      const newDeadline = new Date(deadline);
+      if (isNaN(newDeadline.getTime())) {
+        return res.status(400).json({ message: "Deadline không hợp lệ." });
+      }
+      task.deadline = newDeadline;
+    }
+
     await task.save();
 
     res.status(200).json({
@@ -444,13 +452,15 @@ const updateTask = async (req, res) => {
         description: task.description,
         status: task.status,
         project: task.project,
-        priority: task.priority
+        priority: task.priority,
+        deadline: task.deadline
       }
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
+
 
 const deleteTask = async (req, res) => {
   try {
@@ -1266,216 +1276,6 @@ const showallMember = async (req, res) => {
   }
 };
 
-// thong ke 
-// const getStatistics = async (req, res) => {
-//   try {
-//     const userId = req.user._id;
-
-//     // 1. Tìm tất cả team mà user là leader
-//     const teams = await Team.find({ assignedLeader: userId }).select('_id name');
-//     if (!teams || teams.length === 0) {
-//       return res.status(404).json({ message: "Bạn không quản lý team nào." });
-//     }
-
-//     const teamIds = teams.map(team => team._id);
-
-//     // 2. Tìm tất cả project thuộc các team này
-//     const projects = await Project.find({ assignedTeam: { $in: teamIds } }).select('_id');
-//     const projectIds = projects.map(project => project._id);
-
-//     if (projectIds.length === 0) {
-//       return res.status(200).json({
-//         message: "Không có project nào thuộc team của bạn.",
-//         statistics: {
-//           taskStatus: {},
-//           projectProgress: [],
-//           memberReports: [],
-//           averageFeedbackScore: 0,
-//           totalFeedbacks: 0,
-//           reports: { total: 0, evaluated: 0, unevaluated: 0 },
-//           teamMembers: []
-//         }
-//       });
-//     }
-
-//     // 3. Aggregation pipelines cho thống kê
-//     // Thống kê số lượng task theo trạng thái
-//     const taskStatusStats = await Task.aggregate([
-//       { $match: { projectId: { $in: projectIds } } },
-//       {
-//         $group: {
-//           _id: '$status',
-//           count: { $sum: 1 }
-//         }
-//       },
-//       {
-//         $project: {
-//           status: '$_id',
-//           count: 1,
-//           _id: 0
-//         }
-//       }
-//     ]);
-
-//     // Thống kê tiến độ trung bình của các project
-//     const projectProgressStats = await Task.aggregate([
-//       { $match: { projectId: { $in: projectIds } } },
-//       {
-//         $group: {
-//           _id: '$projectId',
-//           averageProgress: { $avg: '$progress' },
-//           totalTasks: { $sum: 1 }
-//         }
-//       },
-//       {
-//         $lookup: {
-//           from: 'projects',
-//           localField: '_id',
-//           foreignField: '_id',
-//           as: 'project'
-//         }
-//       },
-//       { $unwind: '$project' },
-//       {
-//         $project: {
-//           projectId: '$_id',
-//           projectName: '$project.name',
-//           averageProgress: { $round: ['$averageProgress', 2] },
-//           totalTasks: 1,
-//           _id: 0
-//         }
-//       }
-//     ]);
-
-//     // Thống kê số lượng báo cáo của từng thành viên
-//     const memberReportsStats = await Report.aggregate([
-//       { $match: { team: { $in: teamIds } } },
-//       { $unwind: '$assignedMembers' },
-//       {
-//         $group: {
-//           _id: '$assignedMembers',
-//           reportCount: { $sum: 1 }
-//         }
-//       },
-//       {
-//         $lookup: {
-//           from: 'users',
-//           localField: '_id',
-//           foreignField: '_id',
-//           as: 'member'
-//         }
-//       },
-//       { $unwind: '$member' },
-//       {
-//         $project: {
-//           memberId: '$_id',
-//           memberName: '$member.name',
-//           reportCount: 1,
-//           _id: 0
-//         }
-//       }
-//     ]);
-
-//     // Thống kê báo cáo đã và chưa được đánh giá
-//     const reportStats = await Report.aggregate([
-//       { $match: { team: { $in: teamIds } } },
-//       {
-//         $facet: {
-//           evaluated: [
-//             { $match: { feedback: { $ne: null } } },
-//             { $count: 'count' }
-//           ],
-//           unevaluated: [
-//             { $match: { feedback: null } },
-//             { $count: 'count' }
-//           ],
-//           total: [
-//             { $count: 'count' }
-//           ]
-//         }
-//       },
-//       {
-//         $project: {
-//           total: { $arrayElemAt: ['$total.count', 0] },
-//           evaluated: { $arrayElemAt: ['$evaluated.count', 0] },
-//           unevaluated: { $arrayElemAt: ['$unevaluated.count', 0] }
-//         }
-//       }
-//     ]);
-
-//     // Thống kê feedback
-//     const feedbackStats = await Report.aggregate([
-//       { $match: { team: { $in: teamIds }, feedback: { $ne: null } } },
-//       {
-//         $lookup: {
-//           from: 'feedbacks',
-//           localField: 'feedback',
-//           foreignField: '_id',
-//           as: 'feedback'
-//         }
-//       },
-//       { $unwind: '$feedback' },
-//       {
-//         $group: {
-//           _id: null,
-//           averageScore: { $avg: '$feedback.score' },
-//           totalFeedbacks: { $sum: 1 }
-//         }
-//       },
-//       {
-//         $project: {
-//           averageScore: { $round: ['$averageScore', 2] },
-//           totalFeedbacks: 1,
-//           _id: 0
-//         }
-//       }
-//     ]);
-
-//     // Thống kê số lượng thành viên trong mỗi team
-//     const teamMembersStats = await Team.aggregate([
-//       { $match: { _id: { $in: teamIds } } },
-//       {
-//         $project: {
-//           teamId: '$_id',
-//           teamName: '$name',
-//           memberCount: { $size: '$assignedMembers' },
-//           _id: 0
-//         }
-//       }
-//     ]);
-
-//     // Định dạng dữ liệu thống kê taskStatus
-//     const taskStatusFormatted = taskStatusStats.reduce((acc, stat) => {
-//       acc[stat.status] = stat.count;
-//       return acc;
-//     }, { pending: 0, in_progress: 0, completed: 0, cancelled: 0 });
-
-//     // 4. Trả về kết quả thống kê
-//     res.status(200).json({
-//       message: "Thống kê thành công.",
-//       statistics: {
-//         taskStatus: taskStatusFormatted,
-//         projectProgress: projectProgressStats,
-//         memberReports: memberReportsStats,
-//         reports: {
-//           total: reportStats[0]?.total || 0,
-//           evaluated: reportStats[0]?.evaluated || 0,
-//           unevaluated: reportStats[0]?.unevaluated || 0
-//         },
-//         feedbacks: {
-//           total: feedbackStats[0]?.totalFeedbacks || 0,
-//           averageScore: feedbackStats[0]?.averageScore || 0
-//         },
-//         teamMembers: teamMembersStats
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error("Lỗi trong getStatistics:", error);
-//     res.status(500).json({ message: "Lỗi server.", error: error.message });
-//   }
-// };
-
 const getStatistics = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -1863,6 +1663,74 @@ const getStatistics = async (req, res) => {
   } catch (error) {
     console.error("Lỗi trong getStatistics:", error);
     res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
+// binh luan 
+const CommentReport = async (req, res) => {
+  try {
+    const { id } = req.params; // id của report
+    const { comment } = req.body;
+    const userId = req.user._id; // leader hiện tại
+
+    // Kiểm tra score hợp lệ
+    if (typeof score !== 'number' || score < 0 || score > 10) {
+      return res.status(400).json({ message: 'Điểm đánh giá phải từ 0 đến 10.' });
+    }
+
+    // Lấy report kèm thông tin team
+    const report = await Report.findById(id).populate({
+      path: 'team',
+      populate: {
+        path: 'assignedLeader',
+        model: 'User'
+      }
+    });
+
+    if (!report) {
+      return res.status(404).json({ message: 'Báo cáo không tồn tại.' });
+    }
+
+    // Kiểm tra leader hiện tại có phải leader của team không
+    const teamLeader = report.team?.assignedLeader?._id?.toString();
+    if (teamLeader !== userId.toString()) {
+      return res.status(403).json({ message: 'Không có quyền đánh giá báo cáo này.' });
+    }
+
+    // Kiểm tra đã feedback chưa
+    const existingFeedback = await Feedback.findOne({ report: id });
+    if (existingFeedback) {
+      return res.status(400).json({ message: 'Báo cáo này đã được đánh giá.' });
+    }
+
+    // Tạo feedback
+    const feedback = new Feedback({
+      report: id,
+      comment,
+      score,
+      from: 'Leader',
+      to: 'Member'
+    });
+
+    await feedback.save();
+
+    await notifyEvaluateLeader({
+      userId: report.assignedMembers.toString(),
+      feedback,
+      report
+    });
+    // Cập nhật lại report
+    report.feedback = feedback._id;
+    await report.save();
+
+    res.status(201).json({
+      message: 'Đánh giá báo cáo thành công.',
+      feedback
+    });
+
+  } catch (error) {
+    console.error("evaluateMemberReport error:", error);
+    res.status(500).json({ message: 'Lỗi server.', error: error.message });
   }
 };
 

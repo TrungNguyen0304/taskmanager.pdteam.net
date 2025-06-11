@@ -22,6 +22,7 @@ const {
   viewProject,
   getStatistics,
   showallMember,
+  CommentReport
 } = require("../controller/leader.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
