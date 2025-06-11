@@ -234,7 +234,7 @@ const ChatMainLeader = ({
                 onClick={handleLeaveGroup}
                 className="mt-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
-                Rời nhóm
+                Giải tán nhóm
               </button>
             </div>
           </div>

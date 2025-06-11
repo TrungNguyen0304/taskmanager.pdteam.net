@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { FileText, Download } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { FileText, Download, ArrowLeft } from "lucide-react";
 import axios from "axios";
 
 const ReportHistory = () => {
+  const navigate = useNavigate();
   const { id } = useParams();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,12 +66,19 @@ const ReportHistory = () => {
   return (
     <div className="p-0 md:p-4">
       <div className="w-full mx-auto">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-blue-600 hover:underline font-medium text-base sm:text-lg transition-colors mb-6"
+        >
+          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
+          Quay lại
+        </button>
         {/* Header Section */}
-        <div className="mb-6 bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-gray-200">
+        <div className="mb-6 bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
           <div className="flex items-center gap-4">
             <FileText className="w-10 h-10 text-blue-500" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
                 Lịch Sử Báo Cáo
               </h1>
               <p className="text-sm sm:text-base text-gray-500 mt-1">

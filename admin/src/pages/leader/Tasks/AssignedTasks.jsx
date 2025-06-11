@@ -47,7 +47,11 @@ const AssignedTasks = () => {
 
         // Extract unique project names
         const uniqueProjects = [
-          ...new Set(formatted.map((task) => task.projectName).filter((name) => name !== "N/A")),
+          ...new Set(
+            formatted
+              .map((task) => task.projectName)
+              .filter((name) => name !== "N/A")
+          ),
         ];
         setProjectNames(uniqueProjects);
       } catch (error) {
@@ -124,12 +128,15 @@ const AssignedTasks = () => {
     <div className="p-0 md:p-4 w-full mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+        <h2 className="text-2xl sm:text-3xl font-bold text-blue-600">
           Nhiệm Vụ Đang Làm
         </h2>
         {/* Project Filter Dropdown */}
         <div className="flex items-center gap-3">
-          <label htmlFor="projectFilter" className="text-lg font-medium text-gray-700">
+          <label
+            htmlFor="projectFilter"
+            className="text-lg font-medium text-gray-700"
+          >
             Lọc theo dự án:
           </label>
           <select
