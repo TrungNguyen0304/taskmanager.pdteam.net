@@ -10,9 +10,9 @@ const {
 const authenticateJWT = require('../middleware/auth.js');
 
 
-router.post('/reports/:id/comment', authenticateJWT, commentOnReport);
+router.post('/reports/:id/appcomment', authenticateJWT, commentOnReport);
 
-router.get('/reports/:id/comment', authenticateJWT, getCommentsByReportId);
+router.get('/reports/:id/getcomment', authenticateJWT, getCommentsByReportId);
 
 router.delete('/reports/:id/delete', authenticateJWT, deleteComment);
 

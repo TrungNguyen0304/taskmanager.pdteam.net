@@ -47,7 +47,6 @@ const commentOnReport = async (req, res) => {
     }
 };
 
-
 const getCommentsByReportId = async (req, res) => {
     try {
         const { id } = req.params;
@@ -69,7 +68,6 @@ const getCommentsByReportId = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
-
 
 const deleteComment = async (req, res) => {
     try {
@@ -99,31 +97,40 @@ const deleteComment = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+
 const updateComment = async (req, res) => {
     try {
         const { id } = req.params; // ID của comment
         const { comment: newComment } = req.body;
-        const { _id: userId } = req.user;
+        const userId = req.user._id;
 
         const comment = await Comment.findById(id);
-        if (!comment) return res.status(404).json({ message: 'Bình luận không tồn tại.' });
-
-        if (comment.creator.toString() !== userId.toString()) {
-            return res.status(403).json({ message: 'Không có quyền chỉnh sửa bình luận này.' });
+        if (!comment) {
+            return res.status(404).json({ message: 'Bình luận không tồn tại.' });
         }
 
-        comment.comment = newComment;
-        comment.updatedAt = new Date();
+        // Kiểm tra quyền sửa bình luận
+        if (comment.creator.toString() !== userId.toString()) {
+            return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa bình luận này.' });
+        }
 
+        // Cập nhật nội dung
+        comment.comment = newComment;
         await comment.save();
+
+        // Populate tên người bình luận
         await comment.populate({ path: 'creator', select: 'name' });
 
-        res.status(200).json({ message: 'Cập nhật bình luận thành công.', comment });
+        res.status(200).json({
+            message: 'Cập nhật bình luận thành công.',
+            comment
+        });
     } catch (error) {
         console.error('updateComment error:', error);
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+
 module.exports = {
     commentOnReport,
     getCommentsByReportId,
