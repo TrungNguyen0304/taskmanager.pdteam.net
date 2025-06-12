@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, Flag, Users, MessageCircle } from "lucide-react";
+import { FileText, Clock, Flag, Users, MessageCircle, X } from "lucide-react";
 import { GrUpdate } from "react-icons/gr";
 import { FaUser } from "react-icons/fa";
 import axios from "axios";
@@ -198,7 +198,9 @@ const TaskMember = () => {
       case "Đã hủy":
         return "bg-red-100 text-red-600 border-red-200";
       case "Đã thu hồi":
-        return "bg-yellow-100 text-yellow-600 border-yellow-200";
+        return "bg-orange-100 text-orange-600 border-orange-200";
+      case "Tạm ngưng":
+        return "bg-yellow-100 text-red-600 border-yellow-200";
       default:
         return "bg-gray-100 text-gray-600 border-gray-200";
     }
@@ -251,7 +253,9 @@ const TaskMember = () => {
             {paginatedTasks.map((task, index) => (
               <div
                 key={task.id}
-                className="bg-white rounded-2xl shadow-sm p-6 sm:p-8"
+                className={`rounded-2xl shadow-sm p-6 sm:p-8 ${
+                  task.status === "Tạm ngưng" ? "bg-yellow-50" : "bg-white"
+                }`}
               >
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
