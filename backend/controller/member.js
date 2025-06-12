@@ -45,7 +45,7 @@ const getMyTasks = async (req, res) => {
     const tasks = await Task.find({ assignedMember: userId })
       .populate({
         path: 'projectId',
-        select: 'name assignedTeam',
+        select: 'name status assignedTeam ',
         populate: {
           path: 'assignedTeam',
           select: 'name assignedLeader',
@@ -85,6 +85,7 @@ const getMyTasks = async (req, res) => {
         project: {
           id: task.projectId._id,
           name: task.projectId.name,
+          status: task.projectId.status,
           team: {
             id: task.projectId.assignedTeam._id,
             name: task.projectId.assignedTeam.name,
