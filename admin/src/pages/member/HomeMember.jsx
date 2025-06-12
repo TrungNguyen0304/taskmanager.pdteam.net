@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { BarChart, PieChart, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Pie, Bar } from "recharts";
-import { CheckCircle, AlertCircle, TrendingUp, FileText, Star } from "lucide-react";
+import {
+  BarChart,
+  PieChart,
+  Cell,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  Pie,
+  Bar,
+} from "recharts";
+import {
+  CheckCircle,
+  AlertCircle,
+  TrendingUp,
+  FileText,
+  Star,
+} from "lucide-react";
 import axios from "axios";
 
 const HomeMember = () => {
@@ -15,11 +33,14 @@ const HomeMember = () => {
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8001/api/member/getMemberStatistics", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await axios.get(
+        "http://localhost:8001/api/member/getMemberStatistics",
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
       setStatistics(response.data.statistics);
     } catch (err) {
       setError("Không thể tải dữ liệu thống kê");
@@ -67,26 +88,46 @@ const HomeMember = () => {
   }
 
   // Prepare chart data from API response
-  const taskStatusData = statistics?.chartData?.taskStatus?.data?.labels?.map((label, index) => ({
-    name: label === "Pending" ? "Chờ xử lý" : 
-          label === "In Progress" ? "Đang thực hiện" : 
-          label === "Completed" ? "Hoàn thành" : 
-          label === "Cancelled" ? "Đã hủy" : label,
-    value: statistics?.chartData?.taskStatus?.data?.datasets[0]?.data[index] || 0,
-    color: COLORS[index % COLORS.length],
-  })) || [];
+  const taskStatusData =
+    statistics?.chartData?.taskStatus?.data?.labels?.map((label, index) => ({
+      name:
+        label === "Pending"
+          ? "Chờ xử lý"
+          : label === "In Progress"
+          ? "Đang thực hiện"
+          : label === "Completed"
+          ? "Hoàn thành"
+          : label === "Cancelled"
+          ? "Đã hủy"
+          : label,
+      value:
+        statistics?.chartData?.taskStatus?.data?.datasets[0]?.data[index] || 0,
+      color: COLORS[index % COLORS.length],
+    })) || [];
 
-  const reportStatusData = statistics?.chartData?.reportStats?.data?.labels?.map((label, index) => ({
-    name: label === "Evaluated" ? "Đã đánh giá" : 
-          label === "Unevaluated" ? "Chưa đánh giá" : label,
-    value: statistics?.chartData?.reportStats?.data?.datasets[0]?.data[index] || 0,
-    color: COLORS[index % COLORS.length],
-  })) || [];
+  const reportStatusData =
+    statistics?.chartData?.reportStats?.data?.labels?.map((label, index) => ({
+      name:
+        label === "Evaluated"
+          ? "Đã đánh giá"
+          : label === "Unevaluated"
+          ? "Chưa đánh giá"
+          : label,
+      value:
+        statistics?.chartData?.reportStats?.data?.datasets[0]?.data[index] || 0,
+      color: COLORS[index % COLORS.length],
+    })) || [];
 
-  const projectTaskData = statistics?.chartData?.projectTaskCount?.data?.labels?.map((label, index) => ({
-    name: label,
-    tasks: statistics?.chartData?.projectTaskCount?.data?.datasets[0]?.data[index] || 0,
-  })) || [];
+  const projectTaskData =
+    statistics?.chartData?.projectTaskCount?.data?.labels?.map(
+      (label, index) => ({
+        name: label,
+        tasks:
+          statistics?.chartData?.projectTaskCount?.data?.datasets[0]?.data[
+            index
+          ] || 0,
+      })
+    ) || [];
 
   const totalTasks = Object.values(statistics?.taskStatus || {}).reduce(
     (sum, count) => sum + count,
@@ -111,7 +152,9 @@ const HomeMember = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 mb-1">Tổng Số Nhiệm Vụ</p>
-              <p className="text-2xl font-semibold text-gray-900">{totalTasks}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {totalTasks}
+              </p>
             </div>
             <CheckCircle className="text-blue-500" size={28} />
           </div>
@@ -233,57 +276,83 @@ const HomeMember = () => {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-base font-medium text-gray-900 mb-3">Tiến Độ Nhiệm Vụ</h4>
+            <h4 className="text-base font-medium text-gray-900 mb-3">
+              Tiến Độ Nhiệm Vụ
+            </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Hoàn thành:</span>
-                <span className="font-medium">{statistics?.taskStatus?.completed || 0}</span>
+                <span className="font-medium">
+                  {statistics?.taskStatus?.completed || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Đang thực hiện:</span>
-                <span className="font-medium">{statistics?.taskStatus?.in_progress || 0}</span>
+                <span className="font-medium">
+                  {statistics?.taskStatus?.in_progress || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Chờ xử lý:</span>
-                <span className="font-medium">{statistics?.taskStatus?.pending || 0}</span>
+                <span className="font-medium">
+                  {statistics?.taskStatus?.pending || 0}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-base font-medium text-gray-900 mb-3">Trạng Thái Báo Cáo</h4>
+            <h4 className="text-base font-medium text-gray-900 mb-3">
+              Trạng Thái Báo Cáo
+            </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Tổng báo cáo:</span>
-                <span className="font-medium">{statistics?.reportStats?.total || 0}</span>
+                <span className="font-medium">
+                  {statistics?.reportStats?.total || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Đã đánh giá:</span>
-                <span className="font-medium">{statistics?.reportStats?.evaluated || 0}</span>
+                <span className="font-medium">
+                  {statistics?.reportStats?.evaluated || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Chưa đánh giá:</span>
-                <span className="font-medium">{statistics?.reportStats?.unevaluated || 0}</span>
+                <span className="font-medium">
+                  {statistics?.reportStats?.unevaluated || 0}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-base font-medium text-gray-900 mb-3">Hiệu Suất</h4>
+            <h4 className="text-base font-medium text-gray-900 mb-3">
+              Hiệu Suất
+            </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Phản hồi nhận được:</span>
-                <span className="font-medium">{statistics?.feedbackStats?.total || 0}</span>
+                <span className="font-medium">
+                  {statistics?.feedbackStats?.total || 0}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Điểm trung bình:</span>
-                <span className="font-medium">{statistics?.feedbackStats?.averageScore || 0}/5</span>
+                <span className="font-medium">
+                  {statistics?.feedbackStats?.averageScore || 0}/5
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Tỷ lệ hoàn thành:</span>
                 <span className="font-medium">
                   {totalTasks > 0
-                    ? Math.round(((statistics?.taskStatus?.completed || 0) / totalTasks) * 100)
+                    ? Math.round(
+                        ((statistics?.taskStatus?.completed || 0) /
+                          totalTasks) *
+                          100
+                      )
                     : 0}
                   %
                 </span>
