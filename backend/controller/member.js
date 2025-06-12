@@ -41,28 +41,7 @@ const getMyTasks = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // 1. Lấy tất cả project mà user đang có task trong đó
-    const userTasks = await Task.find({ assignedMember: userId }).select('projectId').lean();
-    const projectIds = [...new Set(userTasks.map(task => task.projectId?.toString()))]; // unique IDs
-
-    const projects = await Project.find({ _id: { $in: projectIds } }).select('status');
-
-    // 2. Cập nhật trạng thái các task dựa theo trạng thái project
-    for (const project of projects) {
-      if (project.status === "cancelled" || project.status === "paused") {
-        await Task.updateMany(
-          { projectId: project._id },
-          { status: project.status }
-        );
-      } else if (project.status === "in_progress") {
-        await Task.updateMany(
-          { projectId: project._id, status: "paused" },
-          { status: "in_progress" }
-        );
-      }
-    }
-
-    // 3. Lấy lại danh sách task của user (sau khi đã update)
+    // Tìm tất cả task của user và populate project + team name
     const tasks = await Task.find({ assignedMember: userId })
       .populate({
         path: 'projectId',
@@ -72,7 +51,7 @@ const getMyTasks = async (req, res) => {
           select: 'name assignedLeader',
           populate: {
             path: 'assignedLeader',
-            select: 'name'
+            select: 'name' // Lấy tên của leader
           }
         }
       })
@@ -82,6 +61,7 @@ const getMyTasks = async (req, res) => {
       return res.status(404).json({ message: "Bạn chưa được giao task nào." });
     }
 
+    // Lọc project còn hợp lệ (project vẫn có assignedTeam)
     const filteredTasks = tasks.filter(
       task => task.projectId && task.projectId.assignedTeam
     );
@@ -122,6 +102,7 @@ const getMyTasks = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+
 // const createReport = async (req, res) => {
 //   try {
 //     const { taskId, content, taskProgress, difficulties, feedback } = req.body;
@@ -406,6 +387,7 @@ const createReport = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+
 
 // xem chi tiêt task
 const viewTask = async (req, res) => {

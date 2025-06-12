@@ -243,7 +243,7 @@ const viewTask = async (req, res) => {
     // Fetch task with selected fields and populate related data
     const task = await Task.findById(id)
       .select('_id name description projectId deadline status progress priority assignedAt')
-      .populate('projectId', '_id name status') // Thêm project status
+      .populate('projectId', '_id name')
       .populate('assignedMember', '_id name')
       .lean();
 
@@ -251,25 +251,21 @@ const viewTask = async (req, res) => {
       return res.status(404).json({ message: 'Task không tồn tại' });
     }
 
+    // Update status based on progress
     const progress = parseFloat(task.progress);
-    const projectStatus = task.projectId.status;
-
-    // Cập nhật status task theo project nếu cần
-    let newStatus = task.status;
-
-    if (projectStatus === "cancelled" || projectStatus === "paused") {
-      newStatus = projectStatus;
-    } else if (!isNaN(progress)) {
-      newStatus = progress === 100 ? "completed" : "in_progress";
+    if (!isNaN(progress)) {
+      const newStatus = progress === 100 ? 'completed' : 'in_progress';
+      if (task.status !== newStatus) {
+        await Task.updateOne(
+          { _id: id },
+          { $set: { status: newStatus } }
+        );
+        task.status = newStatus; // Update the lean object for response
+      }
     }
-
-    if (task.status !== newStatus) {
-      await Task.updateOne({ _id: id }, { $set: { status: newStatus } });
-      task.status = newStatus;
-    }
-
+    
     res.status(200).json({
-      message: `Thông tin task ${task.name}`,
+      message: "Thông tin task ${task.name}",
       task,
     });
   } catch (error) {
@@ -612,7 +608,7 @@ const paginationTask = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
-``
+
 // gan task cho member
 const assignTask = async (req, res) => {
   try {
@@ -709,20 +705,6 @@ const unassignedTask = async (req, res) => {
       return res.status(200).json({ message: "Không có project nào thuộc team của bạn.", tasks: [] });
     }
 
-    for (const project of projects) {
-      if (project.status === "cancelled" || project.status === "paused") {
-        await Task.updateMany(
-          { projectId: project._id },
-          { status: project.status }
-        );
-      } else if (project.status === "in_progress") {
-        // Chỉ cập nhật những task đang bị paused → in_progress trở lại
-        await Task.updateMany(
-          { projectId: project._id, status: "paused" },
-          { status: "in_progress" }
-        );
-      }
-    }
     // 3. Lấy các task chưa được gán (assignedMember = null)
     const sortOption = {};
     sortOption[sortBy] = order === "asc" ? 1 : -1;
@@ -731,7 +713,7 @@ const unassignedTask = async (req, res) => {
       projectId: { $in: projectIds },
       assignedMember: null
     })
-      .populate({ path: "projectId", select: "name" })
+      .populate({ path: "projectId", select: "name status" })
       .sort(sortOption);
 
     res.status(200).json({
@@ -814,20 +796,6 @@ const getAssignedTask = async (req, res) => {
       return res.status(200).json({ message: "Không có project nào thuộc team của bạn.", tasks: [] });
     }
 
-    for (const project of projects) {
-      if (project.status === "cancelled" || project.status === "paused") {
-        await Task.updateMany(
-          { projectId: project._id },
-          { status: project.status }
-        );
-      } else if (project.status === "in_progress") {
-        // Chỉ cập nhật những task đang bị paused → in_progress trở lại
-        await Task.updateMany(
-          { projectId: project._id, status: "paused" },
-          { status: "in_progress" }
-        );
-      }
-    }
     // 3. Lấy các task đã được gán (assignedMember ≠ null)
     const sortOption = {};
     sortOption[sortBy] = order === "asc" ? 1 : -1;
@@ -837,7 +805,7 @@ const getAssignedTask = async (req, res) => {
       assignedMember: { $ne: null }
     })
       .populate('assignedMember', 'name')
-      .populate('projectId', 'name')
+      .populate('projectId', 'name status')
       .sort(sortOption);
 
     res.status(200).json({
@@ -1721,73 +1689,6 @@ const getStatistics = async (req, res) => {
   }
 };
 
-// binh luan 
-const CommentReport = async (req, res) => {
-  try {
-    const { id } = req.params; // id của report
-    const { comment } = req.body;
-    const userId = req.user._id; // leader hiện tại
-
-    // Kiểm tra score hợp lệ
-    if (typeof score !== 'number' || score < 0 || score > 10) {
-      return res.status(400).json({ message: 'Điểm đánh giá phải từ 0 đến 10.' });
-    }
-
-    // Lấy report kèm thông tin team
-    const report = await Report.findById(id).populate({
-      path: 'team',
-      populate: {
-        path: 'assignedLeader',
-        model: 'User'
-      }
-    });
-
-    if (!report) {
-      return res.status(404).json({ message: 'Báo cáo không tồn tại.' });
-    }
-
-    // Kiểm tra leader hiện tại có phải leader của team không
-    const teamLeader = report.team?.assignedLeader?._id?.toString();
-    if (teamLeader !== userId.toString()) {
-      return res.status(403).json({ message: 'Không có quyền đánh giá báo cáo này.' });
-    }
-
-    // Kiểm tra đã feedback chưa
-    const existingFeedback = await Feedback.findOne({ report: id });
-    if (existingFeedback) {
-      return res.status(400).json({ message: 'Báo cáo này đã được đánh giá.' });
-    }
-
-    // Tạo feedback
-    const feedback = new Feedback({
-      report: id,
-      comment,
-      score,
-      from: 'Leader',
-      to: 'Member'
-    });
-
-    await feedback.save();
-
-    await notifyEvaluateLeader({
-      userId: report.assignedMembers.toString(),
-      feedback,
-      report
-    });
-    // Cập nhật lại report
-    report.feedback = feedback._id;
-    await report.save();
-
-    res.status(201).json({
-      message: 'Đánh giá báo cáo thành công.',
-      feedback
-    });
-
-  } catch (error) {
-    console.error("evaluateMemberReport error:", error);
-    res.status(500).json({ message: 'Lỗi server.', error: error.message });
-  }
-};
 
 module.exports = {
   getMyTeam,
