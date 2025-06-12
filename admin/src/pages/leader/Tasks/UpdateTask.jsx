@@ -17,18 +17,17 @@ const UpdateTask = () => {
   const [loading, setLoading] = useState(true);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // ✅ Fetch task data on mount
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const response = await axios.get(
-          `https://apitaskmanager.pdteam.net/api/leader/getTaskById/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-        const task = response.data.task;
+        const res = await axios.get(`http://localhost:8001/api/leader/viewTask/${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        const task = res.data.task;
         setFormData({
           name: task.name || "",
           description: task.description || "",
@@ -36,14 +35,16 @@ const UpdateTask = () => {
           priority: task.priority || 1,
         });
       } catch (error) {
-        console.error("Lỗi khi tải thông tin nhiệm vụ:", error);
+        console.error("Lỗi khi lấy dữ liệu nhiệm vụ:", error);
+        alert("Không thể tải dữ liệu nhiệm vụ.");
+        navigate(-1);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTask();
-  }, [id]);
+  }, [id, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,7 +72,7 @@ const UpdateTask = () => {
 
     try {
       await axios.put(
-        `https://apitaskmanager.pdteam.net/api/leader/updateTask/${id}`,
+        `http://localhost:8001/api/leader/updateTask/${id}`,
         formData,
         {
           headers: {
@@ -135,9 +136,7 @@ const UpdateTask = () => {
 
         {/* Mô tả */}
         <div>
-          <label className="block mb-2 font-semibold text-gray-700">
-            Mô tả
-          </label>
+          <label className="block mb-2 font-semibold text-gray-700">Mô tả</label>
           <textarea
             name="description"
             value={formData.description}

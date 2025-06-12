@@ -15,6 +15,7 @@ const STATUS_MAP = {
   completed: "Hoàn thành",
   cancelled: "Đã hủy",
   revoked: "Đã thu hồi",
+  paused: "Tạm ngưng",
 };
 
 const PRIORITY_MAP = {
