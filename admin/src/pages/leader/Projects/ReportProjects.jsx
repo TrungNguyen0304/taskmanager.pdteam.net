@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const ReportProjects = () => {
   const { id: projectId } = useParams(); // Get projectId from URL
+  const navigate = useNavigate(); // Hook for navigation
   const [formData, setFormData] = useState({
     content: "",
     projectProgress: "",
@@ -44,7 +45,7 @@ const ReportProjects = () => {
     try {
       const token = localStorage.getItem("token"); // Retrieve JWT token
       const response = await axios.post(
-        `http://localhost:8001/api/leader/createReportCompany/${projectId}`, // Corrected endpoint
+        `http://localhost:8001/api/leader/createReportCompany/${projectId}`,
         data,
         {
           headers: {
@@ -59,6 +60,8 @@ const ReportProjects = () => {
       setFormData({ content: "", projectProgress: "", difficulties: "" });
       setFile(null);
       document.getElementById("fileInput").value = null; // Reset file input
+      // Navigate back to the previous page
+      navigate(-1);
     } catch (err) {
       setError(err.response?.data?.message || "Đã xảy ra lỗi khi gửi báo cáo.");
     } finally {
