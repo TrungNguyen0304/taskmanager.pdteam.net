@@ -1688,6 +1688,84 @@ const getStatistics = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+// show all project đã báo cáo
+const getReportProject = async (req, res) => {
+  try {
+    const { id } = req.params; // taskId
+    const userId = req.user._id;
+
+    // Kiểm tra taskId hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "taskId không hợp lệ." });
+    }
+
+    // Kiểm tra task tồn tại và user có quyền truy cập
+    const task = await Task.findOne({ _id: id, assignedMember: userId });
+    if (!task) {
+      return res.status(404).json({ 
+        message: "Task không tồn tại hoặc bạn không có quyền truy cập." 
+      });
+    }
+
+    // Lấy các báo cáo của task do user tạo
+    const reports = await Report.find({ task: id, assignedMembers: userId })
+      .populate({
+        path: 'task',
+        select: 'name'
+      })
+      .populate({
+        path: 'team',
+        select: 'name'
+      })
+      .populate({
+        path: 'assignedLeader',
+        select: 'name'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Kiểm tra reports có phải là mảng không
+    if (!Array.isArray(reports)) {
+      console.error("Reports is not an array:", reports);
+      return res.status(500).json({ message: "Dữ liệu báo cáo không hợp lệ." });
+    }
+
+    // Định dạng danh sách báo cáo
+    const formattedReports = reports.map(report => ({
+      reportId: report._id,
+      task: {
+        taskId: report.task?._id || null,
+        taskName: report.task?.name || 'Không rõ'
+      },
+      team: {
+        teamId: report.team?._id || null,
+        teamName: report.team?.name || 'Không rõ'
+      },
+      assignedLeader: {
+        leaderId: report.assignedLeader?._id || null,
+        leaderName: report.assignedLeader?.name || 'Không rõ'
+      },
+      content: report.content,
+      taskProgress: report.taskProgress,
+      difficulties: report.difficulties,
+      file: report.file || null,
+      createdAt: report.createdAt
+    }));
+
+    if (formattedReports.length === 0) {
+      return res.status(404).json({ message: "Bạn chưa tạo báo cáo nào cho task này." });
+    }
+
+    res.status(200).json({
+      message: "Lấy danh sách báo cáo cho task thành công.",
+      reports: formattedReports
+    });
+
+  } catch (error) {
+    console.error("getReportTask error:", error);
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
 
 
 module.exports = {
