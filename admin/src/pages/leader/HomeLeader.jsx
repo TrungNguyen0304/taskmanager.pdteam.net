@@ -178,7 +178,7 @@ const HomeLeader = () => {
       </div>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
@@ -218,20 +218,6 @@ const HomeLeader = () => {
               </p>
             </div>
             <FileText className="text-orange-500" size={28} />
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl shadow-sm border-l-4 border-purple-500 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 mb-1">
-                Điểm Phản Hồi Trung Bình
-              </p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {statistics?.feedbacks?.averageScore || 0}/5
-              </p>
-            </div>
-            <Star className="text-purple-500" size={28} />
           </div>
         </div>
       </div>
