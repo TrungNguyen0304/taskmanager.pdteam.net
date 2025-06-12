@@ -1800,7 +1800,6 @@ const cloneProject = async (req, res) => {
   }
 };
 
-
 //
 module.exports = {
   createUser,
