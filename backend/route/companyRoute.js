@@ -288,8 +288,8 @@ router.get(
   authorize("company"),
   getCompanyStatistics
 );
-// ban sao chep
 
+// ban sao chep
 router.post(
   "/cloneProject/:id/clone",
   authenticateJWT,
