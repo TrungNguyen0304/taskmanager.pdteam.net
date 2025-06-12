@@ -91,14 +91,14 @@ const TaskReport = () => {
 
   const filteredReports = selectedDate
     ? reportsData.reports.filter((report) => {
-        const reportDate = new Date(report.createdAt).toLocaleDateString(
-          "vi-VN"
-        );
-        const selectedDateFormatted = new Date(selectedDate).toLocaleDateString(
-          "vi-VN"
-        );
-        return reportDate === selectedDateFormatted;
-      })
+      const reportDate = new Date(report.createdAt).toLocaleDateString(
+        "vi-VN"
+      );
+      const selectedDateFormatted = new Date(selectedDate).toLocaleDateString(
+        "vi-VN"
+      );
+      return reportDate === selectedDateFormatted;
+    })
     : reportsData.reports;
 
   const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
@@ -386,11 +386,10 @@ const TaskReport = () => {
               <button
                 key={i + 1}
                 onClick={() => handlePageChange(i + 1)}
-                className={`px-3 py-1.5 rounded-lg ${
-                  currentPage === i + 1
+                className={`px-3 py-1.5 rounded-lg ${currentPage === i + 1
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 hover:bg-gray-300"
-                } transition`}
+                  } transition`}
               >
                 {i + 1}
               </button>

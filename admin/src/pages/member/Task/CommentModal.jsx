@@ -19,6 +19,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
   const menuRef = useRef(null);
 
   useEffect(() => {
+    // console.log("reportId trong CommentModal:", reportId);
     if (isOpen && reportId) {
       fetchComments();
       setVisibleCommentsCount(5);
@@ -39,6 +40,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
   const fetchComments = async () => {
     setLoading(true);
     setError("");
+  
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Vui lòng đăng nhập lại.");
@@ -66,7 +68,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
       setComments([]);
       setError(
         error.response?.data?.message ||
-          "Không thể tải bình luận. Vui lòng thử lại."
+        "Không thể tải bình luận. Vui lòng thử lại."
       );
     } finally {
       setLoading(false);
@@ -93,7 +95,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Không thể gửi bình luận. Vui lòng thử lại."
+        "Không thể gửi bình luận. Vui lòng thử lại."
       );
     }
   };
@@ -138,7 +140,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Không thể cập nhật bình luận. Vui lòng thử lại."
+        "Không thể cập nhật bình luận. Vui lòng thử lại."
       );
     }
   };
@@ -167,7 +169,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Không thể xóa bình luận. Vui lòng thử lại."
+        "Không thể xóa bình luận. Vui lòng thử lại."
       );
     } finally {
       setDeleteLoading(false);
