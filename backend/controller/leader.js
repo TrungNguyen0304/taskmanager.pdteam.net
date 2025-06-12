@@ -231,7 +231,6 @@ const viewProject = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
-
 const viewTask = async (req, res) => {
   try {
     const { id } = req.params;
@@ -244,7 +243,7 @@ const viewTask = async (req, res) => {
     // Fetch task with selected fields and populate related data
     const task = await Task.findById(id)
       .select('_id name description projectId deadline status progress priority assignedAt')
-      .populate('projectId', '_id name')
+      .populate('projectId', '_id name status') // Thêm project status
       .populate('assignedMember', '_id name')
       .lean();
 
@@ -252,17 +251,21 @@ const viewTask = async (req, res) => {
       return res.status(404).json({ message: 'Task không tồn tại' });
     }
 
-    // Update status based on progress
     const progress = parseFloat(task.progress);
-    if (!isNaN(progress)) {
-      const newStatus = progress === 100 ? 'completed' : 'in_progress';
-      if (task.status !== newStatus) {
-        await Task.updateOne(
-          { _id: id },
-          { $set: { status: newStatus } }
-        );
-        task.status = newStatus; // Update the lean object for response
-      }
+    const projectStatus = task.projectId.status;
+
+    // Cập nhật status task theo project nếu cần
+    let newStatus = task.status;
+
+    if (projectStatus === "cancelled" || projectStatus === "paused") {
+      newStatus = projectStatus;
+    } else if (!isNaN(progress)) {
+      newStatus = progress === 100 ? "completed" : "in_progress";
+    }
+
+    if (task.status !== newStatus) {
+      await Task.updateOne({ _id: id }, { $set: { status: newStatus } });
+      task.status = newStatus;
     }
 
     res.status(200).json({
@@ -274,6 +277,7 @@ const viewTask = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi lấy thông tin task' });
   }
 };
+
 // const viewAssignedProject = async (req, res) => {
 //   try {
 //     const userId = req.user._id;
@@ -346,6 +350,12 @@ const createTask = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy project." });
     }
 
+    // kiemr tra neu tam ngung hoac la huy thi ko the tao task
+    if (project.status === 'paused' || project.status === 'cancelled') {
+      return res.status(400).json({ message: `Không thể tạo task vì dự án đang ở trạng thái '${project.status}'.` });
+    }
+
+
     // 2. Kiểm tra project đã được gán team chưa
     if (!project.assignedTeam) {
       return res.status(400).json({ message: "Project chưa được gán cho team nào." });
@@ -411,6 +421,10 @@ const updateTask = async (req, res) => {
     const project = await Project.findById(task.projectId);
     if (!project) {
       return res.status(404).json({ message: "Không tìm thấy project." });
+    }
+    // kiemr tra neu tam ngung hoac la huy thi ko the tao task
+    if (project.status === 'paused' || project.status === 'cancelled') {
+      return res.status(400).json({ message: `Không thể tạo sửa vì dự án đang ở trạng thái '${project.status}'.` });
     }
 
     // 3. Kiểm tra project có assignedTeam chưa
@@ -483,6 +497,12 @@ const deleteTask = async (req, res) => {
     if (!project.assignedTeam) {
       return res.status(400).json({ message: "Project chưa được gán cho team nào." });
     }
+
+    // kiemr tra neu tam ngung hoac la huy thi ko the tao task
+    if (project.status === 'paused' || project.status === 'cancelled') {
+      return res.status(400).json({ message: `Không thể xóa task vì dự án đang ở trạng thái '${project.status}'.` });
+    }
+
 
     // 4. Kiểm tra quyền: user phải là leader của team đó
     const team = await Team.findById(project.assignedTeam);
@@ -612,6 +632,11 @@ const assignTask = async (req, res) => {
     if (!project) {
       return res.status(404).json({ message: "Project không tồn tại." });
     }
+    // kiemr tra neu tam ngung hoac la huy thi ko the tao task
+    if (project.status === 'paused' || project.status === 'cancelled') {
+      return res.status(400).json({ message: `Không thể gán task vì dự án đang ở trạng thái '${project.status}'.` });
+    }
+
 
     if (!project.assignedTeam) {
       return res.status(400).json({ message: "Project chưa được gán cho team nào." });
@@ -684,6 +709,20 @@ const unassignedTask = async (req, res) => {
       return res.status(200).json({ message: "Không có project nào thuộc team của bạn.", tasks: [] });
     }
 
+    for (const project of projects) {
+      if (project.status === "cancelled" || project.status === "paused") {
+        await Task.updateMany(
+          { projectId: project._id },
+          { status: project.status }
+        );
+      } else if (project.status === "in_progress") {
+        // Chỉ cập nhật những task đang bị paused → in_progress trở lại
+        await Task.updateMany(
+          { projectId: project._id, status: "paused" },
+          { status: "in_progress" }
+        );
+      }
+    }
     // 3. Lấy các task chưa được gán (assignedMember = null)
     const sortOption = {};
     sortOption[sortBy] = order === "asc" ? 1 : -1;
@@ -691,7 +730,9 @@ const unassignedTask = async (req, res) => {
     const tasks = await Task.find({
       projectId: { $in: projectIds },
       assignedMember: null
-    }).sort(sortOption);
+    })
+      .populate({ path: "projectId", select: "name" })
+      .sort(sortOption);
 
     res.status(200).json({
       message: "Lấy danh sách task chưa được gán thành công.",
@@ -773,6 +814,20 @@ const getAssignedTask = async (req, res) => {
       return res.status(200).json({ message: "Không có project nào thuộc team của bạn.", tasks: [] });
     }
 
+    for (const project of projects) {
+      if (project.status === "cancelled" || project.status === "paused") {
+        await Task.updateMany(
+          { projectId: project._id },
+          { status: project.status }
+        );
+      } else if (project.status === "in_progress") {
+        // Chỉ cập nhật những task đang bị paused → in_progress trở lại
+        await Task.updateMany(
+          { projectId: project._id, status: "paused" },
+          { status: "in_progress" }
+        );
+      }
+    }
     // 3. Lấy các task đã được gán (assignedMember ≠ null)
     const sortOption = {};
     sortOption[sortBy] = order === "asc" ? 1 : -1;

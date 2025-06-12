@@ -398,7 +398,7 @@ const CreateTask = () => {
       setSubmitSuccess(false);
       setSubmitError(
         error.response?.data?.message ||
-          "Lỗi khi tạo nhiệm vụ, vui lòng thử lại."
+        "Lỗi khi tạo nhiệm vụ, vui lòng thử lại."
       );
     } finally {
       setIsSubmitting(false);
@@ -459,11 +459,10 @@ const CreateTask = () => {
             onChange={handleChange}
             placeholder="Nhập tên nhiệm vụ"
             required
-            className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
-              errors.name
-                ? "border-red-500 focus:ring-red-400"
-                : "border-gray-300 focus:ring-blue-500"
-            }`}
+            className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${errors.name
+              ? "border-red-500 focus:ring-red-400"
+              : "border-gray-300 focus:ring-blue-500"
+              }`}
           />
           {errors.name && (
             <p className="mt-1 text-xs text-red-600 font-medium">
@@ -486,11 +485,10 @@ const CreateTask = () => {
               value={formData.projectId}
               onChange={handleChange}
               disabled={loadingProject || projects.length === 0}
-              className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
-                errors.projectId
-                  ? "border-red-500 focus:ring-red-400"
-                  : "border-gray-300 focus:ring-blue-500"
-              } ${loadingProject || projects.length === 0 ? "bg-gray-50" : ""}`}
+              className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${errors.projectId
+                ? "border-red-500 focus:ring-red-400"
+                : "border-gray-300 focus:ring-blue-500"
+                } ${loadingProject || projects.length === 0 ? "bg-gray-50" : ""}`}
             >
               <option value="">--- Chọn dự án ---</option>
               {loadingProject ? (
@@ -500,8 +498,7 @@ const CreateTask = () => {
               ) : (
                 projects.map((project) => (
                   <option key={project._id} value={project._id}>
-                    {project.name}
-                    {project.averageTaskProgress >= 100 ? " (Hoàn thành)" : ""}
+                    {project.name} {project.averageTaskProgress >= 100 ? "(Hoàn thành)" : ""} {project.status ? `(${project.status})` : ""}
                   </option>
                 ))
               )}
@@ -551,11 +548,10 @@ const CreateTask = () => {
             value={formData.deadline}
             onChange={handleChange}
             required
-            className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${
-              errors.deadline
-                ? "border-red-500 focus:ring-red-400"
-                : "border-gray-300 focus:ring-blue-500"
-            }`}
+            className={`w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 ${errors.deadline
+              ? "border-red-500 focus:ring-red-400"
+              : "border-gray-300 focus:ring-blue-500"
+              }`}
           />
           {errors.deadline && (
             <p className="mt-1 text-xs text-red-600 font-medium">

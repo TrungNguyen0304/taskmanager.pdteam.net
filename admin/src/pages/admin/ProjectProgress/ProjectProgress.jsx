@@ -62,6 +62,11 @@ const ProjectProgress = () => {
       case "in-progress":
       case "in_progress":
         return "Đang thực hiện";
+      case "cancelled":
+      case "canceled": // hỗ trợ cả cách viết của Anh-Mỹ
+        return "Đã hủy";
+      case "paused":
+        return "Tạm ngưng";
       default:
         return "Không xác định";
     }

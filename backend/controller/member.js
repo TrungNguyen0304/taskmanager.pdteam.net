@@ -334,16 +334,6 @@ const createReport = async (req, res) => {
       return res.status(403).json({ message: "Bạn không được giao công việc này." });
     }
 
-    // 🚨 Check report trước đó
-    const lastReport = await Report.findOne({ task: taskId, assignedMembers: userId })
-      .sort({ createdAt: -1 });
-
-    if (lastReport && progress < lastReport.taskProgress) {
-      return res.status(400).json({
-        message: `Tiến độ công việc mới (${progress}%) không được thấp hơn báo cáo trước đó (${lastReport.taskProgress}%).`
-      });
-    }
-
     const team = task.projectId?.assignedTeam;
     const assignedLeader = team?.assignedLeader;
 
@@ -376,6 +366,7 @@ const createReport = async (req, res) => {
       { path: 'team', select: 'name _id' }
     ]);
 
+    // ✅ Cập nhật tiến độ task theo report mới nhất (không cần so sánh với report trước)
     task.progress = progress;
     await task.save();
 
