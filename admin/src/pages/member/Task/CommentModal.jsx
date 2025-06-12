@@ -341,7 +341,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
         </div>
 
         {/* Comment Input */}
-        <div className="p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
+        <div className="p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-2xl">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"

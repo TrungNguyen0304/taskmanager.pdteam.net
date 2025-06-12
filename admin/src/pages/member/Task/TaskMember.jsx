@@ -85,7 +85,7 @@ const TaskMember = () => {
                 leader: task.project?.team?.assignedLeader?.name || "N/A",
               },
             },
-            commentCount: task.commentCount || 0, // Assuming API provides commentCount
+            commentCount: task.commentCount || 0,
           }));
           setTasks(formatted);
         } else {
