@@ -15,34 +15,41 @@ const ReportHistory = () => {
   // Base URL for the API (adjust if your server is hosted elsewhere)
   const BASE_URL = "http://localhost:8001";
 
-  useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const response = await axios.get(
-          `http://localhost:8001/api/member/getReportTask/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (Array.isArray(response.data.reports)) {
-          setReports(response.data.reports);
-        } else {
-          setReports([]);
+useEffect(() => {
+  const fetchReports = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8001/api/member/getReportTask/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
         }
-        setLoading(false);
-      } catch (err) {
-        setError(
-          err.response?.data?.message || "Không thể tải lịch sử báo cáo."
-        );
-        setLoading(false);
-      }
-    };
+      );
 
-    fetchReports();
-  }, [id]);
+      if (Array.isArray(response.data.reports)) {
+        // Log từng report ID ra console
+        response.data.reports.forEach((report, index) => {
+         console.log(`Report ${index + 1} ID:`, report.reportId);
+        });
+
+        setReports(response.data.reports);
+      } else {
+        setReports([]);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Không thể tải lịch sử báo cáo."
+      );
+      setLoading(false);
+    }
+  };
+
+  fetchReports();
+}, [id]);
 
   // Function to handle file download
   const handleDownload = (filePath) => {
