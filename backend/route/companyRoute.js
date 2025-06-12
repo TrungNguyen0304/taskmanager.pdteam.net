@@ -34,7 +34,8 @@ const {
   evaluateLeaderReport,
   viewProject,
   showAllRoprtProject,
-  getCompanyStatistics
+  getCompanyStatistics,
+  cloneProject
 } = require("../controller/company.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -287,5 +288,12 @@ router.get(
   authorize("company"),
   getCompanyStatistics
 );
+// ban sao chep
 
+router.post(
+  "/cloneProject/:id/clone",
+  authenticateJWT,
+  authorize("company"),
+  cloneProject
+);
 module.exports = router;

@@ -688,31 +688,35 @@ const updateProject = async (req, res) => {
     if (!project) {
       return res.status(404).json({ message: "Công việc không tồn tại." });
     }
-    if (name) {
-      project.name = name;
-    }
-    if (description) {
-      project.description = description;
-    }
+
+    if (name) project.name = name;
+    if (description) project.description = description;
+    if (priority) project.priority = priority;
+
     if (status) {
-      const allowedStatuses = [
-        "pending",
-        "revoke",
-        "in_progress",
-        "completed",
-        "cancelled",
-      ];
-      if (allowedStatuses.includes(status)) {
-        project.status = status;
-      } else {
-        return res.status(400).json({ message: "Trạng thái không hợp lệ." });
+      const currentStatus = project.status;
+
+      const allowedTransitions = {
+        pending: ["revoke", "pending"],
+        in_progress: ["paused", "cancelled", "completed", "in_progress"],
+        paused: ["in_progress", "cancelled"],
+        completed: [],
+        cancelled: [],
+        revoke: ["revoke", "pending"],
+      };
+
+      const validNextStatuses = allowedTransitions[currentStatus] || [];
+
+      if (!validNextStatuses.includes(status)) {
+        return res.status(403).json({
+          message: `⚠️ Không thể chuyển trạng thái từ "${currentStatus}" sang "${status}". 
+Trạng thái hợp lệ tiếp theo từ "${currentStatus}" là: [${validNextStatuses.join(", ") || "không có"}].`,
+        });
       }
-    }
-    if (priority) {
-      project.priority = priority;
+
+      project.status = status;
     }
 
-    // Lưu công việc đã được cập nhật
     await project.save();
 
     res.status(200).json({
@@ -836,14 +840,15 @@ const assignProject = async (req, res) => {
     if (!project) {
       return res.status(404).json({ message: "Công việc không tồn tại." });
     }
+
     // kiem tra them team do cs project chk 
     const existingProject = await Project.findOne({ assignedTeam });
-    if (existingProject && existingProject.status !== "completed") {
+
+    if (existingProject && existingProject.status !== "completed" && existingProject.status !== "cancelled") {
       return res.status(404).json({
         message: `Team đã được gán cho project '${existingProject.name}' và project này chưa hoàn thành.`,
-      })
+      });
     }
-
     const parsedDeadline = new Date(deadline);
     if (isNaN(parsedDeadline.getTime())) {
       return res.status(400).json({ message: "Giá trị deadline không hợp lệ" });
@@ -935,6 +940,56 @@ const viewTeamProject = async (req, res) => {
 };
 
 // lấy lại dự án
+// const revokeProjectAssignment = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const project = await Project.findById(id);
+//     if (!project) {
+//       return res.status(404).json({ message: "Không tìm thấy project." });
+//     }
+
+//     // Nếu project chưa được gán team thì không cần thu hồi
+//     if (!project.assignedTeam) {
+//       return res
+//         .status(400)
+//         .json({ message: "Project chưa được gán cho team nào." });
+//     }
+
+//     // Lưu lại thông tin team cũ để gửi thông báo nếu cần
+//     const oldTeam = await Team.findById(project.assignedTeam);
+//     const oldLeader = oldTeam?.assignedLeader;
+
+//     // Reset project assignment
+//     project.assignedTeam = null;
+//     project.deadline = null;
+//     project.status = "revoke";
+
+//     await project.save();
+
+//     // Gửi thông báo cho leader cũ (nếu có)
+//     if (oldLeader) {
+//       await notifyProjectRemoval({
+//         userId: oldLeader.toString(),
+//         project: oldTeam,
+//       });
+//     }
+
+//     res.status(200).json({
+//       message: "Thu hồi dự án thành công.",
+//       project: {
+//         id: project._id,
+//         name: project.name,
+//         assignedTeam: null,
+//         deadline: null,
+//         status: project.status,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Lỗi server.", error: error.message });
+//   }
+// };
+
 const revokeProjectAssignment = async (req, res) => {
   try {
     const { id } = req.params;
@@ -944,25 +999,34 @@ const revokeProjectAssignment = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy project." });
     }
 
-    // Nếu project chưa được gán team thì không cần thu hồi
+    // Nếu chưa gán team thì không thể thu hồi
     if (!project.assignedTeam) {
-      return res
-        .status(400)
-        .json({ message: "Project chưa được gán cho team nào." });
+      return res.status(400).json({ message: "Project chưa được gán cho team nào." });
     }
 
-    // Lưu lại thông tin team cũ để gửi thông báo nếu cần
+    // Kiểm tra thời gian đã qua kể từ khi project được tạo
+    const createdAt = new Date(project.createdAt);
+    const now = new Date();
+    const hoursPassed = (now - createdAt) / (1000 * 60 * 60); // milliseconds → hours
+
+    if (hoursPassed > 24) {
+      return res.status(403).json({
+        message: "Chỉ có thể thu hồi trong vòng 24 giờ sau khi tạo project."
+      });
+    }
+
+    // Lưu lại thông tin team cũ để thông báo nếu cần
     const oldTeam = await Team.findById(project.assignedTeam);
     const oldLeader = oldTeam?.assignedLeader;
 
-    // Reset project assignment
+    // Reset thông tin giao dự án
     project.assignedTeam = null;
     project.deadline = null;
     project.status = "revoke";
 
     await project.save();
 
-    // Gửi thông báo cho leader cũ (nếu có)
+    // Gửi thông báo cho leader cũ nếu có
     if (oldLeader) {
       await notifyProjectRemoval({
         userId: oldLeader.toString(),
@@ -981,10 +1045,10 @@ const revokeProjectAssignment = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('revokeProjectAssignment error:', error);
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
-
 // lấy ra công việc chk giao
 const getUnassignedProject = async (req, res) => {
   try {
@@ -1702,6 +1766,41 @@ const getCompanyStatistics = async (req, res) => {
   }
 };
 
+// bản sao chép
+const cloneProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const oldProject = await Project.findById(id);
+
+    if (!oldProject) {
+      return res.status(404).json({ message: "Không tìm thấy dự án để sao chép." });
+    }
+
+    if (oldProject.status !== "cancelled") {
+      return res.status(400).json({ message: "Chỉ có thể sao chép dự án đã bị hủy." });
+    }
+
+    const newProject = new Project({
+      name: `[BẢN SAO] ${oldProject.name}`,
+      description: oldProject.description,
+      priority: oldProject.priority,
+      status: "pending", // reset lại trạng thái
+      creator: req.user._id,
+      createdAt: new Date(),
+    });
+
+    await newProject.save();
+
+    res.status(201).json({
+      message: "Sao chép dự án thành công.",
+      project: newProject,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
+
 //
 module.exports = {
   createUser,
@@ -1736,5 +1835,6 @@ module.exports = {
   evaluateLeaderReport,
   viewProject,
   showAllRoprtProject,
-  getCompanyStatistics
+  getCompanyStatistics,
+  cloneProject
 };
