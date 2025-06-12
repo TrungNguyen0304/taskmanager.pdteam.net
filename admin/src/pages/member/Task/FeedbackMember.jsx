@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, Star } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import axios from "axios";
 
 const PAGE_SIZE = 3;
@@ -62,10 +62,6 @@ const FeedbackMember = () => {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-  };
-
-  const handleView = (id) => {
-    navigate(`/feedback-detail/${id}`);
   };
 
   return (
@@ -137,15 +133,6 @@ const FeedbackMember = () => {
                     <span className="font-semibold">Ngày đánh giá:</span>{" "}
                     {feedback.createdAt}
                   </p>
-                </div>
-                <div>
-                  <button
-                    onClick={() => handleView(feedback.id)}
-                    className="flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 text-sm sm:text-base font-medium transition-colors"
-                  >
-                    <Eye className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    Xem chi tiết
-                  </button>
                 </div>
               </div>
             </div>
