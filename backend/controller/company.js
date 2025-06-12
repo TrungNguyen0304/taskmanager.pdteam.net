@@ -1475,10 +1475,10 @@ const showAllRoprtProject = async (req, res) => {
       res.status(404).json({ massage: "project khong ton tai" })
     }
     const reports = await Report.find({ project: id })
-      .select("content difficulties taskProgress project team createdAt assignedMembers assignedLeader file")
+      .select("content difficulties taskProgress project team createdAt  assignedLeader file")
       .populate("project", "name description")
       .populate("assignedLeader", "name email")
-      .populate("assignedMembers", "name email")
+      // .populate("assignedMembers", "name email")
       .populate("team", "name")
       .populate("task", "name deadline")
       .lean();
