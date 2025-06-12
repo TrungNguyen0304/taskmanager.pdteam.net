@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, Flag, Users, X } from "lucide-react";
+import { FileText, Clock, Flag, Users, MessageCircle } from "lucide-react";
 import { GrUpdate } from "react-icons/gr";
-import axios from "axios";
 import { FaUser } from "react-icons/fa";
-import { IoIosSend } from "react-icons/io";
+import axios from "axios";
+import CommentModal from "./CommentModal";
 
 const PAGE_SIZE = 3;
 
@@ -48,6 +48,8 @@ const TaskMember = () => {
   const [newStatus, setNewStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -83,6 +85,7 @@ const TaskMember = () => {
                 leader: task.project?.team?.assignedLeader?.name || "N/A",
               },
             },
+            commentCount: task.commentCount || 0,
           }));
           setTasks(formatted);
         } else {
@@ -163,6 +166,24 @@ const TaskMember = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const openCommentModal = (taskId) => {
+    setSelectedTaskId(taskId);
+    setIsCommentModalOpen(true);
+  };
+
+  const closeCommentModal = () => {
+    setIsCommentModalOpen(false);
+    setSelectedTaskId(null);
+  };
+
+  const handleCommentUpdate = (taskId, newCommentCount) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, commentCount: newCommentCount } : task
+      )
+    );
   };
 
   const getStatusStyle = (status) => {
@@ -295,40 +316,24 @@ const TaskMember = () => {
                     </p>
                   </div>
 
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="w-5 h-5 text-gray-500" />
+                      <button
+                        onClick={() => openCommentModal(task.id)}
+                        className="text-gray-800 hover:text-blue-800 font-medium flex items-center gap-2"
+                        aria-label={`Xem bình luận cho nhiệm vụ ${task.name}`}
+                      >
+                        Bình luận ({task.commentCount})
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base text-gray-600">
                     <div className="flex items-center gap-3">
                       <Clock className="w-5 h-5 text-gray-500" />
                       <span>Hạn: {task.deadline}</span>
                     </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">
-                      Bình luận:
-                    </h3>
-
-                    <div className="bg-gray-50 p-4 rounded-xl shadow-sm mb-3">
-                      <p className="text-gray-600 text-sm sm:text-base break-words">
-                        {task.comments && task.comments.length > 0
-                          ? task.comments.join(", ")
-                          : "Không có bình luận nào."}
-                      </p>
-                    </div>
-
-                    <form className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch">
-                      <input
-                        type="text"
-                        placeholder="Nhập bình luận..."
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                      />
-                      <button
-                        type="submit"
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all text-sm sm:text-base"
-                      >
-                        <IoIosSend className="w-5 h-5" />
-                        <span className="hidden sm:inline">Gửi</span>
-                      </button>
-                    </form>
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -430,6 +435,15 @@ const TaskMember = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {isCommentModalOpen && (
+          <CommentModal
+            reportId={selectedTaskId}
+            isOpen={isCommentModalOpen}
+            onClose={closeCommentModal}
+            onCommentUpdate={handleCommentUpdate}
+          />
         )}
 
         {totalPages > 1 && (
