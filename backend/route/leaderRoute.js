@@ -22,7 +22,7 @@ const {
   viewProject,
   getStatistics,
   showallMember,
-  CommentReport
+  getReportProject
 } = require("../controller/leader.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -148,5 +148,8 @@ router.get(`/viewTask/:id`, authenticateJWT, authorize("leader"), viewTask);
 
 // thong ke 
 router.get("/getStatistics/", authenticateJWT, getStatistics);
+
+// lay lịch sử report 
+router.get("/getReportProject/:id", authenticateJWT, authorize("leader"),  getReportProject);
 
 module.exports = router;

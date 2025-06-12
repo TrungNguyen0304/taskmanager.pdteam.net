@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Download, ArrowLeft } from "lucide-react";
+import {
+  FileText,
+  Download,
+  ArrowLeft,
+  MessageSquare,
+} from "lucide-react";
 import axios from "axios";
+import CommentModal from "./CommentModal";
 
 const ReportHistory = () => {
   const navigate = useNavigate();
@@ -10,55 +16,57 @@ const ReportHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [modalReportId, setModalReportId] = useState(null);
   const reportsPerPage = 5;
 
-  // Base URL for the API (adjust if your server is hosted elsewhere)
   const BASE_URL = "http://localhost:8001";
 
-useEffect(() => {
-  const fetchReports = async () => {
-    try {
-      const response = await axios.get(
-        `http://localhost:8001/api/member/getReportTask/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Content-Type": "application/json",
-          },
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const response = await axios.get(
+          `${BASE_URL}/api/member/getReportTask/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (Array.isArray(response.data.reports)) {
+          setReports(response.data.reports);
+        } else {
+          setReports([]);
         }
-      );
-
-      if (Array.isArray(response.data.reports)) {
-        // Log từng report ID ra console
-        response.data.reports.forEach((report, index) => {
-         console.log(`Report ${index + 1} ID:`, report.reportId);
-        });
-
-        setReports(response.data.reports);
-      } else {
-        setReports([]);
+        setLoading(false);
+      } catch (err) {
+        setError(
+          err.response?.data?.message || "Không thể tải lịch sử báo cáo."
+        );
+        setLoading(false);
       }
+    };
 
-      setLoading(false);
-    } catch (err) {
-      setError(
-        err.response?.data?.message || "Không thể tải lịch sử báo cáo."
-      );
-      setLoading(false);
-    }
-  };
+    fetchReports();
+  }, [id]);
 
-  fetchReports();
-}, [id]);
-
-  // Function to handle file download
   const handleDownload = (filePath) => {
     if (!filePath) return;
     const fullUrl = `${BASE_URL}${filePath}`;
     window.open(fullUrl, "_blank");
   };
 
-  // Pagination logic
+  const handleCommentUpdate = (reportId, commentCount) => {
+    setReports((prevReports) =>
+      prevReports.map((report) =>
+        report.reportId === reportId
+          ? { ...report, commentCount }
+          : report
+      )
+    );
+  };
+
   const indexOfLastReport = currentPage * reportsPerPage;
   const indexOfFirstReport = indexOfLastReport - reportsPerPage;
   const currentReports = reports.slice(indexOfFirstReport, indexOfLastReport);
@@ -80,7 +88,8 @@ useEffect(() => {
           <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
           Quay lại
         </button>
-        {/* Header Section */}
+
+        {/* Header */}
         <div className="mb-6 bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-200">
           <div className="flex items-center gap-4">
             <FileText className="w-10 h-10 text-blue-500" />
@@ -95,14 +104,14 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Error Message */}
+        {/* Error */}
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-200">
             {error}
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading */}
         {loading ? (
           <div className="flex justify-center items-center min-h-[200px]">
             <div className="flex flex-col items-center gap-4">
@@ -111,19 +120,18 @@ useEffect(() => {
             </div>
           </div>
         ) : reports.length === 0 ? (
-          /* Empty State */
-          <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 text-center border border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm p-6 text-center border border-gray-200">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
               Không có báo cáo
             </h3>
-            <p className="text-gray-500 text-sm sm:text-base">
+            <p className="text-gray-500 text-sm">
               Báo cáo sẽ được hiển thị khi được tạo.
             </p>
           </div>
         ) : (
           <>
-            {/* Table Section */}
+            {/* Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
               <div className="min-w-[1000px]">
                 <table className="w-full table-auto">
@@ -137,6 +145,7 @@ useEffect(() => {
                         "Nội Dung",
                         "Tiến Độ",
                         "Khó Khăn",
+                        "Bình luận",
                         "Tệp",
                         "Thời Gian Tạo",
                       ].map((header) => (
@@ -159,13 +168,13 @@ useEffect(() => {
                           {indexOfFirstReport + index + 1}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-600">
-                          {report.task.taskName}
+                          {report.task?.taskName}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-600">
-                          {report.team.teamName}
+                          {report.team?.teamName}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-600">
-                          {report.assignedLeader.leaderName}
+                          {report.assignedLeader?.leaderName}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-600">
                           {report.content}
@@ -177,11 +186,21 @@ useEffect(() => {
                           {report.difficulties || "Không có"}
                         </td>
                         <td className="py-4 px-6 text-sm">
+                          <button
+                            onClick={() => setModalReportId(report.reportId)}
+                            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+                          >
+                            <MessageSquare className="w-5 h-5" />
+                            <span className="text-sm font-semibold">
+                              {report.commentCount || 0} Bình luận
+                            </span>
+                          </button>
+                        </td>
+                        <td className="py-4 px-6 text-sm">
                           {report.file ? (
                             <button
                               onClick={() => handleDownload(report.file)}
-                              className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
-                              title="Tải xuống tệp"
+                              className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
                             >
                               <Download className="w-5 h-5" />
                               Tải xuống
@@ -206,7 +225,7 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Pagination Section */}
+            {/* Pagination */}
             <div className="mt-6 flex justify-between items-center">
               <div className="text-sm text-gray-600">
                 Hiển thị {indexOfFirstReport + 1} -{" "}
@@ -217,11 +236,10 @@ useEffect(() => {
                 <button
                   onClick={() => paginate(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg border ${
-                    currentPage === 1
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-blue-600 hover:bg-blue-50"
-                  }`}
+                  className={`px-4 py-2 rounded-lg border ${currentPage === 1
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-blue-600 hover:bg-blue-50"
+                    }`}
                 >
                   Trước
                 </button>
@@ -230,11 +248,10 @@ useEffect(() => {
                     <button
                       key={page}
                       onClick={() => paginate(page)}
-                      className={`px-4 py-2 rounded-lg border ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "bg-white text-blue-600 hover:bg-blue-50"
-                      }`}
+                      className={`px-4 py-2 rounded-lg border ${currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-blue-600 hover:bg-blue-50"
+                        }`}
                     >
                       {page}
                     </button>
@@ -243,11 +260,10 @@ useEffect(() => {
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`px-4 py-2 rounded-lg border ${
-                    currentPage === totalPages
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white text-blue-600 hover:bg-blue-50"
-                  }`}
+                  className={`px-4 py-2 rounded-lg border ${currentPage === totalPages
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-blue-600 hover:bg-blue-50"
+                    }`}
                 >
                   Sau
                 </button>
@@ -256,6 +272,14 @@ useEffect(() => {
           </>
         )}
       </div>
+
+      {/* Bình luận modal */}
+      <CommentModal
+        reportId={modalReportId}
+        isOpen={!!modalReportId}
+        onClose={() => setModalReportId(null)}
+        onCommentUpdate={handleCommentUpdate}
+      />
     </div>
   );
 };

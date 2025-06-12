@@ -52,22 +52,23 @@ const getCommentsByReportId = async (req, res) => {
         const { id } = req.params;
 
         const comments = await Comment.find({ report: id })
-            .populate({
-                path: 'creator',
-                select: 'name'
-            })
+            .populate({ path: 'creator', select: 'name' })
             .sort({ createdAt: -1 });
 
-        if (!comments || comments.length === 0) {
-            return res.status(404).json({ message: 'Không tìm thấy bình luận nào.' });
+        if (comments.length === 0) {
+            return res.status(200).json({
+                message: 'Chưa có bình luận nào.',
+                comments: []
+            });
         }
 
-        res.status(200).json({ comments });
+        res.status(200).json({ message: 'Lấy bình luận thành công.', comments });
     } catch (error) {
         console.error('getCommentsByReportId error:', error);
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
+
 
 const deleteComment = async (req, res) => {
     try {

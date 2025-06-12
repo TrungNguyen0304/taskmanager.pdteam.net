@@ -1691,51 +1691,63 @@ const getStatistics = async (req, res) => {
 // show all project đã báo cáo
 const getReportProject = async (req, res) => {
   try {
-    const { id } = req.params; // taskId
+    const { id } = req.params; // projectId
     const userId = req.user._id;
 
-    // Kiểm tra taskId hợp lệ
+    // 1. Kiểm tra projectId hợp lệ
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "taskId không hợp lệ." });
+      return res.status(400).json({ message: "projectId không hợp lệ." });
     }
 
-    // Kiểm tra task tồn tại và user có quyền truy cập
-    const task = await Task.findOne({ _id: id, assignedMember: userId });
-    if (!task) {
-      return res.status(404).json({ 
-        message: "Task không tồn tại hoặc bạn không có quyền truy cập." 
+    // 2. Tìm project và populate team
+    const project = await Project.findById(id).populate('assignedTeam');
+    if (!project) {
+      return res.status(404).json({ message: "Dự án không tồn tại." });
+    }
+
+    // 3. Kiểm tra project có team hay không
+    if (!project.assignedTeam) {
+      return res.status(400).json({ message: "Dự án chưa được gán cho team nào." });
+    }
+
+    // 4. Kiểm tra user có phải là leader của team
+    const team = await Team.findById(project.assignedTeam._id);
+    if (!team || team.assignedLeader.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Bạn không có quyền xem báo cáo của dự án này."
       });
     }
 
-    // Lấy các báo cáo của task do user tạo
-    const reports = await Report.find({ task: id, assignedMembers: userId })
+    // 5. Lấy tất cả báo cáo của project
+    const reports = await Report.find({ project: id })
       .populate({
-        path: 'task',
-        select: 'name'
+        path: 'project',
+        select: 'name _id'
       })
       .populate({
         path: 'team',
-        select: 'name'
+        select: 'name _id'
       })
       .populate({
         path: 'assignedLeader',
-        select: 'name'
+        select: 'name _id'
       })
       .sort({ createdAt: -1 })
       .lean();
 
-    // Kiểm tra reports có phải là mảng không
-    if (!Array.isArray(reports)) {
-      console.error("Reports is not an array:", reports);
-      return res.status(500).json({ message: "Dữ liệu báo cáo không hợp lệ." });
+    // 6. Kiểm tra nếu không có báo cáo
+    if (!reports || reports.length === 0) {
+      return res.status(404).json({
+        message: "Chưa có báo cáo nào cho dự án này."
+      });
     }
 
-    // Định dạng danh sách báo cáo
+    // 7. Định dạng danh sách báo cáo
     const formattedReports = reports.map(report => ({
       reportId: report._id,
-      task: {
-        taskId: report.task?._id || null,
-        taskName: report.task?.name || 'Không rõ'
+      project: {
+        projectId: report.project?._id || null,
+        projectName: report.project?.name || 'Không rõ'
       },
       team: {
         teamId: report.team?._id || null,
@@ -1746,27 +1758,26 @@ const getReportProject = async (req, res) => {
         leaderName: report.assignedLeader?.name || 'Không rõ'
       },
       content: report.content,
-      taskProgress: report.taskProgress,
+      projectProgress: report.projectProgress,
       difficulties: report.difficulties,
       file: report.file || null,
       createdAt: report.createdAt
     }));
 
-    if (formattedReports.length === 0) {
-      return res.status(404).json({ message: "Bạn chưa tạo báo cáo nào cho task này." });
-    }
-
+    // 8. Trả về phản hồi
     res.status(200).json({
-      message: "Lấy danh sách báo cáo cho task thành công.",
+      message: "Lấy danh sách báo cáo cho dự án thành công.",
       reports: formattedReports
     });
 
   } catch (error) {
-    console.error("getReportTask error:", error);
-    res.status(500).json({ message: "Lỗi server.", error: error.message });
+    console.error("getReportProject error:", error);
+    res.status(500).json({
+      message: "Lỗi server khi lấy báo cáo dự án.",
+      error: error.message
+    });
   }
 };
-
 
 module.exports = {
   getMyTeam,
@@ -1790,5 +1801,6 @@ module.exports = {
   viewTeam,
   viewProject,
   getStatistics,
-  showallMember
+  showallMember,
+  getReportProject
 };
