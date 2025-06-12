@@ -20,7 +20,7 @@ const UpdateProject = () => {
     const fetchProject = async () => {
       try {
         const response = await axios.get(
-          `https://apitaskmanager.pdteam.net/api/company/viewTeamProject/${id}`,
+          `http://localhost:8001/api/company/viewTeamProject/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -48,7 +48,7 @@ const UpdateProject = () => {
     status: Yup.string()
       .required("Trạng thái là bắt buộc")
       .oneOf(
-        ["pending", "revoke", "in_progress", "completed", "cancelled"],
+        ["in_progress", "cancelled", "paused", "completed", "pending","revoke"],
         "Trạng thái không hợp lệ"
       ),
     priority: Yup.number()
@@ -60,7 +60,7 @@ const UpdateProject = () => {
     setIsLoading(true);
     try {
       await axios.put(
-        `https://apitaskmanager.pdteam.net/api/company/updateProject/${id}`,
+        `http://localhost:8001/api/company/updateProject/${id}`,
         {
           name: values.name,
           description: values.description,
@@ -75,7 +75,26 @@ const UpdateProject = () => {
       );
       navigate(-1);
     } catch (error) {
-      alert("Lỗi khi cập nhật dự án hoặc xác thực thất bại.");
+      const rawMessage = error.response?.data?.message || "Lỗi không xác định.";
+
+      // Bắt lỗi chuyển trạng thái không hợp lệ
+      const match = rawMessage.match(/Không thể chuyển trạng thái từ (\w+) sang (\w+)/);
+      if (match) {
+        const statusMap = {
+          pending: "Đang chờ",
+          in_progress: "Đang thực hiện",
+          paused: "Tạm ngưng",
+          completed: "Đã hoàn thành",
+          cancelled: "Đã hủy",
+          revoke: "Thu hồi",
+        };
+
+        const from = statusMap[match[1]] || match[1];
+        const to = statusMap[match[2]] || match[2];
+        alert(`❌ Không thể chuyển trạng thái từ "${from}" sang "${to}".`);
+      } else {
+        alert(`❌ ${rawMessage}`);
+      }
     } finally {
       setIsLoading(false);
       setSubmitting(false);
@@ -145,10 +164,11 @@ const UpdateProject = () => {
                 className="w-full p-2 border border-gray-300 rounded"
               >
                 <option value="pending">Đang chờ</option>
-                <option value="revoke">Thu hồi</option>
                 <option value="in_progress">Đang thực hiện</option>
-                <option value="completed">Hoàn thành</option>
+                <option value="paused">Tạm ngưng</option>
                 <option value="cancelled">Đã hủy</option>
+                <option value="completed">Hoàn thành</option>
+                <option value="revoke">Thu hồi</option>
               </Field>
               <ErrorMessage
                 name="status"

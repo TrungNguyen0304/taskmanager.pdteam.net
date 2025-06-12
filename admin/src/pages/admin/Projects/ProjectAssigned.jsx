@@ -105,8 +105,7 @@ const ProjectAssigned = () => {
       );
       setShowModal(false);
       alert(
-        `Lỗi: ${
-          error.response?.data?.message || "Không thể thực hiện hành động."
+        `Lỗi: ${error.response?.data?.message || "Không thể thực hiện hành động."
         }`
       );
     } finally {
@@ -122,6 +121,37 @@ const ProjectAssigned = () => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
       setLoading(true);
+    }
+  };
+
+  const handleClone = async (id) => {
+    setIsProcessing(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `http://localhost:8001/api/company/cloneProject/${id}/clone`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const clonedProject = response.data.project;
+      setProjects([clonedProject, ...projects]); // thêm vào đầu
+      setTotalProjects(totalProjects + 1);
+      setTotalPages(Math.ceil((totalProjects + 1) / limit));
+
+      alert("Sao chép dự án thành công.");
+      navigate("/project-unassigned");
+    } catch (error) {
+      console.error("Lỗi khi sao chép dự án:", error);
+      alert(
+        error.response?.data?.message || "Không thể sao chép dự án."
+      );
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -213,6 +243,16 @@ const ProjectAssigned = () => {
                       <RotateCcw className="w-4 h-4 mr-1" />
                       Thu hồi
                     </button>
+                    {(project.status === "cancelled") && (
+                      <button
+                        onClick={() => handleClone(project.id)}
+                        className="flex items-center px-3 py-1 border border-green-600 text-green-700 rounded hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Sao chép
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -239,11 +279,10 @@ const ProjectAssigned = () => {
                       key={page}
                       onClick={() => handlePageChange(page)}
                       disabled={isProcessing}
-                      className={`px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "hover:bg-gray-100"
-                      }`}
+                      className={`px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed ${currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "hover:bg-gray-100"
+                        }`}
                     >
                       {page}
                     </button>
