@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-import { FileText, Calendar, Users, ArrowLeft, Download } from "lucide-react";
+import { FileText, Calendar, Users, ArrowLeft, Download, MessageSquare } from "lucide-react";
+import CommentModal from "./CommentModal";
 
 const ReportHistoryLeader = () => {
   const { id } = useParams(); // projectId from URL
@@ -10,6 +11,7 @@ const ReportHistoryLeader = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [modalReportId, setModalReportId] = useState(null);
   const reportsPerPage = 3;
 
   useEffect(() => {
@@ -44,6 +46,11 @@ const ReportHistoryLeader = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
+  // Optional: Debug logging for reports state changes
+  // useEffect(() => {
+  //   console.log("Reports state updated:", reports);
+  // }, [reports]);
+
   const handleDownload = async (fileUrl, fileName) => {
     try {
       const response = await axios.get(fileUrl, {
@@ -66,6 +73,18 @@ const ReportHistoryLeader = () => {
       console.error("Lỗi khi tải tệp:", err);
       alert("Không thể tải tệp. Vui lòng thử lại sau.");
     }
+  };
+
+  const handleCommentUpdate = (reportId, commentCount) => {
+    if (!reportId || typeof commentCount !== "number") {
+      console.warn("Invalid reportId or commentCount:", { reportId, commentCount });
+      return;
+    }
+    setReports((prevReports) =>
+      prevReports.map((report) =>
+        report.reportId === reportId ? { ...report, commentCount } : report
+      )
+    );
   };
 
   // Calculate pagination
@@ -225,6 +244,17 @@ const ReportHistoryLeader = () => {
                     </div>
                   )}
                 </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-5 h-5 text-gray-500" />
+                    <button
+                      onClick={() => setModalReportId(report.reportId)}
+                      className="text-gray-800 hover:text-blue-800 font-medium flex items-center gap-2"
+                    >
+                      {typeof report.commentCount === "number" ? report.commentCount : 0} Bình luận
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Thông tin chi tiết */}
@@ -330,6 +360,13 @@ const ReportHistoryLeader = () => {
           </nav>
         </div>
       )}
+      {/* Bình luận modal */}
+      <CommentModal
+        reportId={modalReportId}
+        isOpen={!!modalReportId}
+        onClose={() => setModalReportId(null)}
+        onCommentUpdate={handleCommentUpdate}
+      />
     </div>
   );
 };
