@@ -28,7 +28,7 @@ const CreateProject = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        "https://apitaskmanager.pdteam.net/api/company/createProject",
+        "http://localhost:8001/api/company/createProject",
         {
           name: values.name,
           description: values.description,

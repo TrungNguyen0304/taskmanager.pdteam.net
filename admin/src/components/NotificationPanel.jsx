@@ -105,7 +105,7 @@ const NotificationPanel = ({ userId }) => {
       };
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
-      toast.info(`${data.message || data.name} - ${data.type}`, {
+      toast.info(`${data.title} - ${data.message}`, {
         position: "top-right",
       });
     });

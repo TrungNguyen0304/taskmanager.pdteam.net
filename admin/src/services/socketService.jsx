@@ -1,8 +1,8 @@
 // src/services/socketService.js
 import io from "socket.io-client";
-const socket = io("https://apitaskmanager.pdteam.net", {
+const socket = io("ws://localhost:8001", {
   auth: {
-    token: localStorage.getItem("jwtToken"), // Nếu dùng JWT
+    token: localStorage.getItem("jwtToken"), 
   },
 });
 
@@ -20,6 +20,7 @@ export const onNotification = (callback) => {
   socket.on("report-evaluated", callback);
   socket.on("task-overdue", callback);
   socket.on("project-overdue", callback);
+  socket.on("project-status-updated", callback);
 };
 
 export const disconnectSocket = () => {
