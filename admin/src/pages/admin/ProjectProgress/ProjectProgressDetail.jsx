@@ -400,7 +400,7 @@ const ProjectProgressDetail = () => {
             <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
-                  Tiến Độ {selectedProject.name}
+                  Tiến độ: {selectedProject.name}
                 </h3>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center">
