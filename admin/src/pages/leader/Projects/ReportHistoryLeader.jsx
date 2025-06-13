@@ -147,8 +147,8 @@ const ReportHistoryLeader = () => {
           <ArrowLeft className="w-6 h-6" />
           <span>Quay lại</span>
         </button>
-        <h1 className="text-3xl font-bold text-blue-600">
-          Lịch sử báo cáo dự án
+        <h1 className="text-3xl font-bold text-blue-600 uppercase">
+          Lịch sử báo cáo
         </h1>
       </div>
 
