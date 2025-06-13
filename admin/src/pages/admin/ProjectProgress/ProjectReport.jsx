@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Folder, Users, Clock, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Folder,
+  Users,
+  Clock,
+  AlertCircle,
+  MessageCircle,
+} from "lucide-react";
 import axios from "axios";
+import CommentModal from "./CommentModal";
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString("vi-VN", {
@@ -19,6 +27,8 @@ const ProjectReport = () => {
   const [projectData, setProjectData] = useState(null);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const reportsPerPage = 2;
 
   useEffect(() => {
@@ -32,7 +42,30 @@ const ProjectReport = () => {
             },
           }
         );
-        setProjectData(response.data.project);
+        const reportsWithCommentCount = await Promise.all(
+          response.data.project.reports.map(async (report) => {
+            try {
+              const commentResponse = await axios.get(
+                `http://localhost:8001/api/comment/reports/${report._id}/getcomment`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              );
+              return {
+                ...report,
+                commentCount: commentResponse.data.comments.length,
+              };
+            } catch (err) {
+              return { ...report, commentCount: 0 };
+            }
+          })
+        );
+        setProjectData({
+          ...response.data.project,
+          reports: reportsWithCommentCount,
+        });
         setError(null);
         window.scrollTo(0, 0);
       } catch (err) {
@@ -43,6 +76,25 @@ const ProjectReport = () => {
 
     fetchProjectReports();
   }, [id]);
+
+  const handleCommentUpdate = (reportId, commentCount) => {
+    setProjectData((prev) => ({
+      ...prev,
+      reports: prev.reports.map((report) =>
+        report._id === reportId ? { ...report, commentCount } : report
+      ),
+    }));
+  };
+
+  const handleOpenCommentModal = (reportId) => {
+    setSelectedReportId(reportId);
+    setIsCommentModalOpen(true);
+  };
+
+  const handleCloseCommentModal = () => {
+    setIsCommentModalOpen(false);
+    setSelectedReportId(null);
+  };
 
   if (error) {
     return (
@@ -77,7 +129,6 @@ const ProjectReport = () => {
     );
   }
 
-  // Pagination logic
   const totalReports = projectData.reports.length;
   const totalPages = Math.ceil(totalReports / reportsPerPage);
   const indexOfLastReport = currentPage * reportsPerPage;
@@ -102,7 +153,6 @@ const ProjectReport = () => {
   return (
     <div className="w-full mx-auto p-0 md:p-4">
       <div className="w-full">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <button
             onClick={() => navigate(-1)}
@@ -113,7 +163,6 @@ const ProjectReport = () => {
           </button>
         </div>
 
-        {/* Main Content */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
           <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sm:p-6 md:p-8">
             <div>
@@ -128,7 +177,6 @@ const ProjectReport = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 md:p-8">
-            {/* Project Overview */}
             <div className="lg:col-span-1">
               <div className="bg-gray-50 rounded-xl p-4 sm:p-6 shadow-md">
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2 font-sans">
@@ -176,7 +224,6 @@ const ProjectReport = () => {
               </div>
             </div>
 
-            {/* Reports Section */}
             <div className="lg:col-span-2">
               <div className="bg-gray-50 rounded-xl p-4 sm:p-6 shadow-md">
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2 font-sans">
@@ -226,6 +273,17 @@ const ProjectReport = () => {
                             )}
                           </p>
                         </div>
+                        <div
+                          className="flex items-center gap-2 cursor-pointer hover:text-blue-700 transition-colors duration-200"
+                          onClick={() => handleOpenCommentModal(report._id)}
+                          role="button"
+                          aria-label={`Mở bình luận cho báo cáo ${report._id}`}
+                        >
+                          <MessageCircle className="w-5 h-5 text-blue-600" />
+                          <span className="text-gray-600 font-medium font-sans hover:text-blue-600">
+                            Bình luận ({report.commentCount || 0})
+                          </span>
+                        </div>
                         <div className="flex items-center gap-2">
                           <Clock className="w-5 h-5 text-blue-600" />
                           <span className="text-gray-600 font-medium font-sans">
@@ -246,7 +304,6 @@ const ProjectReport = () => {
                     </p>
                   </div>
                 )}
-                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
                     <div className="flex items-center space-x-2">
@@ -290,6 +347,14 @@ const ProjectReport = () => {
           </div>
         </div>
       </div>
+      {isCommentModalOpen && (
+        <CommentModal
+          reportId={selectedReportId}
+          isOpen={isCommentModalOpen}
+          onClose={handleCloseCommentModal}
+          onCommentUpdate={handleCommentUpdate}
+        />
+      )}
     </div>
   );
 };
