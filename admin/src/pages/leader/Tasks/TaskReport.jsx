@@ -38,8 +38,8 @@ const TaskReport = () => {
             },
           }
         );
-        // Initialize comment counts for each report
-        const reportsWithCommentCount = await Promise.all(
+        // Fetch comment counts and unread counts for each report
+        const reportsWithCommentData = await Promise.all(
           response.data.reports.map(async (report) => {
             try {
               const commentResponse = await axios.get(
@@ -50,13 +50,17 @@ const TaskReport = () => {
                   },
                 }
               );
-              return { ...report, commentCount: commentResponse.data.comments.length };
+              return {
+                ...report,
+                commentCount: commentResponse.data.comments.length,
+                unreadCommentCount: commentResponse.data.unreadCount || 0,
+              };
             } catch (err) {
-              return { ...report, commentCount: 0 };
+              return { ...report, commentCount: 0, unreadCommentCount: 0 };
             }
           })
         );
-        setReportsData({ ...response.data, reports: reportsWithCommentCount });
+        setReportsData({ ...response.data, reports: reportsWithCommentData });
         setLoading(false);
       } catch (err) {
         setError("Không có báo cáo nào của nhiệm vụ này.");
@@ -70,9 +74,57 @@ const TaskReport = () => {
     setReportsData((prev) => ({
       ...prev,
       reports: prev.reports.map((report) =>
-        report._id === reportId ? { ...report, commentCount } : report
+        report._id === reportId
+          ? { ...report, commentCount, unreadCommentCount: 0 }
+          : report
       ),
     }));
+  };
+
+  const handleOpenCommentModal = (reportId) => {
+    setModalReportId(reportId);
+  };
+
+  const handleCloseCommentModal = () => {
+    setModalReportId(null);
+    // Refetch comment data to update unread counts
+    const fetchReports = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:8001/api/leader/showAllReportTask/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        const reportsWithCommentData = await Promise.all(
+          response.data.reports.map(async (report) => {
+            try {
+              const commentResponse = await axios.get(
+                `http://localhost:8001/api/comment/reports/${report._id}/getcomment`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              );
+              return {
+                ...report,
+                commentCount: commentResponse.data.comments.length,
+                unreadCommentCount: commentResponse.data.unreadCount || 0,
+              };
+            } catch (err) {
+              return { ...report, commentCount: 0, unreadCommentCount: 0 };
+            }
+          })
+        );
+        setReportsData({ ...response.data, reports: reportsWithCommentData });
+      } catch (err) {
+        console.error("Error refetching reports:", err);
+      }
+    };
+    fetchReports();
   };
 
   const getProgressColor = (progress) => {
@@ -309,12 +361,18 @@ const TaskReport = () => {
 
                   <div className="bg-gray-50 rounded-xl p-4">
                     <button
-                      onClick={() => setModalReportId(report._id)}
+                      onClick={() => handleOpenCommentModal(report._id)}
                       className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
                     >
                       <MessageSquare className="w-5 h-5" />
                       <span className="text-sm font-semibold">
                         {report.commentCount || 0} Bình luận
+                        {report.unreadCommentCount > 0 && (
+                          <span className="text-red-600 font-semibold">
+                            {" "}
+                            +{report.unreadCommentCount} mới
+                          </span>
+                        )}
                       </span>
                     </button>
                   </div>
@@ -410,7 +468,7 @@ const TaskReport = () => {
       <CommentModal
         reportId={modalReportId}
         isOpen={!!modalReportId}
-        onClose={() => setModalReportId(null)}
+        onClose={handleCloseCommentModal}
         onCommentUpdate={handleCommentUpdate}
       />
     </div>

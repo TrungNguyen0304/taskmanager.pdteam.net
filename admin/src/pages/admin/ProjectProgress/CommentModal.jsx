@@ -35,7 +35,6 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Close dropdown only if click is outside both the comment container and the dropdown menu
       if (
         menuOpenId &&
         !document
@@ -47,7 +46,6 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
       ) {
         setMenuOpenId(null);
       }
-      // Close delete confirmation modal if click is outside
       if (
         deleteModalRef.current &&
         !deleteModalRef.current.contains(event.target) &&
@@ -111,6 +109,27 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const markCommentAsRead = async (commentId) => {
+    if (!localStorage.getItem("token")) return;
+
+    try {
+      await api.patch(`/${commentId}/read`);
+      // Update local state to reflect read status
+      setComments((prevComments) =>
+        prevComments.map((c) =>
+          c._id === commentId ? { ...c, isRead: true } : c
+        )
+      );
+    } catch (error) {
+      console.error("Mark comment as read error:", error);
+    }
+  };
+
+  const handleCommentClick = (commentId) => {
+    // Mark comment as read when clicked
+    markCommentAsRead(commentId);
   };
 
   const handleCommentSubmit = async (e) => {
@@ -295,17 +314,31 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
               {comments.slice(0, visibleCommentsCount).map((comment) => (
                 <div
                   key={comment._id}
-                  className="bg-gray-50 rounded-xl p-4 text-sm sm:text-base shadow-sm border relative"
+                  className="bg-gray-50 rounded-xl p-4 text-sm sm:text-base shadow-sm border relative cursor-pointer"
                   data-comment-id={comment._id}
+                  onClick={() => handleCommentClick(comment._id)}
+                  role="button"
+                  aria-label={`Xem bình luận từ ${comment.creator?.name || "Ẩn danh"}`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-gray-800">
-                      {comment.creator?.name || "Ẩn danh"} ({comment.from})
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-800">
+                        {comment.creator?.name || "Ẩn danh"} ({comment.from})
+                      </span>
+                      {!comment.isRead && (
+                        <span
+                          className="w-2 h-2 bg-red-500 rounded-full"
+                          aria-label="Bình luận chưa đọc"
+                        ></span>
+                      )}
+                    </div>
                     {comment.from !== "member" && (
                       <div className="relative">
                         <button
-                          onClick={() => toggleMenu(comment._id)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent marking as read when clicking menu
+                            toggleMenu(comment._id);
+                          }}
                           className="p-1 rounded-full hover:bg-gray-200 transition-colors duration-200"
                           aria-label="Tùy chọn bình luận"
                         >
@@ -317,7 +350,10 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
                             data-menu-id={comment._id}
                           >
                             <button
-                              onClick={() => handleEditComment(comment)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent marking as read
+                                handleEditComment(comment);
+                              }}
                               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
                               aria-label="Chỉnh sửa bình luận"
                             >
@@ -325,7 +361,10 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
                               Chỉnh sửa
                             </button>
                             <button
-                              onClick={() => handleDeleteComment(comment._id)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent marking as read
+                                handleDeleteComment(comment._id);
+                              }}
                               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
                               aria-label="Xóa bình luận"
                             >
@@ -390,7 +429,6 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
                     <button
                       onClick={handleShowLess}
                       className="flex items-center font-semibold text-blue-600 hover:text-blue-800 text-sm sm:text-base transition-colors duration-200"
-                      aria-label="Ẩn bớt bình luận"
                     >
                       Ẩn bớt
                       <FaAngleUp className="ml-1 w-4 h-4" />

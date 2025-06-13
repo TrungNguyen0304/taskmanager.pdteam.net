@@ -42,7 +42,7 @@ const ProjectReport = () => {
             },
           }
         );
-        const reportsWithCommentCount = await Promise.all(
+        const reportsWithCommentData = await Promise.all(
           response.data.project.reports.map(async (report) => {
             try {
               const commentResponse = await axios.get(
@@ -56,15 +56,16 @@ const ProjectReport = () => {
               return {
                 ...report,
                 commentCount: commentResponse.data.comments.length,
+                unreadCommentCount: commentResponse.data.unreadCount || 0,
               };
             } catch (err) {
-              return { ...report, commentCount: 0 };
+              return { ...report, commentCount: 0, unreadCommentCount: 0 };
             }
           })
         );
         setProjectData({
           ...response.data.project,
-          reports: reportsWithCommentCount,
+          reports: reportsWithCommentData,
         });
         setError(null);
         window.scrollTo(0, 0);
@@ -81,7 +82,9 @@ const ProjectReport = () => {
     setProjectData((prev) => ({
       ...prev,
       reports: prev.reports.map((report) =>
-        report._id === reportId ? { ...report, commentCount } : report
+        report._id === reportId
+          ? { ...report, commentCount, unreadCommentCount: 0 }
+          : report
       ),
     }));
   };
@@ -94,6 +97,47 @@ const ProjectReport = () => {
   const handleCloseCommentModal = () => {
     setIsCommentModalOpen(false);
     setSelectedReportId(null);
+    // Refetch comment data to update unread counts
+    const fetchProjectReports = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:8001/api/company/showAllRoprtProject/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+        const reportsWithCommentData = await Promise.all(
+          response.data.project.reports.map(async (report) => {
+            try {
+              const commentResponse = await axios.get(
+                `http://localhost:8001/api/comment/reports/${report._id}/getcomment`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              );
+              return {
+                ...report,
+                commentCount: commentResponse.data.comments.length,
+                unreadCommentCount: commentResponse.data.unreadCount || 0,
+              };
+            } catch (err) {
+              return { ...report, commentCount: 0, unreadCommentCount: 0 };
+            }
+          })
+        );
+        setProjectData({
+          ...response.data.project,
+          reports: reportsWithCommentData,
+        });
+      } catch (err) {
+        console.error("Error refetching project reports:", err);
+      }
+    };
+    fetchProjectReports();
   };
 
   if (error) {
@@ -281,7 +325,13 @@ const ProjectReport = () => {
                         >
                           <MessageCircle className="w-5 h-5 text-blue-600" />
                           <span className="text-gray-600 font-medium font-sans hover:text-blue-600">
-                            Bình luận ({report.commentCount || 0})
+                            Bình luận ({report.commentCount || 0}
+                            {report.unreadCommentCount > 0 && (
+                              <span className="text-red-600 font-semibold">
+                                {" "}
+                                +{report.unreadCommentCount} mới
+                              </span>
+                            )})
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

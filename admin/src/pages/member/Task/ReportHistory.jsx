@@ -35,7 +35,29 @@ const ReportHistory = () => {
         );
 
         if (Array.isArray(response.data.reports)) {
-          setReports(response.data.reports);
+          // Fetch comment counts and unread counts for each report
+          const reportsWithCommentData = await Promise.all(
+            response.data.reports.map(async (report) => {
+              try {
+                const commentResponse = await axios.get(
+                  `${BASE_URL}/api/comment/reports/${report.reportId}/getcomment`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                  }
+                );
+                return {
+                  ...report,
+                  commentCount: commentResponse.data.comments.length,
+                  unreadCommentCount: commentResponse.data.unreadCount || 0,
+                };
+              } catch (err) {
+                return { ...report, commentCount: 0, unreadCommentCount: 0 };
+              }
+            })
+          );
+          setReports(reportsWithCommentData);
         } else {
           setReports([]);
         }
@@ -61,10 +83,60 @@ const ReportHistory = () => {
     setReports((prevReports) =>
       prevReports.map((report) =>
         report.reportId === reportId
-          ? { ...report, commentCount }
+          ? { ...report, commentCount, unreadCommentCount: 0 }
           : report
       )
     );
+  };
+
+  const handleOpenCommentModal = (reportId) => {
+    setModalReportId(reportId);
+  };
+
+  const handleCloseCommentModal = () => {
+    setModalReportId(null);
+    // Refetch comment data to update unread counts
+    const fetchReports = async () => {
+      try {
+        const response = await axios.get(
+          `${BASE_URL}/api/member/getReportTask/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (Array.isArray(response.data.reports)) {
+          const reportsWithCommentData = await Promise.all(
+            response.data.reports.map(async (report) => {
+              try {
+                const commentResponse = await axios.get(
+                  `${BASE_URL}/api/comment/reports/${report.reportId}/getcomment`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                  }
+                );
+                return {
+                  ...report,
+                  commentCount: commentResponse.data.comments.length,
+                  unreadCommentCount: commentResponse.data.unreadCount || 0,
+                };
+              } catch (err) {
+                return { ...report, commentCount: 0, unreadCommentCount: 0 };
+              }
+            })
+          );
+          setReports(reportsWithCommentData);
+        }
+      } catch (err) {
+        console.error("Error refetching reports:", err);
+      }
+    };
+    fetchReports();
   };
 
   const indexOfLastReport = currentPage * reportsPerPage;
@@ -187,12 +259,18 @@ const ReportHistory = () => {
                         </td>
                         <td className="py-4 px-6 text-sm">
                           <button
-                            onClick={() => setModalReportId(report.reportId)}
+                            onClick={() => handleOpenCommentModal(report.reportId)}
                             className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
                           >
                             <MessageSquare className="w-5 h-5" />
                             <span className="text-sm font-semibold">
                               {report.commentCount || 0} Bình luận
+                              {report.unreadCommentCount > 0 && (
+                                <span className="text-red-600 font-semibold">
+                                  {" "}
+                                  +{report.unreadCommentCount} mới
+                                </span>
+                              )}
                             </span>
                           </button>
                         </td>
@@ -277,7 +355,7 @@ const ReportHistory = () => {
       <CommentModal
         reportId={modalReportId}
         isOpen={!!modalReportId}
-        onClose={() => setModalReportId(null)}
+        onClose={handleCloseCommentModal}
         onCommentUpdate={handleCommentUpdate}
       />
     </div>
