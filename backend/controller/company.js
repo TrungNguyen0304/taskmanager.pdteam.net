@@ -7,6 +7,7 @@ const {
   notifyProject,
   notifyProjectRemoval,
   notifyEvaluateCompany,
+  notifyStatusProject
 } = require("../controller/notification");
 const Project = require("../models/project");
 const Task = require("../models/task");
@@ -679,6 +680,7 @@ const createProject = async (req, res) => {
   }
 };
 
+
 const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
@@ -689,13 +691,14 @@ const updateProject = async (req, res) => {
       return res.status(404).json({ message: "Công việc không tồn tại." });
     }
 
+    // Lưu trạng thái hiện tại của dự án
+    const oldStatus = project.status;
+
     if (name) project.name = name;
     if (description) project.description = description;
     if (priority) project.priority = priority;
 
     if (status) {
-      const currentStatus = project.status;
-
       const allowedTransitions = {
         pending: ["revoke", "pending"],
         in_progress: ["paused", "cancelled", "completed", "in_progress"],
@@ -705,12 +708,12 @@ const updateProject = async (req, res) => {
         revoke: ["revoke", "pending"],
       };
 
-      const validNextStatuses = allowedTransitions[currentStatus] || [];
+      const validNextStatuses = allowedTransitions[oldStatus] || [];
 
       if (!validNextStatuses.includes(status)) {
         return res.status(403).json({
-          message: `⚠️ Không thể chuyển trạng thái từ "${currentStatus}" sang "${status}". 
-Trạng thái hợp lệ tiếp theo từ "${currentStatus}" là: [${validNextStatuses.join(", ") || "không có"}].`,
+          message: `⚠️ Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". 
+Trạng thái hợp lệ tiếp theo từ "${oldStatus}" là: [${validNextStatuses.join(", ") || "không có"}].`,
         });
       }
 
@@ -718,6 +721,11 @@ Trạng thái hợp lệ tiếp theo từ "${currentStatus}" là: [${validNextSt
     }
 
     await project.save();
+
+    // Trigger notification nếu trạng thái thay đổi
+    if (status && oldStatus !== status) {
+      await notifyStatusProject({ project, oldStatus });
+    }
 
     res.status(200).json({
       message: "Cập nhật công việc thành công.",

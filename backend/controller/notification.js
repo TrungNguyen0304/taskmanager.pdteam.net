@@ -23,6 +23,8 @@ const notifyTeam = async ({ userId, team }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("team-assigned", {
+        title,
+        message,
         id: team._id,
         name: team.name,
       });
@@ -60,6 +62,8 @@ const notifyProject = async ({ userId, project }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("project-assigned", {
+        title,
+        message,
         id: project._id,
         name: project.name,
         description: project.description,
@@ -91,6 +95,8 @@ const notifyProjectRemoval = async ({ userId, project }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
+      title,
+      message,
       userId: userIdStr,
       title,
       message,
@@ -100,6 +106,8 @@ const notifyProjectRemoval = async ({ userId, project }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("project-removed", {
+        title,
+        message,
         id: project._id,
         name: project.name,
       });
@@ -137,6 +145,8 @@ const notifyTask = async ({ userId, task }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("task-assigned", {
+        title,
+        message,
         id: task._id,
         name: task.name,
       });
@@ -165,6 +175,8 @@ const notifyTaskRemoval = async ({ userId, task }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
+      title,
+      message,
       userId: userIdStr,
       title,
       message,
@@ -174,6 +186,8 @@ const notifyTaskRemoval = async ({ userId, task }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("task-removed", {
+        title,
+        message,
         id: task._id,
         name: task.name,
       });
@@ -202,6 +216,8 @@ const notifyReport = async ({ userId, task, report, member }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
+      title,
+      message,
       userId: userIdStr,
       title,
       message,
@@ -211,6 +227,8 @@ const notifyReport = async ({ userId, task, report, member }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("report-submitted", {
+        title,
+        message,
         reportId: report._id,
         taskId: task._id,
         taskName: task.name,
@@ -242,6 +260,8 @@ const notifyEvaluateLeader = async ({ userId, feedback, report }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
+      title,
+      message,
       userId: userIdStr,
       title,
       message,
@@ -251,6 +271,8 @@ const notifyEvaluateLeader = async ({ userId, feedback, report }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("report-evaluated", {
+        title,
+        message,
         reportId: report._id,
         feedbackId: feedback._id,
         score: feedback.score,
@@ -291,6 +313,8 @@ const notifyStatusTask = async ({ userId, task, member, oldStatus }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("report-submitted", {
+        title,
+        message,
         taskId: task._id,
         taskName: task.name,
         taskStatus: task.status,
@@ -332,6 +356,8 @@ const notifyReportCompany = async ({ userId, project, report, leader }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("report-submitted", {
+        title,
+        message,
         reportId: report._id,
         projectId: project._id,
         projectName: project.name,
@@ -372,6 +398,8 @@ const notifyEvaluateCompany = async ({ userId, feedback, report }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("report-evaluated", {
+        title,
+        message,
         reportId: report._id,
         feedbackId: feedback._id,
         score: feedback.score,
@@ -412,6 +440,8 @@ const notifyTaskOverdue = async ({ userId, task }) => {
 
     if (isUserOnline(userIdStr)) {
       io.to(userIdStr).emit("task-overdue", {
+        title,
+        message,
         id: task._id,
         name: task.name,
         deadline: task.deadline,
@@ -463,6 +493,8 @@ const notifyProjectOverdue = async ({ project }) => {
 
     if (isUserOnline(leaderId)) {
       io.to(leaderId).emit("project-overdue", {
+        title,
+        message,
         id: project._id,
         name: project.name,
         deadline: project.deadline,
@@ -572,6 +604,61 @@ const deleteNotification = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete notification' });
   }
 };
+
+// thong bao khi tha doi trang thai project
+const notifyStatusProject = async ({ project, oldStatus }) => {
+  const io = getIO();
+  const title = "Trạng thái dự án đã thay đổi";
+  const message = `Công ty đã thay đổi trạng thái dự án "${project.name}" từ ${oldStatus} thành ${project.status}`;
+
+  try {
+    const team = await Team.findById(project.assignedTeam);
+    if (!team || !team.assignedLeader) {
+      console.log(`Không tìm thấy Team hoặc leader cho dự án: ${project._id}`);
+      return;
+    }
+
+    const leaderId = String(team.assignedLeader);
+    if (!leaderId || leaderId === "null" || leaderId === "undefined") {
+      console.log(`Không có leader hợp lệ để thông báo cho dự án: ${project._id}`);
+      return;
+    }
+
+    // Lưu thông báo vào MongoDB
+    await saveNotification({
+      userId: leaderId,
+      title,
+      message,
+      type: "info",
+      source: "system",
+    });
+
+    if (isUserOnline(leaderId)) {
+      io.to(leaderId).emit("project-status-updated", {
+        title,
+        message,
+        projectId: project._id,
+        projectName: project.name,
+        projectStatus: project.status,
+        oldStatus,
+        submittedAt: new Date(),
+      });
+      console.log(`Sent socket to leader room: ${leaderId}`);
+    } else {
+      const user = await User.findById(leaderId);
+      if (user?.fcmToken) {
+        await sendNotification(user.fcmToken, title, message);
+        console.log(`Sent FCM to offline leader with userId: ${leaderId}`);
+      } else {
+        console.log("No FCM token for leader.");
+      }
+    }
+  } catch (error) {
+    console.error(`Error in notifyStatusProject for project ${project._id}:`, error.message);
+  }
+};
+
+
 module.exports = {
   notifyTeam,
   notifyProject,
@@ -587,6 +674,7 @@ module.exports = {
   notifyProjectOverdue,
   getNotifications,
   deleteNotification,
-  markNotificationAsRead
+  markNotificationAsRead,
+  notifyStatusProject
 
 };
