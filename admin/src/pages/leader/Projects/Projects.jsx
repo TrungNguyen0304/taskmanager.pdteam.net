@@ -9,10 +9,11 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
+  History,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const ProjectCard = ({ project, onViewReport }) => {
+const ProjectCard = ({ project, onViewReport, onViewReportHistory }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
@@ -68,6 +69,13 @@ const ProjectCard = ({ project, onViewReport }) => {
             >
               <FileText className="w-5 h-5" />
               <span>Báo cáo</span>
+            </button>
+            <button
+              onClick={() => onViewReportHistory(project.id)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 font-medium transition-all duration-300 border border-white/20"
+            >
+              <History className="w-5 h-5" />
+              <span>Lịch sử báo cáo</span>
             </button>
             <button
               onClick={() =>
@@ -135,11 +143,12 @@ const ProjectCard = ({ project, onViewReport }) => {
                       strokeWidth="8"
                       fill="none"
                       strokeDasharray={`${2 * Math.PI * 40}`}
-                      strokeDashoffset={`${2 *
+                      strokeDashoffset={`${
+                        2 *
                         Math.PI *
                         40 *
                         (1 - (project.averageTaskProgress || 0) / 100)
-                        }`}
+                      }`}
                       className="transition-all duration-1000 ease-out"
                       strokeLinecap="round"
                     />
@@ -278,10 +287,10 @@ const Projects = () => {
             description: p.description || "Chưa có mô tả",
             deadline: p.deadline
               ? new Date(p.deadline).toLocaleDateString("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
               : "Chưa xác định",
             status: p.status || "Không xác định",
             teamId: p.teamId || "Chưa phân nhóm",
@@ -307,6 +316,10 @@ const Projects = () => {
 
   const handleViewReport = (id) => {
     navigate(`/project-report/${id}`);
+  };
+
+  const handleViewReportHistory = (id) => {
+    navigate(`/report-history/${id}`);
   };
 
   const totalPages = Math.ceil(projects.length / projectsPerPage);
@@ -366,6 +379,7 @@ const Projects = () => {
             key={project.id}
             project={project}
             onViewReport={handleViewReport}
+            onViewReportHistory={handleViewReportHistory}
           />
         ))}
       </div>
@@ -378,10 +392,11 @@ const Projects = () => {
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${currentPage === 1
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                currentPage === 1
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-700 hover:bg-gray-100"
-                }`}
+              }`}
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Trước</span>
@@ -394,10 +409,11 @@ const Projects = () => {
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    className={`w-10 h-10 rounded-xl font-medium transition-all duration-300 ${currentPage === page
+                    className={`w-10 h-10 rounded-xl font-medium transition-all duration-300 ${
+                      currentPage === page
                         ? "bg-blue-600 text-white shadow-lg"
                         : "text-gray-700 hover:bg-gray-100"
-                      }`}
+                    }`}
                   >
                     {page}
                   </button>
@@ -409,10 +425,11 @@ const Projects = () => {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${currentPage === totalPages
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                currentPage === totalPages
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-700 hover:bg-gray-100"
-                }`}
+              }`}
             >
               <span className="hidden sm:inline">Sau</span>
               <ChevronRight className="w-4 h-4" />

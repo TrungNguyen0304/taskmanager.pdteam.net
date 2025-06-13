@@ -52,6 +52,7 @@ import ReportHistory from "./pages/member/Task/ReportHistory";
 import ProjectProgressDetail from "./pages/admin/ProjectProgress/ProjectProgressDetail";
 import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import ProjectReport from "./pages/admin/ProjectProgress/ProjectReport";
+import ReportHistoryLeader from "./pages/leader/Projects/ReportHistoryLeader";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -126,6 +127,7 @@ const LeaderLayout = () => {
             <Route path="/unassigned-tasks" element={<UnassignedTasks />} />
 
             <Route path="/projects" element={<Projects />} />
+            <Route path="/report-history/:id" element={<ReportHistoryLeader />} />
             <Route
               path="/project-detail/:_id"
               element={<ProjectDetailLeader />}

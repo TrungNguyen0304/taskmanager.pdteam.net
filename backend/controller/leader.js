@@ -1688,6 +1688,7 @@ const getStatistics = async (req, res) => {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };
+
 // show all project đã báo cáo
 const getReportProject = async (req, res) => {
   try {
