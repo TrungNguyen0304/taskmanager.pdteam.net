@@ -61,15 +61,17 @@ const FeedbackMember = () => {
   );
 
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   return (
-    <div className="w-full mx-auto bg-white p-0 md:p-6 rounded-2xl shadow-xl">
+    <div className="w-full mx-auto bg-white p-6 rounded-2xl shadow-xl">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 gap-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm sm:text-base transition-colors"
+          className="flex items-center text-blue-600 hover:text-blue-800 font-medium text-md sm:text-xl transition-colors"
         >
           <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
           Quay lại
@@ -104,7 +106,7 @@ const FeedbackMember = () => {
                     {feedback.taskName}
                   </p>
                   <p className="text-gray-700 text-sm sm:text-base">
-                    <span className="font-semibold">Báo cáo:</span>{" "}
+                    <span className="font-semibold">Nội dung báo cáo:</span>{" "}
                     {feedback.reportContent}
                   </p>
                   <p className="text-gray-700 text-sm sm:text-base">
@@ -132,8 +134,18 @@ const FeedbackMember = () => {
         </div>
       )}
 
+      {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex justify-end mt-6 sm:mt-8 gap-2 flex-wrap">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            Trước
+          </button>
+
+          {/* Page Number Buttons */}
           {Array.from({ length: totalPages }).map((_, idx) => (
             <button
               key={idx}
@@ -147,6 +159,15 @@ const FeedbackMember = () => {
               {idx + 1}
             </button>
           ))}
+
+          {/* Next Button */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            Sau
+          </button>
         </div>
       )}
     </div>
