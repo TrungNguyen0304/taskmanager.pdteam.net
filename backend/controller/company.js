@@ -680,8 +680,7 @@ const createProject = async (req, res) => {
   }
 };
 
-
-const updateProject = async (req, res) => {
+const updateUnassignedProject = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, status, priority } = req.body;
@@ -735,6 +734,89 @@ Trạng thái hợp lệ tiếp theo từ "${oldStatus}" là: [${validNextStatus
         description: project.description,
         status: project.status,
         priority: project.priority,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
+const updateAssignedProjects = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, status, priority, deadline } = req.body;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ message: "Công việc không tồn tại." });
+    }
+
+    // Lưu trạng thái hiện tại của dự án
+    const oldStatus = project.status;
+
+    // Cập nhật các trường nếu được cung cấp
+    if (name) project.name = name;
+    if (description) project.description = description;
+    if (priority) project.priority = priority;
+
+    // Xử lý deadline nếu được cung cấp
+    if (deadline) {
+      const parsedDeadline = new Date(deadline);
+      if (isNaN(parsedDeadline.getTime())) {
+        return res.status(400).json({ message: "Giá trị deadline không hợp lệ." });
+      }
+
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Đặt về đầu ngày hôm nay
+
+      if (parsedDeadline < now) {
+        return res.status(400).json({
+          message: "Deadline không được nằm trong quá khứ.",
+        });
+      }
+
+      project.deadline = parsedDeadline;
+    }
+
+    // Xử lý trạng thái nếu được cung cấp
+    if (status) {
+      const allowedTransitions = {
+        pending: ["revoke", "pending"],
+        in_progress: ["paused", "cancelled", "completed", "in_progress"],
+        paused: ["in_progress", "cancelled"],
+        completed: [],
+        cancelled: [],
+        revoke: ["revoke", "pending"],
+      };
+
+      const validNextStatuses = allowedTransitions[oldStatus] || [];
+
+      if (!validNextStatuses.includes(status)) {
+        return res.status(403).json({
+          message: `⚠️ Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". 
+Trạng thái hợp lệ tiếp theo từ "${oldStatus}" là: [${validNextStatuses.join(", ") || "không có"}].`,
+        });
+      }
+
+      project.status = status;
+    }
+
+    await project.save();
+
+    // Trigger notification nếu trạng thái thay đổi
+    if (status && oldStatus !== status) {
+      await notifyStatusProject({ project, oldStatus });
+    }
+
+    res.status(200).json({
+      message: "Cập nhật công việc thành công.",
+      project: {
+        _id: project._id,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        priority: project.priority,
+        deadline: project.deadline,
       },
     });
   } catch (error) {
@@ -1444,7 +1526,7 @@ const viewProject = async (req, res) => {
       averageProgress = (totalProgress / taskCount).toFixed(2);
     }
     const projectStatus = parseFloat(averageProgress) === 100 ? "completed" : "in_progress";
-    
+
     res.status(200).json({
       massege: "Thông tin dự án: ${project.name}",
       project: {
@@ -2201,7 +2283,8 @@ module.exports = {
   deleteTeam,
   paginationTeam,
   createProject,
-  updateProject,
+  updateUnassignedProject,
+  updateAssignedProjects,
   showallProject,
   deleteProject,
   paginationProject,

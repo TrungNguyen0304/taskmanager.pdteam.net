@@ -19,7 +19,8 @@ const {
   viewTeam,
   //project
   createProject,
-  updateProject,
+  updateUnassignedProject,
+  updateAssignedProjects,
   showallProject,
   deleteProject,
   assignProject,
@@ -155,10 +156,16 @@ router.post(
 
 // Cập nhật dự án theo ID
 router.put(
-  "/updateProject/:id",
+  "/updateAssignedProjects/:id",
   authenticateJWT,
   authorize("company"),
-  updateProject
+  updateAssignedProjects
+);
+router.put(
+  "/updateUnassignedProject/:id",
+  authenticateJWT,
+  authorize("company"),
+  updateUnassignedProject
 );
 
 // Xem tất cả dự án
