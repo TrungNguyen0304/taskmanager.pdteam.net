@@ -1129,24 +1129,24 @@ const Home = () => {
                   {statistics?.statistics?.projects?.total || 0}
                 </span>
               </div>
-              <div className="flex justify-between">
+              {/* <div className="flex justify-between">
                 <span className="text-gray-600">Dự án được giao:</span>
                 <span className="font-medium">
                   {statistics?.statistics?.projects?.assigned || 0}
                 </span>
-              </div>
+              </div> */}
               <div className="flex justify-between">
                 <span className="text-gray-600">Dự án hoàn thành:</span>
                 <span className="font-medium">
                   {statistics?.statistics?.projects?.completedProjects || 0}
                 </span>
-              </div>s
-              <div className="flex justify-between">
+              </div>
+              {/* <div className="flex justify-between">
                 <span className="text-gray-600">Tiến độ trung bình (%):</span>
                 <span className="font-medium">
                   {statistics?.statistics?.projects?.averageProjectProgress || 0}
                 </span>
-              </div>
+              </div> */}
               <div className="flex justify-between">
                 <span className="text-gray-600">Dự án quá hạn:</span>
                 <span className="font-medium text-red-500">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, RotateCcw, Pencil } from "lucide-react";
+import { Eye, RotateCcw, Pencil, Trash2 } from "lucide-react";
 import axios from "axios";
 
 const PAGE_SIZE = 5;
@@ -15,8 +15,8 @@ const AssignedTasks = () => {
   const [confirmAction, setConfirmAction] = useState(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [actionError, setActionError] = useState("");
-  const [projectFilter, setProjectFilter] = useState(""); // State for project name filter
-  const [projectNames, setProjectNames] = useState([]); // State for unique project names
+  const [projectFilter, setProjectFilter] = useState("");
+  const [projectNames, setProjectNames] = useState([]);
 
   useEffect(() => {
     const fetchAssignedTasks = async () => {
@@ -35,7 +35,7 @@ const AssignedTasks = () => {
           name: task.name || "N/A",
           description: task.description || "N/A",
           assignedMember: task.assignedMember?.name || "N/A",
-          projectName: task.projectId?.name || "N/A", // Add project name
+          projectName: task.projectId?.name || "N/A",
           deadline: task.deadline
             ? new Date(task.deadline).toLocaleDateString("vi-VN")
             : "N/A",
@@ -44,8 +44,6 @@ const AssignedTasks = () => {
         }));
 
         setTasks(formatted);
-
-        // Extract unique project names
         const uniqueProjects = [
           ...new Set(
             formatted
@@ -64,7 +62,6 @@ const AssignedTasks = () => {
     fetchAssignedTasks();
   }, []);
 
-  // Filter tasks by project name and assigned member
   const filteredTasks = tasks
     .filter((task) => task.assignedMember !== "N/A")
     .filter((task) =>
@@ -101,6 +98,24 @@ const AssignedTasks = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    setIsActionLoading(true);
+    setActionError("");
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:8001/api/leader/deleteTask/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Delete task error:", error.response?.data);
+      setActionError(error.response?.data?.message || "Không thể xóa nhiệm vụ.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   const openConfirmModal = (actionType, taskId) => {
     setConfirmAction(actionType);
     setSelectedTaskId(taskId);
@@ -119,19 +134,37 @@ const AssignedTasks = () => {
     else if (confirmAction === "revoke") handleRevoke(selectedTaskId);
   };
 
-  // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [projectFilter]);
 
+  // Hàm xác định class màu sắc dựa trên status và hover
+  const getStatusColorClass = (status) => {
+    const baseClass = {
+      "in_progress": "bg-white text-gray-800",
+      "completed": "bg-green-100 text-green-800",
+      "paused": "bg-yellow-100 text-yellow-800",
+      "cancelled": "bg-red-100 text-red-800",
+      default: "bg-gray-100 text-gray-800",
+    }[status.toLowerCase()] || "bg-gray-100 text-gray-800";
+
+    const hoverClass = {
+      "in_progress": "hover:bg-gray-50",
+      "completed": "hover:bg-green-200",
+      "paused": "hover:bg-yellow-200",
+      "cancelled": "hover:bg-red-200",
+      default: "hover:bg-gray-200",
+    }[status.toLowerCase()] || "hover:bg-gray-200";
+
+    return `${baseClass} ${hoverClass}`;
+  };
+
   return (
     <div className="p-0 md:p-4 w-full mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl sm:text-3xl font-bold text-blue-600">
           Nhiệm Vụ Đang Làm
         </h2>
-        {/* Project Filter Dropdown */}
         <div className="flex items-center gap-3">
           <label
             htmlFor="projectFilter"
@@ -155,7 +188,6 @@ const AssignedTasks = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow-md overflow-x-auto">
         <table className="min-w-full table-auto">
           <thead className="bg-blue-50 text-blue-800 text-xs sm:text-sm">
@@ -212,7 +244,7 @@ const AssignedTasks = () => {
               paginatedTasks.map((task, idx) => (
                 <tr
                   key={task.id}
-                  className="border-t hover:bg-blue-50 transition-colors"
+                  className={`border-t ${getStatusColorClass(task.status)} transition-colors`}
                 >
                   <td className="px-4 py-3 text-sm sm:text-base">
                     {(currentPage - 1) * PAGE_SIZE + idx + 1}
@@ -258,6 +290,15 @@ const AssignedTasks = () => {
                     >
                       <Pencil className="w-5 h-5 text-yellow-600" />
                     </button>
+                    {task.status.toLowerCase() === "cancelled" && (
+                      <button
+                        onClick={() => openConfirmModal("delete", task.id)}
+                        title="Xóa"
+                        className="p-2 rounded hover:bg-red-100 group"
+                      >
+                        <Trash2 className="w-5 h-5 text-red-500" />
+                      </button>
+                    )}
                     <button
                       onClick={() => openConfirmModal("revoke", task.id)}
                       title="Thu hồi nhiệm vụ"
@@ -273,7 +314,6 @@ const AssignedTasks = () => {
         </table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex justify-center gap-2 flex-wrap">
           {Array.from({ length: totalPages }).map((_, idx) => (
@@ -292,7 +332,6 @@ const AssignedTasks = () => {
         </div>
       )}
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
