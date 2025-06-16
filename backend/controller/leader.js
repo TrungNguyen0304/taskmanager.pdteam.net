@@ -345,6 +345,14 @@ const createTask = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy project." });
     }
 
+    //kiểm tra deadline của task không được qua ngày deadline của project 
+    if (project.deadline) {
+      const projectDeadline = new Date(project.deadline);
+      if (parsedDeadline > projectDeadline) {
+        return res.status(400).json({ message: "Deadline của task không được vượt quá deadline của project." });
+      }
+    }
+
     // kiemr tra neu tam ngung hoac la huy thi ko the tao task
     if (project.status === 'paused' || project.status === 'cancelled') {
       return res.status(400).json({ message: `Không thể tạo task vì dự án đang ở trạng thái '${project.status}'.` });
