@@ -10,14 +10,16 @@ const UpdateTask = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    status: "",
+    status: "pending",
     priority: 1,
+    deadline: "",
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [serverError, setServerError] = useState("");
 
-  // ✅ Fetch task data on mount
+  // Fetch task data on mount
   useEffect(() => {
     const fetchTask = async () => {
       try {
@@ -28,11 +30,18 @@ const UpdateTask = () => {
         });
 
         const task = res.data.task;
+        console.log("Task data from server:", task);
+
+        // Đảm bảo trạng thái hợp lệ
+        const validStatuses = ["pending", "in_progress", "paused", "completed", "cancelled", "revoke"];
+        const status = validStatuses.includes(task.status) ? task.status : "pending";
+
         setFormData({
           name: task.name || "",
           description: task.description || "",
-          status: task.status || "",
+          status: status,
           priority: task.priority || 1,
+          deadline: task.deadline ? new Date(task.deadline).toISOString().split("T")[0] : "",
         });
       } catch (error) {
         console.error("Lỗi khi lấy dữ liệu nhiệm vụ:", error);
@@ -50,30 +59,46 @@ const UpdateTask = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
+    setServerError("");
   };
 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = "Tên nhiệm vụ là bắt buộc";
-    if (!formData.status.trim()) newErrors.status = "Trạng thái là bắt buộc";
-    if (!formData.priority || isNaN(formData.priority)) {
-      newErrors.priority = "Độ ưu tiên phải là số hợp lệ";
+    if (!["pending", "in_progress", "paused", "completed", "cancelled", "revoke"].includes(formData.status)) {
+      newErrors.status = "Trạng thái không hợp lệ";
+    }
+    if (!formData.priority || isNaN(formData.priority) || ![1, 2, 3].includes(Number(formData.priority))) {
+      newErrors.priority = "Độ ưu tiên phải là 1, 2 hoặc 3";
+    }
+    if (formData.deadline) {
+      const deadlineDate = new Date(formData.deadline);
+      if (isNaN(deadlineDate.getTime())) {
+        newErrors.deadline = "Ngày hết hạn không hợp lệ";
+      }
     }
     return newErrors;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError("");
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
+    console.log("Form data before submit:", formData);
+
     try {
       await axios.put(
         `http://localhost:8001/api/leader/updateTask/${id}`,
-        formData,
+        {
+          ...formData,
+          priority: Number(formData.priority), // Ensure priority is a number
+          deadline: formData.deadline || undefined, // Send undefined if empty
+        },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -86,7 +111,8 @@ const UpdateTask = () => {
       }, 1500);
     } catch (error) {
       console.error("Lỗi khi cập nhật nhiệm vụ:", error);
-      alert("Cập nhật thất bại. Vui lòng thử lại.");
+      const errorMessage = error.response?.data?.message || "Cập nhật thất bại. Vui lòng thử lại.";
+      setServerError(errorMessage);
     }
   };
 
@@ -112,6 +138,10 @@ const UpdateTask = () => {
           Cập Nhật Nhiệm Vụ
         </h2>
       </div>
+
+      {serverError && (
+        <p className="text-red-600 font-semibold mb-4 text-center">{serverError}</p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Tên nhiệm vụ */}
@@ -160,13 +190,12 @@ const UpdateTask = () => {
               errors.status ? "border-red-500" : "border-gray-300"
             }`}
           >
-            <option value="" disabled>
-              -- Chọn trạng thái --
-            </option>
             <option value="pending">Chưa bắt đầu</option>
             <option value="in_progress">Đang thực hiện</option>
+            <option value="paused">Tạm dừng</option>
             <option value="completed">Đã hoàn thành</option>
             <option value="cancelled">Đã hủy</option>
+            <option value="revoke">Thu hồi</option>
           </select>
           {errors.status && (
             <p className="text-red-600 text-sm mt-1">{errors.status}</p>
@@ -186,16 +215,31 @@ const UpdateTask = () => {
               errors.priority ? "border-red-500" : "border-gray-300"
             }`}
           >
-            <option value="" disabled>
-              -- Chọn độ ưu tiên --
-            </option>
-            <option value={1}>Cao</option>
-            <option value={2}>Trung bình</option>
-            <option value={3}>Thấp</option>
+            <option value={1}>Thấp (1)</option>
+            <option value={2}>Trung bình (2)</option>
+            <option value={3}> (3)</option>
           </select>
           {errors.priority && (
             <p className="text-red-600 text-sm mt-1">{errors.priority}</p>
           )}
+        </div>
+
+        {/* Deadline */}
+        <div>
+          <label className="block mb-2 font-semibold text-gray-700">Ngày hết hạn</label>
+          <input
+            type="date"
+            name="deadline"
+            value={formData.deadline}
+            onChange={handleChange}
+            className={`w-full px-2 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+              errors.deadline ? "border-red-blue-500" : "border-gray-300"}
+            }`}
+            placeholder="Chọn ngày hết hạn"
+          />
+            {errors.deadline && (
+            <p className="text-red-600 text-sm mt-1">{errors.deadline}</p>
+            )}
         </div>
 
         {/* Nút submit */}
