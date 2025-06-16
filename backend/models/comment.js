@@ -11,6 +11,7 @@ const CommentSchema = new Schema({
         ref: 'User',
         required: true
     },
+    isReadBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 
 }, {
     timestamps: true

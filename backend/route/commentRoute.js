@@ -4,7 +4,8 @@ const {
   commentOnReport,
   getCommentsByReportId,
   deleteComment,
-  updateComment
+  updateComment,
+  markCommentAsRead
  
 } = require('../controller/comment.js');
 const authenticateJWT = require('../middleware/auth.js');
@@ -20,6 +21,8 @@ router.delete('/reports/:id/delete', authenticateJWT, deleteComment);
 
 // sửa comment
 router.put('/reports/:id/update', authenticateJWT, updateComment);
+
+router.patch('/reports/:id/read', authenticateJWT, markCommentAsRead);
 
 
 module.exports = router;

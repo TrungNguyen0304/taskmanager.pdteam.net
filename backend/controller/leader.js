@@ -231,16 +231,17 @@ const viewProject = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
+
 const viewTask = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate ObjectId
+    // Kiểm tra id hợp lệ
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: 'ID task không hợp lệ' });
     }
 
-    // Fetch task with selected fields and populate related data
+    // Lấy thông tin task
     const task = await Task.findById(id)
       .select('_id name description projectId deadline status progress priority assignedAt')
       .populate('projectId', '_id name')
@@ -251,21 +252,20 @@ const viewTask = async (req, res) => {
       return res.status(404).json({ message: 'Task không tồn tại' });
     }
 
-    // Update status based on progress
+    // Chỉ cập nhật status nếu task đang ở trạng thái được phép tự động cập nhật
     const progress = parseFloat(task.progress);
-    if (!isNaN(progress)) {
+    const autoUpdatableStatuses = ['in_progress', 'completed']; // Giữ nguyên logic update, nhưng giới hạn trạng thái
+
+    if (!isNaN(progress) && autoUpdatableStatuses.includes(task.status)) {
       const newStatus = progress === 100 ? 'completed' : 'in_progress';
       if (task.status !== newStatus) {
-        await Task.updateOne(
-          { _id: id },
-          { $set: { status: newStatus } }
-        );
-        task.status = newStatus; // Update the lean object for response
+        await Task.updateOne({ _id: id }, { $set: { status: newStatus } });
+        task.status = newStatus; // cập nhật object lean để gửi về client
       }
     }
-    
+
     res.status(200).json({
-      message: "Thông tin task ${task.name}",
+      message: `Thông tin task ${task.name}`,
       task,
     });
   } catch (error) {
@@ -273,7 +273,6 @@ const viewTask = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server khi lấy thông tin task' });
   }
 };
-
 // const viewAssignedProject = async (req, res) => {
 //   try {
 //     const userId = req.user._id;
@@ -418,32 +417,58 @@ const updateTask = async (req, res) => {
     if (!project) {
       return res.status(404).json({ message: "Không tìm thấy project." });
     }
-    // kiemr tra neu tam ngung hoac la huy thi ko the tao task
-    if (project.status === 'paused' || project.status === 'cancelled') {
-      return res.status(400).json({ message: `Không thể tạo sửa vì dự án đang ở trạng thái '${project.status}'.` });
+
+    // 3. Kiểm tra trạng thái project
+    if (project.status === "paused" || project.status === "cancelled") {
+      return res.status(400).json({
+        message: `Không thể sửa vì dự án đang ở trạng thái '${project.status}'.`,
+      });
     }
 
-    // 3. Kiểm tra project có assignedTeam chưa
+    // 4. Kiểm tra project đã có team chưa
     if (!project.assignedTeam) {
-      return res.status(400).json({ message: "Project chưa được gán cho team nào." });
+      return res
+        .status(400)
+        .json({ message: "Project chưa được gán cho team nào." });
     }
 
-    // 4. Kiểm tra user có phải là leader không
+    // 5. Kiểm tra quyền leader
     const team = await Team.findById(project.assignedTeam);
     if (!team || team.assignedLeader.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Bạn không có quyền cập nhật task này." });
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền cập nhật task này." });
     }
 
-    // 5. Cập nhật các trường nếu có
-    const allowedStatuses = ["pending", "in_progress", "completed", "cancelled"];
-    const allowedPriorities = [1, 2, 3];
+    // 6. Kiểm tra trạng thái chuyển tiếp hợp lệ
+    if (status) {
+      const allowedTransitions = {
+        pending: ["revoke", "pending"],
+        in_progress: ["paused", "cancelled", "completed", "in_progress"],
+        paused: ["in_progress", "cancelled"],
+        completed: [],
+        cancelled: [],
+        revoke: ["revoke", "pending"],
+      };
 
+      const oldStatus = task.status;
+      const validNextStatuses = allowedTransitions[oldStatus] || [];
+
+      if (!validNextStatuses.includes(status)) {
+        return res.status(403).json({
+          message: `⚠️ Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái hợp lệ tiếp theo từ "${oldStatus}" là: [${validNextStatuses.join(", ") || "không có"}].`,
+        });
+      }
+
+      task.status = status;
+    }
+
+    // 7. Cập nhật các trường còn lại
+    const allowedPriorities = [1, 2, 3];
     if (name !== undefined) task.name = name;
     if (description !== undefined) task.description = description;
-    if (status !== undefined && allowedStatuses.includes(status)) task.status = status;
     if (priority !== undefined && allowedPriorities.includes(priority)) task.priority = priority;
 
-    // ✅ Cập nhật deadline nếu hợp lệ
     if (deadline !== undefined) {
       const newDeadline = new Date(deadline);
       if (isNaN(newDeadline.getTime())) {
@@ -463,8 +488,8 @@ const updateTask = async (req, res) => {
         status: task.status,
         project: task.project,
         priority: task.priority,
-        deadline: task.deadline
-      }
+        deadline: task.deadline,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });

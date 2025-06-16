@@ -12,7 +12,7 @@ export const requestNotificationPermission = async (userId) => {
 
       console.log("FCM Token:", token);
 
-      await fetch("https://apitaskmanager.pdteam.net/api/user/fcm-token", {
+      await fetch("http://localhost:8001/api/user/fcm-token", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

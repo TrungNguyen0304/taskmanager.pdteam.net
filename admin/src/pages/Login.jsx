@@ -33,7 +33,7 @@ const Login = () => {
     onSubmit: async (values, { setSubmitting }) => {
       try {
         // Đăng nhập
-        const response = await fetch("https://apitaskmanager.pdteam.net/api/user/login", {
+        const response = await fetch("http://localhost:8001/api/user/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values),
@@ -46,7 +46,7 @@ const Login = () => {
         if (!token) throw new Error("Không nhận được token từ server.");
 
         // Lấy thông tin user
-        const profileRes = await fetch("https://apitaskmanager.pdteam.net/api/protected/profile", {
+        const profileRes = await fetch("http://localhost:8001/api/protected/profile", {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });

@@ -27,7 +27,8 @@ const commentOnReport = async (req, res) => {
             comment,
             from: fromRole,
             to: toRole,
-            creator: userId
+            creator: userId,
+            isReadBy: [userId], // Automatically mark as read for the creator
         });
 
         await newComment.save();
@@ -48,27 +49,46 @@ const commentOnReport = async (req, res) => {
 };
 
 const getCommentsByReportId = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
 
-        const comments = await Comment.find({ report: id })
-            .populate({ path: 'creator', select: 'name' })
-            .sort({ createdAt: -1 });
+    // Fetch comments for the report
+    const comments = await Comment.find({ report: id })
+      .populate({ path: 'creator', select: 'name' })
+      .sort({ createdAt: -1 });
 
-        if (comments.length === 0) {
-            return res.status(200).json({
-                message: 'Chưa có bình luận nào.',
-                comments: []
-            });
-        }
-
-        res.status(200).json({ message: 'Lấy bình luận thành công.', comments });
-    } catch (error) {
-        console.error('getCommentsByReportId error:', error);
-        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    // If no comments, return empty response with unreadCount 0
+    if (!comments || comments.length === 0) {
+      return res.status(200).json({
+        message: 'Chưa có bình luận nào.',
+        comments: [],
+        unreadCount: 0,
+      });
     }
-};
 
+    // Map comments to include isRead status
+    const commentsWithReadStatus = comments.map((c) => {
+      const isRead = c.isReadBy?.some((uid) => uid.toString() === userId.toString());
+      return {
+        ...c.toObject(),
+        isRead,
+      };
+    });
+
+    // Calculate unread comments count
+    const unreadCount = commentsWithReadStatus.filter((c) => !c.isRead).length;
+
+    res.status(200).json({
+      message: 'Lấy bình luận thành công.',
+      comments: commentsWithReadStatus,
+      unreadCount,
+    });
+  } catch (error) {
+    console.error('getCommentsByReportId error:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
 
 const deleteComment = async (req, res) => {
     try {
@@ -132,9 +152,33 @@ const updateComment = async (req, res) => {
     }
 };
 
+const markCommentAsRead = async (req, res) => {
+    try {
+        const { id } = req.params; // comment ID
+        const userId = req.user._id;
+
+        const comment = await Comment.findById(id);
+        if (!comment) {
+            return res.status(404).json({ message: 'Bình luận không tồn tại.' });
+        }
+
+        // Nếu user chưa đọc, thì thêm vào danh sách đã đọc
+        if (!comment.isReadBy.includes(userId)) {
+            comment.isReadBy.push(userId);
+            await comment.save();
+        }
+
+        res.status(200).json({ message: 'Đã đánh dấu là đã đọc.' });
+    } catch (error) {
+        console.error('markCommentAsRead error:', error);
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
+
 module.exports = {
     commentOnReport,
     getCommentsByReportId,
     updateComment,
-    deleteComment
+    deleteComment,
+    markCommentAsRead
 };

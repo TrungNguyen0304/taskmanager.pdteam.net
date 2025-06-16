@@ -22,7 +22,7 @@ const CreateDepartment = () => {
     const fetchLeaders = async () => {
       try {
         const res = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/company/showallLeaders",
+          "http://localhost:8001/api/company/showallLeaders",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -41,7 +41,7 @@ const CreateDepartment = () => {
     const fetchMembers = async () => {
       try {
         const res = await axios.get(
-          "https://apitaskmanager.pdteam.net/api/company/showallMember",
+          "http://localhost:8001/api/company/showallMember",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -74,7 +74,7 @@ const CreateDepartment = () => {
 
     try {
       const res = await axios.post(
-        "https://apitaskmanager.pdteam.net/api/company/createTeam",
+        "http://localhost:8001/api/company/createTeam",
         newDepartment,
         {
           headers: {

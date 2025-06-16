@@ -5,7 +5,7 @@ const LeaderDetail = () => {
   return (
     <ManagementDetail
       title="Thông Tin Leader"
-      fetchUrl="https://apitaskmanager.pdteam.net/api/company/viewLeader"
+      fetchUrl="http://localhost:8001/api/company/viewLeader"
       isLeader={true}
     />
   );

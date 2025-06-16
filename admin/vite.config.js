@@ -7,14 +7,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'https://apitaskmanager.pdteam.net',
+        target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,
       },
       // 👇 Thêm proxy WebSocket cho Socket.IO
       '/socket.io': {
-        target: 'https://apitaskmanager.pdteam.net',
-        ws: true,             // Bắt buộc để hỗ trợ WebSocket
+        target: 'ws://localhost:8001',
+        ws: true,           
         changeOrigin: true,
       },
     },

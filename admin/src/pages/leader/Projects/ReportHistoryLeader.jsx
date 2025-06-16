@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-import { FileText, Calendar, Users, ArrowLeft, Download } from "lucide-react";
+import { FileText, Calendar, Users, ArrowLeft, Download, MessageSquare } from "lucide-react";
+import CommentModal from "./CommentModal";
 
 const ReportHistoryLeader = () => {
   const { id } = useParams(); // projectId from URL
@@ -10,6 +11,7 @@ const ReportHistoryLeader = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [modalReportId, setModalReportId] = useState(null);
   const reportsPerPage = 3;
 
   useEffect(() => {
@@ -25,7 +27,29 @@ const ReportHistoryLeader = () => {
         );
 
         if (response.data.reports && Array.isArray(response.data.reports)) {
-          setReports(response.data.reports);
+          // Fetch comment counts and unread counts for each report
+          const reportsWithCommentData = await Promise.all(
+            response.data.reports.map(async (report) => {
+              try {
+                const commentResponse = await axios.get(
+                  `http://localhost:8001/api/comment/reports/${report.reportId}/getcomment`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                  }
+                );
+                return {
+                  ...report,
+                  commentCount: commentResponse.data.comments.length,
+                  unreadCommentCount: commentResponse.data.unreadCount || 0,
+                };
+              } catch (err) {
+                return { ...report, commentCount: 0, unreadCommentCount: 0 };
+              }
+            })
+          );
+          setReports(reportsWithCommentData);
         } else {
           setReports([]);
         }
@@ -50,22 +74,84 @@ const ReportHistoryLeader = () => {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        responseType: "blob", // Important for handling binary data
+        responseType: "blob",
       });
 
-      // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", fileName || "report-file"); // Default file name if none provided
+      link.setAttribute("download", fileName || "report-file");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url); // Clean up
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Lỗi khi tải tệp:", err);
       alert("Không thể tải tệp. Vui lòng thử lại sau.");
     }
+  };
+
+  const handleCommentUpdate = (reportId, commentCount) => {
+    if (!reportId || typeof commentCount !== "number") {
+      console.warn("Invalid reportId or commentCount:", { reportId, commentCount });
+      return;
+    }
+    setReports((prevReports) =>
+      prevReports.map((report) =>
+        report.reportId === reportId
+          ? { ...report, commentCount, unreadCommentCount: 0 }
+          : report
+      )
+    );
+  };
+
+  const handleOpenCommentModal = (reportId) => {
+    setModalReportId(reportId);
+  };
+
+  const handleCloseCommentModal = () => {
+    setModalReportId(null);
+    // Refetch comment data to update unread counts
+    const fetchReports = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:8001/api/leader/getReportProject/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (response.data.reports && Array.isArray(response.data.reports)) {
+          const reportsWithCommentData = await Promise.all(
+            response.data.reports.map(async (report) => {
+              try {
+                const commentResponse = await axios.get(
+                  `http://localhost:8001/api/comment/reports/${report.reportId}/getcomment`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                  }
+                );
+                return {
+                  ...report,
+                  commentCount: commentResponse.data.comments.length,
+                  unreadCommentCount: commentResponse.data.unreadCount || 0,
+                };
+              } catch (err) {
+                return { ...report, commentCount: 0, unreadCommentCount: 0 };
+              }
+            })
+          );
+          setReports(reportsWithCommentData);
+        }
+      } catch (err) {
+        console.error("Error refetching reports:", err);
+      }
+    };
+    fetchReports();
   };
 
   // Calculate pagination
@@ -225,6 +311,23 @@ const ReportHistoryLeader = () => {
                     </div>
                   )}
                 </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-5 h-5 text-gray-500" />
+                    <button
+                      onClick={() => handleOpenCommentModal(report.reportId)}
+                      className="text-gray-800 hover:text-blue-800 font-medium flex items-center gap-2"
+                    >
+                      {typeof report.commentCount === "number" ? report.commentCount : 0} Bình luận
+                      {report.unreadCommentCount > 0 && (
+                        <span className="text-red-600 font-semibold">
+                          {" "}
+                          +{report.unreadCommentCount} mới
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Thông tin chi tiết */}
@@ -330,6 +433,13 @@ const ReportHistoryLeader = () => {
           </nav>
         </div>
       )}
+      {/* Bình luận modal */}
+      <CommentModal
+        reportId={modalReportId}
+        isOpen={!!modalReportId}
+        onClose={handleCloseCommentModal}
+        onCommentUpdate={handleCommentUpdate}
+      />
     </div>
   );
 };
