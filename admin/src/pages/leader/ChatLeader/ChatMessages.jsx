@@ -37,7 +37,7 @@ const ChatMessages = ({
       )}
       {messages.length === 0 ? (
         <div className="text-center text-gray-500 text-xs sm:text-sm">
-          Chưa có tin nhắn nào trong nhóm này.
+          Chưa có tin nhắn nào trong nhóm này. 
         </div>
       ) : (
         messages.map((msg) => {
