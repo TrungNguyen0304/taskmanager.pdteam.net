@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import axios from "axios";
 
-// Utility functions (unchanged)
+// Utility functions
 const getDaysBetween = (start, end) => {
   const startDate = new Date(start);
   const endDate = new Date(end);
@@ -13,8 +13,8 @@ const getDaysBetween = (start, end) => {
 const getProgressWidth = (task, projectStart) => {
   const startDate = new Date(projectStart);
   const taskStart = new Date(task.start);
-  const offsetDays = Math.ceil((taskStart - startDate) / (1000 * 60 * 60 * 24));
-  const durationDays = getDaysBetween(task.start, task.end);
+  const offsetDays = Math.max(0, Math.ceil((taskStart - startDate) / (1000 * 60 * 60 * 24)));
+  const durationDays = Math.max(1, getDaysBetween(task.start, task.end));
   return { offset: offsetDays, width: durationDays };
 };
 
@@ -46,6 +46,7 @@ const getPriorityColor = (priority) => {
 };
 
 const formatDate = (dateString) => {
+  if (!dateString) return "Chưa xác định";
   return new Date(dateString).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -53,10 +54,31 @@ const formatDate = (dateString) => {
   });
 };
 
-const getDateHeaders = (startDate, endDate) => {
-  const days = getDaysBetween(startDate, endDate);
+const isOverdue = (deadline) => {
+  if (!deadline) return false;
+  const currentDate = new Date("2025-06-16T00:00:00.000Z"); // Current date: June 16, 2025
+  const deadlineDate = new Date(deadline);
+  return deadlineDate < currentDate;
+};
+
+const getDateHeaders = (tasks, projectDeadline) => {
+  if (!tasks.length || !projectDeadline) return [];
+  
+  // Find the earliest start date and latest end date
+  const startDates = tasks
+    .map(task => new Date(task.start))
+    .filter(date => !isNaN(date.getTime()));
+  const endDates = tasks
+    .map(task => new Date(task.end))
+    .filter(date => !isNaN(date.getTime()));
+  const projectEnd = new Date(projectDeadline);
+  
+  const earliestStart = startDates.length ? new Date(Math.min(...startDates)) : projectEnd;
+  const latestEnd = endDates.length ? new Date(Math.max(...endDates, projectEnd)) : projectEnd;
+  
+  const days = getDaysBetween(earliestStart, latestEnd);
   const headers = [];
-  const start = new Date(startDate);
+  const start = new Date(earliestStart);
 
   for (let i = 0; i < days; i++) {
     const currentDate = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
@@ -152,7 +174,7 @@ const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
               : "Thấp"}
           </span>
           <span className="text-xs text-gray-500">
-            Thời hạn: {formatDate(task.end)}
+            {formatDate(task.start)} - {formatDate(task.end)}
           </span>
         </div>
       </div>
@@ -217,7 +239,7 @@ const ProjectProgressDetail = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [ganttPage, setGanttPage] = useState(1);
   const [summaryPage, setSummaryPage] = useState(1);
-  const [tasksPerPage, setTasksPerPage] = useState(3);
+  const [tasksPerPage] = useState(3);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -233,13 +255,19 @@ const ProjectProgressDetail = () => {
         );
         const projectData = response.data.project;
 
-        // Map API data to component's expected format
         const formattedProject = {
           _id: projectData.id,
           name: projectData.name,
           description: projectData.description,
           status: projectData.status,
-          startDate: new Date(projectData.deadline).toISOString(),
+          startDate: projectData.tasks.length
+            ? projectData.tasks.reduce((earliest, task) => {
+                const taskStart = new Date(task.assignedAt || task.deadline);
+                return !earliest || taskStart < new Date(earliest)
+                  ? taskStart.toISOString()
+                  : earliest;
+              }, null) || projectData.deadline
+            : projectData.deadline,
           endDate: projectData.deadline,
           manager: projectData.assignedTeam?.leader?.name || "Chưa chỉ định",
           team: projectData.assignedTeam?.name || "Chưa chỉ định",
@@ -251,7 +279,7 @@ const ProjectProgressDetail = () => {
             progress: task.progress,
             priority: task.priority,
             assignee: task.assignedMember?.name || "Chưa chỉ định",
-            start: task.deadline,
+            start: task.assignedAt || task.deadline,
             end: task.deadline,
           })),
         };
@@ -294,10 +322,7 @@ const ProjectProgressDetail = () => {
     summaryPage * tasksPerPage
   );
 
-  const dateHeaders = getDateHeaders(
-    selectedProject.startDate,
-    selectedProject.endDate
-  );
+  const dateHeaders = getDateHeaders(selectedProject.tasks, selectedProject.endDate);
 
   return (
     <div className="min-h-screen p-4">
@@ -321,7 +346,6 @@ const ProjectProgressDetail = () => {
                 Theo dõi và quản lý tiến độ các dự án một cách hiệu quả
               </p>
             </div>
-
             <button
               onClick={() => navigate(`/project-report/${id}`)}
               className="px-4 py-2 bg-blue-600 text-white rounded-full text-md font-medium hover:bg-blue-700 transition-colors duration-200"
@@ -367,7 +391,13 @@ const ProjectProgressDetail = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Thời hạn:</span>
-                    <span className="font-medium text-gray-900">
+                    <span
+                      className={`font-medium ${
+                        isOverdue(selectedProject.endDate)
+                          ? "text-red-600"
+                          : "text-gray-900"
+                      }`}
+                    >
                       {formatDate(selectedProject.endDate)}
                     </span>
                   </div>
@@ -432,12 +462,9 @@ const ProjectProgressDetail = () => {
                       </div>
                     </div>
                     <div
-                      className="flex-1 hidden sm:flex"
+                      className="flex-1 hidden sm:grid"
                       style={{
-                        gridTemplateColumns: `repeat(${dateHeaders.reduce(
-                          (sum, header) => sum + header.span,
-                          0
-                        )}, minmax(30px, 1fr))`,
+                        gridTemplateColumns: `repeat(${dateHeaders.length}, minmax(50px, 1fr))`,
                       }}
                     >
                       {dateHeaders.map((header, index) => (
@@ -555,7 +582,7 @@ const ProjectProgressDetail = () => {
                     </span>
                   </div>
                   <div className="text-xs sm:text-sm text-gray-500 mb-2">
-                    Thời hạn: {formatDate(task.end)}
+                    Thời gian: {formatDate(task.start)} - {formatDate(task.end)}
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div

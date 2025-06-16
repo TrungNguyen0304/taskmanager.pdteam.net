@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import axios from "axios";
 
 const PAGE_SIZE = 3;
@@ -111,20 +111,12 @@ const FeedbackMember = () => {
                     <span className="font-semibold">Nội dung đánh giá:</span>{" "}
                     {feedback.content}
                   </p>
-                  <div className="text-gray-700 text-sm sm:text-base flex items-center gap-1">
+                  <p className="text-gray-700 text-sm sm:text-base">
                     <span className="font-semibold">Điểm đánh giá:</span>{" "}
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-4 h-4 sm:w-5 sm:h-5 ${
-                          i < feedback.rating
-                            ? "text-yellow-400"
-                            : "text-gray-300"
-                        }`}
-                        fill={i < feedback.rating ? "#facc15" : "none"}
-                      />
-                    ))}
-                  </div>
+                    <span className="text-blue-600 font-semibold">
+                      {feedback.rating}/10
+                    </span>
+                  </p>
                   <p className="text-gray-700 text-sm sm:text-base">
                     <span className="font-semibold">Người đánh giá:</span>{" "}
                     {feedback.createdBy}
