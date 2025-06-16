@@ -108,6 +108,11 @@ const Sidebar = () => {
           icon: <FaProjectDiagram />,
         },
         {
+          label: "Đánh Giá",
+          icon: <VscFeedback />,
+          to: "/feedback-leader",
+        },
+        {
           label: "Trò chuyện",
           to: "/chat",
           icon: <IoChatbubbleEllipsesOutline />,
