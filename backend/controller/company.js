@@ -1427,7 +1427,7 @@ const viewProject = async (req, res) => {
     }
 
     const tasks = await Task.find({ projectId: id })
-      .select("name description assignedMember status deadline priority progress  ")
+      .select("name description assignedMember status deadline priority progress assignedAt")
       .populate("assignedMember", "name email")
       .lean();
 
