@@ -266,29 +266,11 @@ const ProjectReport = () => {
           <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           <span className="font-semibold text-base">Quay lại</span>
         </button>
-        <button
-          onClick={handleOpenSelectReportModal}
-          className={`px-5 py-3 rounded-full font-semibold font-sans transition-all duration-300 shadow-md hover:shadow-lg ${
-            projectData.reports.some((report) => !report.feedback)
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-green-100 text-green-700 cursor-not-allowed"
-          }`}
-          disabled={!projectData.reports.some((report) => !report.feedback)}
-          aria-label={
-            projectData.reports.some((report) => !report.feedback)
-              ? "Đánh giá báo cáo"
-              : "Tất cả báo cáo đã được đánh giá"
-          }
-        >
-          {projectData.reports.some((report) => !report.feedback)
-            ? "Đánh giá báo cáo"
-            : "Tất cả đã đánh giá"}
-        </button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-700 to-indigo-700 p-6 md:p-8">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white font-sans">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white font-sans">
             Báo Cáo Dự Án: {projectData.project.name}
           </h1>
           <p className="text-blue-100 mt-3 text-base md:text-lg font-sans">
@@ -355,8 +337,26 @@ const ProjectReport = () => {
                 currentReports.map((report) => (
                   <div
                     key={report._id}
-                    className="p-5 mb-6 bg-white rounded-lg border border-gray-200 shadow-sm"
+                    className="p-5 mb-6 bg-white rounded-lg border border-gray-200 shadow-sm relative"
                   >
+                    <button
+                      onClick={() => handleSelectReport(report._id)}
+                      className={`absolute top-4 right-4 px-5 py-2 rounded-full font-semibold font-sans text-sm transition-all duration-300 shadow-md hover:shadow-lg ${
+                        report.feedback
+                          ? "bg-green-100 text-green-700 cursor-not-allowed"
+                          : "bg-blue-600 text-white hover:bg-blue-700"
+                      }`}
+                      disabled={report.feedback}
+                      aria-label={
+                        report.feedback
+                          ? "Báo cáo đã được đánh giá"
+                          : `Đánh giá báo cáo ${formatDate(report.createdAt)}`
+                      }
+                    >
+                      {report.feedback
+                        ? "Đã đánh giá báo cáo"
+                        : "Đánh giá báo cáo"}
+                    </button>
                     <div className="space-y-5">
                       <div>
                         <span className="text-gray-600 font-medium block mb-2 font-sans">
