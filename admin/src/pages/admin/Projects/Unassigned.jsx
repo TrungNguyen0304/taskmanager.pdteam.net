@@ -77,7 +77,7 @@ const Unassigned = () => {
   };
 
   const handleEdit = (id) => {
-    navigate(`/update-projects/${id}`);
+    navigate(`/update-Unassigned/${id}`);
   };
 
   const handleDelete = (id) => {

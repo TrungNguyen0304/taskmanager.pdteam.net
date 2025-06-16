@@ -14,6 +14,7 @@ const UpdateProject = () => {
     description: "",
     status: "pending",
     priority: 2,
+    deadline: "",
   });
 
   useEffect(() => {
@@ -33,6 +34,7 @@ const UpdateProject = () => {
           description: project.description || "",
           status: project.status || "pending",
           priority: project.priority || 2,
+          deadline: project.deadline ? new Date(project.deadline).toISOString().split("T")[0] : "",
         });
       } catch (error) {
         navigate(-1);
@@ -48,24 +50,29 @@ const UpdateProject = () => {
     status: Yup.string()
       .required("Trạng thái là bắt buộc")
       .oneOf(
-        ["in_progress", "cancelled", "paused", "completed", "pending","revoke"],
+        ["in_progress", "cancelled", "paused", "completed", "pending", "revoke"],
         "Trạng thái không hợp lệ"
       ),
     priority: Yup.number()
       .required("Mức ưu tiên là bắt buộc")
       .oneOf([1, 2, 3], "Mức ưu tiên không hợp lệ"),
+    deadline: Yup.date()
+      .nullable()
+      .transform((value, originalValue) => (originalValue === "" ? null : value))
+      .min(new Date(new Date().setHours(0, 0, 0, 0)), "Deadline không được nằm trong quá khứ"),
   });
 
   const handleSubmit = async (values, { setSubmitting }) => {
     setIsLoading(true);
     try {
       await axios.put(
-        `http://localhost:8001/api/company/updateProject/${id}`,
+        `http://localhost:8001/api/company/updateAssignedProjects/${id}`,
         {
           name: values.name,
           description: values.description,
           status: values.status,
           priority: Number(values.priority),
+          deadline: values.deadline || undefined, // Send undefined if deadline is empty to avoid sending empty string
         },
         {
           headers: {
@@ -77,9 +84,9 @@ const UpdateProject = () => {
     } catch (error) {
       const rawMessage = error.response?.data?.message || "Lỗi không xác định.";
 
-      // Bắt lỗi chuyển trạng thái không hợp lệ
-      const match = rawMessage.match(/Không thể chuyển trạng thái từ (\w+) sang (\w+)/);
-      if (match) {
+      // Bắt lỗi chuyển trạng thái không hợp lệ hoặc lỗi deadline
+      const statusMatch = rawMessage.match(/Không thể chuyển trạng thái từ (\w+) sang (\w+)/);
+      if (statusMatch) {
         const statusMap = {
           pending: "Đang chờ",
           in_progress: "Đang thực hiện",
@@ -89,9 +96,13 @@ const UpdateProject = () => {
           revoke: "Thu hồi",
         };
 
-        const from = statusMap[match[1]] || match[1];
-        const to = statusMap[match[2]] || match[2];
+        const from = statusMap[statusMatch[1]] || statusMatch[1];
+        const to = statusMap[statusMatch[2]] || statusMatch[2];
         alert(`❌ Không thể chuyển trạng thái từ "${from}" sang "${to}".`);
+      } else if (rawMessage.includes("Deadline không được nằm trong quá khứ")) {
+        alert("❌ Deadline không được nằm trong quá khứ.");
+      } else if (rawMessage.includes("Giá trị deadline không hợp lệ")) {
+        alert("❌ Giá trị deadline không hợp lệ.");
       } else {
         alert(`❌ ${rawMessage}`);
       }
@@ -192,6 +203,22 @@ const UpdateProject = () => {
               </Field>
               <ErrorMessage
                 name="priority"
+                component="div"
+                className="text-red-500 text-sm mt-1"
+              />
+            </div>
+            <div>
+              <label htmlFor="deadline" className="block text-gray-700">
+                Hạn Chót
+              </label>
+              <Field
+                type="date"
+                id="deadline"
+                name="deadline"
+                className="w-full p-2 border border-gray-300 rounded"
+              />
+              <ErrorMessage
+                name="deadline"
                 component="div"
                 className="text-red-500 text-sm mt-1"
               />

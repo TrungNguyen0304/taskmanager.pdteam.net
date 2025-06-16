@@ -51,7 +51,7 @@ const ProjectAssigned = () => {
     fetchProjects();
   }, [navigate, currentPage, limit]);
 
-  const handleEdit = (id) => navigate(`/update-projects/${id}`);
+  const handleEdit = (id) => navigate(`/update-Assigned/${id}`);
 
   const handleDelete = (id) => {
     setSelectedProject(id);
