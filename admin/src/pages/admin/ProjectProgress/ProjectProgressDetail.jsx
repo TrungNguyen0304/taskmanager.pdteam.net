@@ -10,12 +10,41 @@ const getDaysBetween = (start, end) => {
   return Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
 };
 
-const getProgressWidth = (task, projectStart) => {
-  const startDate = new Date(projectStart);
+const getProgressWidth = (task, dateHeaders) => {
+  if (!task.start || !task.end || !dateHeaders.length) {
+    return { offset: 0, width: 1 };
+  }
+
   const taskStart = new Date(task.start);
-  const offsetDays = Math.max(0, Math.ceil((taskStart - startDate) / (1000 * 60 * 60 * 24)));
-  const durationDays = Math.max(1, getDaysBetween(task.start, task.end));
-  return { offset: offsetDays, width: durationDays };
+  const taskEnd = new Date(task.end);
+  const headerStart = new Date(dateHeaders[0].date);
+  const headerEnd = new Date(dateHeaders[dateHeaders.length - 1].date);
+
+  // Đảm bảo taskStart và taskEnd nằm trong phạm vi dateHeaders
+  const startDate = taskStart < headerStart ? headerStart : taskStart;
+  const endDate = taskEnd > headerEnd ? headerEnd : taskEnd;
+
+  // Tìm vị trí bắt đầu và kết thúc trong mảng dateHeaders
+  let startIndex = dateHeaders.findIndex(
+    (header) =>
+      header.date.toDateString() === new Date(startDate).toDateString()
+  );
+  let endIndex = dateHeaders.findIndex(
+    (header) => header.date.toDateString() === new Date(endDate).toDateString()
+  );
+
+  // Nếu không tìm thấy, lấy giá trị gần nhất
+  if (startIndex === -1) {
+    startIndex = 0;
+  }
+  if (endIndex === -1) {
+    endIndex = dateHeaders.length - 1;
+  }
+
+  const offset = startIndex;
+  const width = Math.max(1, endIndex - startIndex + 1);
+
+  return { offset, width };
 };
 
 const getOverallProgress = (tasks) => {
@@ -63,19 +92,23 @@ const isOverdue = (deadline) => {
 
 const getDateHeaders = (tasks, projectDeadline) => {
   if (!tasks.length || !projectDeadline) return [];
-  
+
   // Find the earliest start date and latest end date
   const startDates = tasks
-    .map(task => new Date(task.start))
-    .filter(date => !isNaN(date.getTime()));
+    .map((task) => new Date(task.start))
+    .filter((date) => !isNaN(date.getTime()));
   const endDates = tasks
-    .map(task => new Date(task.end))
-    .filter(date => !isNaN(date.getTime()));
+    .map((task) => new Date(task.end))
+    .filter((date) => !isNaN(date.getTime()));
   const projectEnd = new Date(projectDeadline);
-  
-  const earliestStart = startDates.length ? new Date(Math.min(...startDates)) : projectEnd;
-  const latestEnd = endDates.length ? new Date(Math.max(...endDates, projectEnd)) : projectEnd;
-  
+
+  const earliestStart = startDates.length
+    ? new Date(Math.min(...startDates))
+    : projectEnd;
+  const latestEnd = endDates.length
+    ? new Date(Math.max(...endDates, projectEnd))
+    : projectEnd;
+
   const days = getDaysBetween(earliestStart, latestEnd);
   const headers = [];
   const start = new Date(earliestStart);
@@ -137,8 +170,8 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   );
 };
 
-const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
-  const { offset, width } = getProgressWidth(task, projectStart);
+const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask, dateHeaders }) => {
+  const { offset, width } = getProgressWidth(task, dateHeaders);
   const isSelected = selectedTask?._id === task._id;
 
   return (
@@ -181,14 +214,11 @@ const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask }) => {
       <div
         className="flex-1 items-center hidden sm:grid"
         style={{
-          gridTemplateColumns: `repeat(${getDaysBetween(
-            projectStart,
-            task.end
-          )}, minmax(30px, 1fr))`,
+          gridTemplateColumns: `repeat(${dateHeaders.length}, minmax(50px, 1fr))`,
         }}
       >
         <div
-          className="relative col-start-1 px-1"
+          className="relative px-1"
           style={{ gridColumn: `${offset + 1} / span ${width}` }}
         >
           <div className="h-8 bg-gray-200 rounded-lg shadow-sm relative overflow-hidden group">
@@ -322,7 +352,10 @@ const ProjectProgressDetail = () => {
     summaryPage * tasksPerPage
   );
 
-  const dateHeaders = getDateHeaders(selectedProject.tasks, selectedProject.endDate);
+  const dateHeaders = getDateHeaders(
+    selectedProject.tasks,
+    selectedProject.endDate
+  );
 
   return (
     <div className="min-h-screen p-4">
@@ -387,6 +420,18 @@ const ProjectProgressDetail = () => {
                     <span className="text-gray-600">Đội nhóm:</span>
                     <span className="font-medium text-gray-900">
                       {selectedProject.team}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Bắt đầu:</span>
+                    <span
+                      className={`font-medium ${
+                        isOverdue(selectedProject.endDate)
+                          ? "text-red-600"
+                          : "text-gray-900"
+                      }`}
+                    >
+                      {formatDate(selectedProject.startDate)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -496,6 +541,7 @@ const ProjectProgressDetail = () => {
                         projectStart={selectedProject.startDate}
                         selectedTask={selectedTask}
                         setSelectedTask={setSelectedTask}
+                        dateHeaders={dateHeaders}
                       />
                     ))
                   ) : (

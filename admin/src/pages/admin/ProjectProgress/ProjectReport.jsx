@@ -70,7 +70,7 @@ const ProjectReport = () => {
         setError(null);
         window.scrollTo(0, 0);
       } catch (err) {
-        setError(err.response?.data?.message || "Lỗi khi tải báo cáo dự án");
+        setError(err.response?.data?.message || "Chưa có báo cáo nào");
         setProjectData(null);
       }
     };
@@ -142,15 +142,15 @@ const ProjectReport = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100 p-4">
-        <div className="text-center p-6 bg-white rounded-2xl shadow-xl border border-red-200 max-w-md w-full">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 text-lg font-semibold mb-6 font-sans">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center p-6 bg-white rounded-2xl shadow-xl border border-blue-200 max-w-md w-full">
+          <AlertCircle className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+          <p className="text-blue-600 text-lg font-semibold mb-6 font-sans">
             {error}
           </p>
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold font-sans transition"
+            className="inline-flex items-center gap-2 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold font-sans transition"
           >
             <ArrowLeft className="w-5 h-5" />
             Quay lại
