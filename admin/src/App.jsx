@@ -53,6 +53,7 @@ import ProjectProgressDetail from "./pages/admin/ProjectProgress/ProjectProgress
 import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import ProjectReport from "./pages/admin/ProjectProgress/ProjectReport";
 import ReportHistoryLeader from "./pages/leader/Projects/ReportHistoryLeader";
+import ShowAllFeedback from "./pages/leader/ShowAllFeedback";
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -133,6 +134,7 @@ const LeaderLayout = () => {
               element={<ProjectDetailLeader />}
             />
             <Route path="/project-report/:id" element={<ReportProjects />} />
+            <Route path="/feedback-leader" element={<ShowAllFeedback />} />
 
             <Route path="/chat" element={<ChatLeader />} />
             <Route path="/chat/requests" element={<JoinRequestsPageLeader />} />
