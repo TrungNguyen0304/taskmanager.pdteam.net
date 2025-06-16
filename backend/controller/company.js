@@ -1514,13 +1514,17 @@ const showAllRoprtProject = async (req, res) => {
 
 const getCompanyStatistics = async (req, res) => {
   try {
-    // Aggregate statistics using MongoDB pipelines
+    // Aggregate detailed statistics using MongoDB pipelines
     const [
       userStats,
       teamStats,
       projectStats,
       taskStats,
       reportStats,
+      feedbackStats,
+      overdueStats,
+      projectProgressStats,
+      memberWorkloadStats,
     ] = await Promise.all([
       // User statistics
       User.aggregate([
@@ -1528,6 +1532,9 @@ const getCompanyStatistics = async (req, res) => {
           $group: {
             _id: "$role",
             count: { $sum: 1 },
+            activeUsers: {
+              $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] },
+            },
           },
         },
         {
@@ -1537,15 +1544,18 @@ const getCompanyStatistics = async (req, res) => {
               $push: {
                 role: "$_id",
                 count: "$count",
+                activeUsers: "$activeUsers",
               },
             },
             totalUsers: { $sum: "$count" },
+            totalActiveUsers: { $sum: "$activeUsers" },
           },
         },
         {
           $project: {
             _id: 0,
             totalUsers: 1,
+            totalActiveUsers: 1,
             roles: 1,
           },
         },
@@ -1568,6 +1578,27 @@ const getCompanyStatistics = async (req, res) => {
           },
         },
         {
+          $lookup: {
+            from: "projects",
+            localField: "_id",
+            foreignField: "assignedTeam",
+            as: "projects",
+          },
+        },
+        {
+          $project: {
+            assignedMembers: {
+              $cond: [
+                { $isArray: "$assignedMembers" },
+                "$assignedMembers",
+                [], // Default to empty array if not an array
+              ],
+            },
+            leader: 1,
+            projects: 1,
+          },
+        },
+        {
           $group: {
             _id: null,
             totalTeams: { $sum: 1 },
@@ -1575,6 +1606,10 @@ const getCompanyStatistics = async (req, res) => {
             teamsWithLeader: {
               $sum: { $cond: [{ $ne: ["$leader", null] }, 1, 0] },
             },
+            teamsWithProjects: {
+              $sum: { $cond: [{ $gt: [{ $size: "$projects" }, 0] }, 1, 0] },
+            },
+            averageMembersPerTeam: { $avg: { $size: "$assignedMembers" } },
           },
         },
         {
@@ -1583,6 +1618,8 @@ const getCompanyStatistics = async (req, res) => {
             totalTeams: 1,
             totalMembers: 1,
             teamsWithLeader: 1,
+            teamsWithProjects: 1,
+            averageMembersPerTeam: { $round: ["$averageMembersPerTeam", 2] },
           },
         },
       ]),
@@ -1593,6 +1630,20 @@ const getCompanyStatistics = async (req, res) => {
           $group: {
             _id: "$status",
             count: { $sum: 1 },
+            totalDuration: {
+              $sum: {
+                $cond: [
+                  { $and: ["$assignedAt", "$deadline"] },
+                  {
+                    $divide: [
+                      { $subtract: ["$deadline", "$assignedAt"] },
+                      1000 * 60 * 60 * 24,
+                    ],
+                  },
+                  0,
+                ],
+              },
+            },
           },
         },
         {
@@ -1602,6 +1653,13 @@ const getCompanyStatistics = async (req, res) => {
               $push: {
                 status: "$_id",
                 count: "$count",
+                averageDuration: {
+                  $cond: [
+                    { $gt: ["$count", 0] },
+                    { $divide: ["$totalDuration", "$count"] },
+                    0,
+                  ],
+                },
               },
             },
             totalProjects: { $sum: "$count" },
@@ -1617,7 +1675,17 @@ const getCompanyStatistics = async (req, res) => {
             _id: 0,
             totalProjects: 1,
             assignedProjects: 1,
-            statuses: 1,
+            statuses: {
+              $map: {
+                input: "$statuses",
+                as: "status",
+                in: {
+                  status: "$$status.status",
+                  count: "$$status.count",
+                  averageDuration: { $round: ["$$status.averageDuration", 2] },
+                },
+              },
+            },
           },
         },
       ]),
@@ -1629,6 +1697,20 @@ const getCompanyStatistics = async (req, res) => {
             _id: "$status",
             count: { $sum: 1 },
             averageProgress: { $avg: "$progress" },
+            overdueTasks: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$status", "in_progress"] },
+                      { $lt: ["$deadline", new Date()] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
           },
         },
         {
@@ -1639,16 +1721,32 @@ const getCompanyStatistics = async (req, res) => {
                 status: "$_id",
                 count: "$count",
                 averageProgress: "$averageProgress",
+                overdueTasks: "$overdueTasks",
               },
             },
             totalTasks: { $sum: "$count" },
+            totalOverdueTasks: { $sum: "$overdueTasks" },
           },
         },
         {
           $project: {
             _id: 0,
             totalTasks: 1,
-            statuses: 1,
+            totalOverdueTasks: 1,
+            statuses: {
+              $map: {
+                input: "$statuses",
+                as: "status",
+                in: {
+                  status: "$$status.status",
+                  count: "$$status.count",
+                  averageProgress: {
+                    $round: ["$$status.averageProgress", 2],
+                  },
+                  overdueTasks: "$$status.overdueTasks",
+                },
+              },
+            },
           },
         },
       ]),
@@ -1670,6 +1768,18 @@ const getCompanyStatistics = async (req, res) => {
           },
         },
         {
+          $project: {
+            projectCount: {
+              $cond: [
+                { $or: [{ $isArray: "$project" }, { $ne: ["$project", null] }] },
+                1, // Count as 1 if project exists (array or single ObjectId)
+                0,
+              ],
+            },
+            feedback: 1,
+          },
+        },
+        {
           $group: {
             _id: null,
             totalReports: { $sum: 1 },
@@ -1677,6 +1787,7 @@ const getCompanyStatistics = async (req, res) => {
               $sum: { $cond: [{ $ne: ["$feedback", null] }, 1, 0] },
             },
             averageFeedbackScore: { $avg: "$feedback.score" },
+            totalProjectsWithReports: { $sum: "$projectCount" },
           },
         },
         {
@@ -1684,7 +1795,192 @@ const getCompanyStatistics = async (req, res) => {
             _id: 0,
             totalReports: 1,
             reportsWithFeedback: 1,
-            averageFeedbackScore: 1,
+            averageFeedbackScore: { $round: ["$averageFeedbackScore", 2] },
+            averageReportsPerProject: {
+              $cond: [
+                { $gt: ["$totalProjectsWithReports", 0] },
+                { $divide: ["$totalReports", "$totalProjectsWithReports"] },
+                0,
+              ],
+            },
+          },
+        },
+      ]),
+
+      // Feedback statistics
+      Feedback.aggregate([
+        {
+          $group: {
+            _id: "$to",
+            count: { $sum: 1 },
+            averageScore: { $avg: "$score" },
+            minScore: { $min: "$score" },
+            maxScore: { $max: "$score" },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            feedbackTypes: {
+              $push: {
+                type: "$_id",
+                count: "$count",
+                averageScore: "$averageScore",
+                minScore: "$minScore",
+                maxScore: "$maxScore",
+              },
+            },
+            totalFeedbacks: { $sum: "$count" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            totalFeedbacks: 1,
+            feedbackTypes: {
+              $map: {
+                input: "$feedbackTypes",
+                as: "type",
+                in: {
+                  type: "$$type.type",
+                  count: "$$type.count",
+                  averageScore: { $round: ["$$type.averageScore", 2] },
+                  minScore: "$$type.minScore",
+                  maxScore: "$$type.maxScore",
+                },
+              },
+            },
+          },
+        },
+      ]),
+
+      // Overdue projects and tasks
+      Project.aggregate([
+        {
+          $match: {
+            deadline: { $lt: new Date() },
+            status: { $in: ["in_progress", "pending"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            overdueProjects: { $sum: 1 },
+            overdueProjectNames: { $push: "$name" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            overdueProjects: 1,
+            overdueProjectNames: 1,
+          },
+        },
+      ]),
+
+      // Project progress statistics
+      Project.aggregate([
+        {
+          $lookup: {
+            from: "tasks",
+            localField: "_id",
+            foreignField: "projectId",
+            as: "tasks",
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            status: 1,
+            taskCount: { $size: { $ifNull: ["$tasks", []] } },
+            averageProgress: {
+              $cond: [
+                { $gt: [{ $size: { $ifNull: ["$tasks", []] } }, 0] },
+                { $avg: "$tasks.progress" },
+                0,
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            averageProjectProgress: { $avg: "$averageProgress" },
+            completedProjects: {
+              $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+            },
+            projectsWithTasks: {
+              $sum: { $cond: [{ $gt: ["$taskCount", 0] }, 1, 0] },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            averageProjectProgress: { $round: ["$averageProjectProgress", 2] },
+            completedProjects: 1,
+            projectsWithTasks: 1,
+          },
+        },
+      ]),
+
+      // Member workload statistics
+      Task.aggregate([
+        {
+          $group: {
+            _id: "$assignedMember",
+            taskCount: { $sum: 1 },
+            inProgressTasks: {
+              $sum: { $cond: [{ $eq: ["$status", "in_progress"] }, 1, 0] },
+            },
+            overdueTasks: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$status", "in_progress"] },
+                      { $lt: ["$deadline", new Date()] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "member",
+          },
+        },
+        {
+          $unwind: {
+            path: "$member",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            membersWithTasks: { $sum: 1 },
+            averageTasksPerMember: { $avg: "$taskCount" },
+            membersWithOverdueTasks: {
+              $sum: { $cond: [{ $gt: ["$overdueTasks", 0] }, 1, 0] },
+            },
+            totalInProgressTasks: { $sum: "$inProgressTasks" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            membersWithTasks: 1,
+            averageTasksPerMember: { $round: ["$averageTasksPerMember", 2] },
+            membersWithOverdueTasks: 1,
+            totalInProgressTasks: 1,
           },
         },
       ]),
@@ -1694,65 +1990,145 @@ const getCompanyStatistics = async (req, res) => {
     const statistics = {
       users: {
         total: userStats[0]?.totalUsers || 0,
+        totalActiveUsers: userStats[0]?.totalActiveUsers || 0,
         roles: userStats[0]?.roles || [],
       },
       teams: {
         total: teamStats[0]?.totalTeams || 0,
         totalMembers: teamStats[0]?.totalMembers || 0,
         teamsWithLeader: teamStats[0]?.teamsWithLeader || 0,
+        teamsWithProjects: teamStats[0]?.teamsWithProjects || 0,
+        averageMembersPerTeam: teamStats[0]?.averageMembersPerTeam || 0,
       },
       projects: {
         total: projectStats[0]?.totalProjects || 0,
         assigned: projectStats[0]?.assignedProjects || 0,
         statuses: projectStats[0]?.statuses || [],
+        averageProjectProgress: projectProgressStats[0]?.averageProjectProgress || 0,
+        completedProjects: projectProgressStats[0]?.completedProjects || 0,
+        projectsWithTasks: projectProgressStats[0]?.projectsWithTasks || 0,
+        overdueProjects: overdueStats[0]?.overdueProjects || 0,
+        overdueProjectNames: overdueStats[0]?.overdueProjectNames || [],
       },
       tasks: {
         total: taskStats[0]?.totalTasks || 0,
-        statuses: taskStats[0]?.statuses.map(status => ({
-          ...status,
-          averageProgress: status.averageProgress
-            ? parseFloat(status.averageProgress.toFixed(2))
-            : 0,
-        })) || [],
+        totalOverdueTasks: taskStats[0]?.totalOverdueTasks || 0,
+        statuses: taskStats[0]?.statuses || [],
+        membersWithTasks: memberWorkloadStats[0]?.membersWithTasks || 0,
+        averageTasksPerMember: memberWorkloadStats[0]?.averageTasksPerMember || 0,
+        membersWithOverdueTasks: memberWorkloadStats[0]?.membersWithOverdueTasks || 0,
+        totalInProgressTasks: memberWorkloadStats[0]?.totalInProgressTasks || 0,
       },
       reports: {
         total: reportStats[0]?.totalReports || 0,
-        withFeedback: reportStats[0]?.reportsWithFeedback || 0,
-        averageFeedbackScore: reportStats[0]?.averageFeedbackScore
-          ? parseFloat(reportStats[0].averageFeedbackScore.toFixed(2))
-          : 0,
+        reportsWithFeedback: reportStats[0]?.reportsWithFeedback || 0,
+        averageFeedbackScore: reportStats[0]?.averageFeedbackScore || 0,
+        averageReportsPerProject: reportStats[0]?.averageReportsPerProject || 0,
+      },
+      feedbacks: {
+        total: feedbackStats[0]?.totalFeedbacks || 0,
+        types: feedbackStats[0]?.feedbackTypes || [],
       },
     };
 
-    // Optional: Create a chart for project status distribution
-    const projectStatusChart = {
-      type: "pie",
-      data: {
-        labels: projectStats[0]?.statuses.map(s => s.status) || [],
-        datasets: [{
-          data: projectStats[0]?.statuses.map(s => s.count) || [],
-          backgroundColor: [
-            '#36A2EB', // Blue for pending
-            '#FF6384', // Red for in_progress
-            '#4BC0C0', // Cyan for completed
-            '#FF9F40', // Orange for cancelled
-            '#9966FF', // Purple for revoke
-          ],
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              color: '#333333', // Dark text for light theme
+    // Create charts for visualization
+    const charts = {
+      projectStatusDistribution: {
+        type: "pie",
+        data: {
+          labels: projectStats[0]?.statuses.map(s => s.status) || [],
+          datasets: [{
+            data: projectStats[0]?.statuses.map(s => s.count) || [],
+            backgroundColor: [
+              '#36A2EB', // Blue for pending
+              '#FF6384', // Red for in_progress
+              '#4BC0C0', // Cyan for completed
+              '#FF9F40', // Orange for cancelled
+              '#9966FF', // Purple for revoke
+            ],
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#333333' },
+            },
+            title: {
+              display: true,
+              text: 'Project Status Distribution',
+              color: '#333333',
             },
           },
-          title: {
-            display: true,
-            text: 'Project Status Distribution',
-            color: '#333333',
+        },
+      },
+      taskStatusDistribution: {
+        type: "bar",
+        data: {
+          labels: taskStats[0]?.statuses.map(s => s.status) || [],
+          datasets: [{
+            label: 'Number of Tasks',
+            data: taskStats[0]?.statuses.map(s => s.count) || [],
+            backgroundColor: '#36A2EB',
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#333333' },
+            },
+            title: {
+              display: true,
+              text: 'Task Status Distribution',
+              color: '#333333',
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#333333' },
+            },
+            x: {
+              ticks: { color: '#333333' },
+            },
+          },
+        },
+      },
+      feedbackScoreDistribution: {
+        type: "bar",
+        data: {
+          labels: feedbackStats[0]?.feedbackTypes.map(f => f.type) || [],
+          datasets: [{
+            label: 'Average Feedback Score',
+            data: feedbackStats[0]?.feedbackTypes.map(f => f.averageScore) || [],
+            backgroundColor: '#4BC0C0',
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { color: '#333333' },
+            },
+            title: {
+              display: true,
+              text: 'Feedback Score by Type',
+              color: '#333333',
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 10,
+              ticks: { color: '#333333' },
+            },
+            x: {
+              ticks: { color: '#333333' },
+            },
           },
         },
       },
@@ -1761,9 +2137,7 @@ const getCompanyStatistics = async (req, res) => {
     res.status(200).json({
       message: "Company statistics retrieved successfully",
       statistics,
-      charts: {
-        projectStatusDistribution: projectStatusChart,
-      },
+      charts,
     });
   } catch (error) {
     console.error("getCompanyStatistics error:", error);
