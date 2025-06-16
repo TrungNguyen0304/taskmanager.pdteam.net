@@ -15,6 +15,7 @@ import Departments from "./pages/admin/Departments/Departments";
 import ProjectAssigned from "./pages/admin/Projects/ProjectAssigned";
 import CreateProject from "./pages/admin/Projects/CreateProject";
 import UpdateProject from "./pages/admin/Projects/UpdateProject";
+
 import ProjectDetail from "./pages/admin/Projects/ProjectDetail";
 import CreateDepartment from "./pages/admin/Departments/CreateDepartment";
 import UpdateDepartment from "./pages/admin/Departments/UpdateDepartment";
@@ -53,7 +54,9 @@ import ProjectProgressDetail from "./pages/admin/ProjectProgress/ProjectProgress
 import ProjectProgress from "./pages/admin/ProjectProgress/ProjectProgress";
 import ProjectReport from "./pages/admin/ProjectProgress/ProjectReport";
 import ReportHistoryLeader from "./pages/leader/Projects/ReportHistoryLeader";
+import UpdateUnassigned from "./pages/admin/Projects/updateUnassigned";
 import ShowAllFeedback from "./pages/leader/ShowAllFeedback";
+
 
 const CompanyLayout = () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -85,7 +88,8 @@ const CompanyLayout = () => {
             <Route path="/project-assigned" element={<ProjectAssigned />} />
             <Route path="/project-unassigned" element={<Unassigned />} />
             <Route path="/create-projects" element={<CreateProject />} />
-            <Route path="/update-projects/:id" element={<UpdateProject />} />
+            <Route path="/update-Assigned/:id" element={<UpdateProject />} />
+            <Route path="/update-Unassigned/:id" element={<UpdateUnassigned/>}/>
             <Route path="/project-detail/:id" element={<ProjectDetail />} />
             <Route path="/projectprogress" element={<ProjectProgress />} />
             <Route

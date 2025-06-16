@@ -119,19 +119,48 @@ const addMember = async (req, res) => {
             return res.status(404).json({ message: "Nhóm không tồn tại" });
         }
 
-        // Kiểm tra quyền leader
-        const team = await Team.findOne({ assignedLeader: leaderId });
-        if (!team) {
-            return res.status(403).json({ message: "Bạn không quản lý team nào, không thể thêm thành viên vào nhóm" });
+        // Lấy thông tin user thực hiện hành động
+        const user = await User.findById(leaderId).select("role");
+        if (!user) {
+            return res.status(404).json({ message: "Không tìm thấy người dùng thực hiện" });
         }
 
-        // Lấy danh sách thành viên team và nhóm
-        const assignedMemberIds = team.assignedMembers.filter(id => id != null).map(id => id.toString());
         const groupMemberIds = group.members.filter(id => id != null).map(id => id.toString());
 
-        // Kiểm tra xem user có thuộc team không
+        // ✅ Nếu là company thì bỏ qua kiểm tra team
+        if (user.role === "company") {
+            if (!groupMemberIds.includes(userId.toString())) {
+                group.members.push(userId);
+                await group.save();
+
+                const addedUser = await User.findById(userId).select("name");
+                notifyNewMember(groupId, userId, addedUser.name);
+            }
+
+            const populatedGroup = await Group.findById(groupId).populate("members", "name");
+            return res.status(200).json({
+                message: "Thêm thành viên thành công (bởi company)",
+                group: populatedGroup,
+            });
+        }
+
+        // ❗ Nếu không phải company, kiểm tra xem user có phải leader không
+        const team = await Team.findOne({ assignedLeader: leaderId });
+        if (!team) {
+            return res.status(403).json({
+                message: "Bạn không quản lý team nào, không thể thêm thành viên vào nhóm",
+            });
+        }
+
+        // Kiểm tra xem user cần thêm có thuộc team của leader không
+        const assignedMemberIds = team.assignedMembers
+            .filter(id => id != null)
+            .map(id => id.toString());
+
         if (!assignedMemberIds.includes(userId.toString())) {
-            return res.status(400).json({ message: "Người dùng này không thuộc team của bạn" });
+            return res.status(400).json({
+                message: "Người dùng này không thuộc team của bạn",
+            });
         }
 
         // Thêm vào nhóm nếu chưa có
@@ -139,11 +168,10 @@ const addMember = async (req, res) => {
             group.members.push(userId);
             await group.save();
 
-            const user = await User.findById(userId).select("name");
-            notifyNewMember(groupId, userId, user.name); // Gửi thông báo
+            const addedUser = await User.findById(userId).select("name");
+            notifyNewMember(groupId, userId, addedUser.name);
         }
 
-        // Populate để lấy thông tin thành viên (tên)
         const populatedGroup = await Group.findById(groupId).populate("members", "name");
 
         res.status(200).json({
@@ -152,7 +180,11 @@ const addMember = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: "Lỗi khi thêm thành viên", error: error.message });
+        console.error("Lỗi khi thêm thành viên:", error);
+        res.status(500).json({
+            message: "Lỗi khi thêm thành viên",
+            error: error.message,
+        });
     }
 };
 

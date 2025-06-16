@@ -341,7 +341,7 @@ const HomeMember = () => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Điểm trung bình:</span>
                 <span className="font-medium">
-                  {statistics?.feedbackStats?.averageScore || 0}/5
+                  {statistics?.feedbackStats?.averageScore || 0}/10
                 </span>
               </div>
               <div className="flex justify-between">
