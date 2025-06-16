@@ -1444,6 +1444,7 @@ const viewProject = async (req, res) => {
       averageProgress = (totalProgress / taskCount).toFixed(2);
     }
     const projectStatus = parseFloat(averageProgress) === 100 ? "completed" : "in_progress";
+    
     res.status(200).json({
       massege: "Thông tin dự án: ${project.name}",
       project: {
@@ -1453,6 +1454,7 @@ const viewProject = async (req, res) => {
         status: projectStatus,
         priority: project.priority,
         deadline: project.deadline,
+        assignedAt: project.assignedAt,
         assignedTeam: project.assignedTeam
           ? {
             id: project.assignedTeam._id,
