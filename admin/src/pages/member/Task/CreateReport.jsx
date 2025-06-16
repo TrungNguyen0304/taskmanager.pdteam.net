@@ -39,7 +39,8 @@ const CreateReport = () => {
       } else {
         const progress = parseInt(values.taskProgress, 10);
         if (isNaN(progress) || progress < 0 || progress > 100) {
-          errors.taskProgress = "Tiến độ công việc phải nằm trong khoảng 0-100.";
+          errors.taskProgress =
+            "Tiến độ công việc phải nằm trong khoảng 0-100.";
         }
       }
 
@@ -54,7 +55,8 @@ const CreateReport = () => {
       const formData = new FormData();
       formData.append("content", values.content);
       formData.append("taskProgress", values.taskProgress);
-      if (values.difficulties) formData.append("difficulties", values.difficulties);
+      if (values.difficulties)
+        formData.append("difficulties", values.difficulties);
       if (file) formData.append("file", file);
 
       try {
@@ -71,9 +73,9 @@ const CreateReport = () => {
 
         setSuccessMessage(response.data.message || "Gửi báo cáo thành công.");
         resetForm();
-        setFile(null); 
+        setFile(null);
         setTimeout(() => {
-          navigate("/tasks"); 
+          navigate(-1);
         }, 2000);
       } catch (error) {
         console.error("Lỗi khi gửi báo cáo:", error);
