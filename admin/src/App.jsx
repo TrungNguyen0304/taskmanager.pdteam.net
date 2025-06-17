@@ -99,7 +99,7 @@ const CompanyLayout = () => {
             <Route path="/project-report/:id" element={<ProjectReport />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/chat/requests" element={<JoinRequestsPage />} />
-            <Route path="/chat/video-call" element={<VideoCallPage />} />
+            <Route path="/chat/video-call/:id" element={<VideoCallPage />} />
           </Routes>
         </main>
       </div>
