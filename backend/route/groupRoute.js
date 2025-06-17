@@ -24,7 +24,6 @@ router.post('/create', authenticateJWT, createGroup);
 // Lấy danh sách nhóm
 router.get('/', authenticateJWT, getGroups);
 
-
 // Thêm thành viên vào nhóm
 router.post('/:groupId/members', authenticateJWT, addMember);
 
@@ -34,10 +33,10 @@ router.get('/:groupId/messages', authenticateJWT, getGroupMessages);
 // Gửi tin nhắn nhóm
 router.post('/:groupId/messages', authenticateJWT, sendGroupMessage);
 
-//  xóa một thành viên
+// Xóa một thành viên
 router.delete("/:groupId/members/:userId", authenticateJWT, removeMember);
 
-//rời khỏi nhóm
+// Rời khỏi nhóm
 router.delete("/:groupId/leave", authenticateJWT, leaveGroup);
 
 // Khởi tạo cuộc gọi video
@@ -53,7 +52,7 @@ router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
 router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
 
 // gửi ảnh 
-router.post('/:groupId/sendImageMessage',upload.single("image"), authenticateJWT, sendImageMessage);
+router.post('/:groupId/sendImageMessage', upload.single("image"), authenticateJWT, sendImageMessage);
 
 
 module.exports = router;
