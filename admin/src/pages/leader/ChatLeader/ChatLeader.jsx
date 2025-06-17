@@ -27,6 +27,7 @@ const ChatLeader = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [addingMember, setAddingMember] = useState(false);
@@ -44,15 +45,19 @@ const ChatLeader = () => {
   const [editText, setEditText] = useState("");
   const [showFileInput, setShowFileInput] = useState(false);
 
-  // Socket setup and other useEffect hooks remain unchanged
   useEffect(() => {
     socketRef.current = io(SOCKET_URL, {
-      transports: ["websocket"],
       withCredentials: true,
     });
 
     socketRef.current.on("connect", () => {
       console.log("Socket connected:", socketRef.current.id);
+      socketRef.current.emit("user-online", currentUser._id);
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setError("Không thể kết nối đến server WebSocket: " + error.message);
     });
 
     socketRef.current.on("disconnect", () => {
@@ -82,6 +87,11 @@ const ChatLeader = () => {
           senderId: msg.senderId,
           senderName: msg.senderName || "System",
           text: msg.message,
+          imageUrl: msg.imageUrl,
+          fileName: msg.fileName,
+          fileSize: msg.fileSize,
+          fileType: msg.fileType,
+          fileId: msg.fileId,
           timestamp: msg.timestamp,
           system: msg.senderId === "System",
           hidden: false,
@@ -181,8 +191,7 @@ const ChatLeader = () => {
         setTeamMembers(members);
       } catch (err) {
         setError(
-          err.response?.data?.message ||
-            "Không thể lấy danh sách thành viên team"
+          err.response?.data?.message || "Không thể lấy danh sách thành viên team"
         );
       }
     };
@@ -195,18 +204,20 @@ const ChatLeader = () => {
     const fetchMessages = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(
-          `${API_URL}/${selectedGroup._id}/messages`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = await axios.get(`${API_URL}/${selectedGroup._id}/messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setMessages(
           res.data.map((msg) => ({
             _id: msg._id,
             senderId: msg.senderId,
             senderName: msg.senderName || "System",
             text: msg.message,
+            imageUrl: msg.imageUrl,
+            fileName: msg.fileName,
+            fileSize: msg.fileSize,
+            fileType: msg.fileType,
+            fileId: msg.fileId,
             timestamp: msg.timestamp,
             system: msg.senderId === "System",
             hidden: false,
@@ -233,10 +244,7 @@ const ChatLeader = () => {
       if (addMemberRef.current && !addMemberRef.current.contains(e.target)) {
         setAddingMember(false);
       }
-      if (
-        createGroupRef.current &&
-        !createGroupRef.current.contains(e.target)
-      ) {
+      if (createGroupRef.current && !createGroupRef.current.contains(e.target)) {
         setCreatingGroup(false);
       }
       if (!e.target.closest(".message-menu")) {
@@ -248,39 +256,48 @@ const ChatLeader = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const token = localStorage.getItem("token");
-        const formData = new FormData();
-        formData.append("file", file);
-        await axios.post(`${API_URL}/${selectedGroup._id}/files`, formData, {
+  const handleFileChange = (file) => {
+    if (!file || !selectedGroup?._id) {
+      setError("Vui lòng chọn file và nhóm");
+      return;
+    }
+    setSelectedFile(file);
+    setShowFileInput(false);
+  };
+
+  const handleSendMessage = async (text, file) => {
+    if (!selectedGroup?._id) {
+      setError("Vui lòng chọn nhóm");
+      return;
+    }
+    if (!text.trim() && !file) {
+      setError("Vui lòng nhập tin nhắn hoặc chọn hình ảnh");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      if (file) {
+        formData.append("image", file);
+      }
+      if (text.trim()) {
+        formData.append("message", text.trim());
+      }
+      const response = await axios.post(
+        `${API_URL}/${selectedGroup._id}/messages`,
+        formData,
+        {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
-        });
-        console.log("File uploaded:", file.name);
-        setShowFileInput(false);
-      } catch (err) {
-        setError(err.response?.data?.message || "Lỗi khi tải ảnh lên");
-      }
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || !selectedGroup?._id) return;
-    try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        `${API_URL}/${selectedGroup._id}/messages`,
-        { message: inputText.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
+      console.log("Message/Image sent:", response.data);
       setInputText("");
+      setSelectedFile(null);
     } catch (err) {
-      setError(err.response?.data?.message || "Lỗi khi gửi tin nhắn");
+      setError(err.response?.data?.message || "Lỗi khi gửi tin nhắn hoặc ảnh");
     }
   };
 
@@ -327,7 +344,7 @@ const ChatLeader = () => {
       setError(err.response?.data?.message || "Lỗi khi xóa thành viên");
     }
   };
-  
+
   const handleLeaveGroup = async () => {
     if (!selectedGroup?._id) return;
     try {
@@ -339,9 +356,7 @@ const ChatLeader = () => {
       await axios.delete(`${API_URL}/${selectedGroup._id}/leave`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setGroups((prev) =>
-        prev.filter((group) => group._id !== selectedGroup._id)
-      );
+      setGroups((prev) => prev.filter((group) => group._id !== selectedGroup._id));
       setSelectedGroup(null);
       setHasLeftGroup(true);
       socketRef.current.emit("leave-group", {
@@ -400,12 +415,9 @@ const ChatLeader = () => {
   const handleDeleteMessage = async (messageId) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(
-        `${API_URL}/${selectedGroup._id}/messages/${messageId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await axios.delete(`${API_URL}/${selectedGroup._id}/messages/${messageId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
       setOpenMenuId(null);
     } catch (err) {
@@ -415,9 +427,7 @@ const ChatLeader = () => {
 
   const handleHideMessage = (messageId) => {
     setMessages((prev) =>
-      prev.map((msg) =>
-        msg._id === messageId ? { ...msg, hidden: true } : msg
-      )
+      prev.map((msg) => (msg._id === messageId ? { ...msg, hidden: true } : msg))
     );
     setOpenMenuId(null);
   };
@@ -490,6 +500,8 @@ const ChatLeader = () => {
           handleFileChange={handleFileChange}
           showFileInput={showFileInput}
           setShowFileInput={setShowFileInput}
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           showMembers={showMembers}
@@ -521,6 +533,7 @@ const ChatLeader = () => {
           chatEndRef={chatEndRef}
           addMemberRef={addMemberRef}
           error={error}
+          setError={setError} // Truyền setError
           navigate={navigate}
         />
       )}
