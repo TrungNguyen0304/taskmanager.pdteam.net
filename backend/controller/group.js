@@ -193,147 +193,66 @@ const sendGroupMessage = async (req, res) => {
         const { groupId } = req.params;
         const userId = req.user._id;
         const { message } = req.body;
+        const file = req.file;
 
-        if (!mongoose.Types.ObjectId.isValid(groupId)) {
-            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+        if (!mongoose.Types.ObjectId.isValid(groupId) || !mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "ID không hợp lệ" });
         }
 
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ message: "ID người dùng không hợp lệ" });
+        if (!message && !file) {
+            return res.status(400).json({ message: "Phải có tin nhắn hoặc ảnh" });
         }
-
-        if (!message || typeof message !== "string") {
-            return res.status(400).json({ message: "Tin nhắn không hợp lệ" });
-        }
-
-        const sanitizedMessage = sanitizeHtml(message, {
-            allowedTags: [], // Loại bỏ tất cả thẻ HTML
-            allowedAttributes: {},
-        });
 
         const group = await Group.findById(groupId);
         if (!group) return res.status(404).json({ message: "Nhóm không tồn tại" });
 
         const user = await User.findById(userId).select("name role");
-        if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
-        }
+        if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
 
-        // Bỏ qua kiểm tra thành viên nhóm nếu role là 'company'
         if (user.role !== "company") {
             const memberIds = group.members.map((id) => id.toString());
             if (!memberIds.includes(userId.toString())) {
-                return res.status(403).json({ message: "Người dùng không có trong nhóm" });
+                return res.status(403).json({ message: "Không có quyền gửi tin nhắn trong nhóm này" });
             }
         }
+
+        const sanitizedMessage = message
+            ? sanitizeHtml(message, { allowedTags: [], allowedAttributes: {} })
+            : "";
 
         const newMessage = new Message({
             groupId,
             senderId: userId,
             message: sanitizedMessage,
+            fileName: file?.originalname || null,
+            fileSize: file?.size || null,
+            imageUrl: file ? `/uploads/reports/${file.filename}` : null,
+            fileId: file ? `file_${Date.now()}` : null,
+            fileType: file?.mimetype || null,
+            timestamp: new Date(),
         });
+
         await newMessage.save();
 
         const io = getIO();
         io.to(groupId).emit("group-message", {
-            senderId: userId,
-            senderName: user.name,
-            groupId,
-            message: sanitizedMessage,
-            timestamp: newMessage.timestamp.toISOString(),
-        });
-
-        res.status(201).json({
             _id: newMessage._id,
             groupId,
             senderId: userId,
             senderName: user.name,
             message: sanitizedMessage,
-            timestamp: newMessage.timestamp,
+            imageUrl: newMessage.imageUrl,
+            fileName: newMessage.fileName,
+            fileSize: newMessage.fileSize,
+            fileType: newMessage.fileType,
+            fileId: newMessage.fileId,
+            timestamp: newMessage.timestamp.toISOString(),
         });
+
+        res.status(201).json(newMessage);
     } catch (error) {
+        console.error("Lỗi khi gửi tin nhắn:", error);
         res.status(500).json({ message: "Lỗi khi gửi tin nhắn", error: error.message });
-    }
-};
-
-const sendImageMessage = async (req, res) => {
-    try {
-        const { groupId } = req.params;
-        const userId = req.user._id;
-        const file = req.file;
-
-        if (!mongoose.Types.ObjectId.isValid(groupId)) {
-            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ message: "ID người dùng không hợp lệ" });
-        }
-
-        if (!file) {
-            return res.status(400).json({ message: "Hình ảnh là bắt buộc" });
-        }
-
-        const group = await Group.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: "Nhóm không tồn tại" });
-        }
-
-        const user = await User.findById(userId).select("name role");
-        if (!user) {
-            return res.status(404).json({ message: "Người dùng không tồn tại" });
-        }
-
-        if (user.role !== "company") {
-            const memberIds = group.members.map((id) => id.toString());
-            if (!memberIds.includes(userId.toString())) {
-                return res.status(403).json({ message: "Người dùng không có trong nhóm" });
-            }
-        }
-
-        const fileId = `image_${Date.now()}`;
-        const imageUrl = `/uploads/reports/${file.filename}`;
-
-        const newMessage = new Message({
-            groupId,
-            senderId: userId,
-            fileName: file.originalname,
-            fileSize: file.size,
-            imageUrl: imageUrl,
-            fileId,
-            fileType: file.mimetype,
-            timestamp: new Date(),
-        });
-        await newMessage.save();
-
-        const io = getIO();
-        io.to(groupId).emit("group-image", {
-            senderId: userId,
-            senderName: user.name,
-            groupId,
-            imageUrl,
-            fileName: file.originalname,
-            fileSize: file.size,
-            fileId,
-            fileType: file.mimetype,
-            timestamp: newMessage.timestamp.toISOString(),
-        });
-
-        res.status(201).json({
-            _id: newMessage._id,
-            groupId,
-            senderId: userId,
-            senderName: user.name,
-            imageUrl,
-            fileName: file.originalname,
-            fileSize: file.size,
-            fileId,
-            fileType: file.mimetype,
-            timestamp: newMessage.timestamp,
-        });
-    } catch (error) {
-        console.error('Lỗi khi gửi hình ảnh:', error);
-        res.status(500).json({ message: "Lỗi khi gửi hình ảnh", error: error.message });
     }
 };
 
@@ -371,7 +290,6 @@ const getGroupMessages = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi lấy tin nhắn", error: error.message });
     }
 };
-
 
 const removeMember = async (req, res) => {
     try {
@@ -480,6 +398,7 @@ const startCall = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi khởi tạo cuộc gọi", error: error.message });
     }
 };
+
 const startScreenShare = async (req, res) => {
     try {
         const { groupId } = req.params;
@@ -627,7 +546,6 @@ const startFileTransfer = async (req, res) => {
     }
 };
 
-
 module.exports = {
     createGroup,
     getGroups,
@@ -640,5 +558,5 @@ module.exports = {
     getCallStatus,
     startScreenShare,
     startFileTransfer,
-    sendImageMessage
+    // sendImageMessage
 };

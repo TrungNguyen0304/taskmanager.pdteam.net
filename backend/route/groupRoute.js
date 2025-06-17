@@ -12,7 +12,7 @@ const {
     getCallStatus,
     startScreenShare,
     startFileTransfer,
-    sendImageMessage
+    // sendImageMessage
 } = require('../controller/group');
 const authenticateJWT = require('../middleware/auth.js');
 const upload = require('../middleware/upload.js')
@@ -32,7 +32,7 @@ router.post('/:groupId/members', authenticateJWT, addMember);
 router.get('/:groupId/messages', authenticateJWT, getGroupMessages);
 
 // Gửi tin nhắn nhóm
-router.post('/:groupId/messages', authenticateJWT, sendGroupMessage);
+router.post('/:groupId/messages', upload.single("image"), authenticateJWT, sendGroupMessage);
 
 //  xóa một thành viên
 router.delete("/:groupId/members/:userId", authenticateJWT, removeMember);
@@ -53,7 +53,7 @@ router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
 router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
 
 // gửi ảnh 
-router.post('/:groupId/sendImageMessage',upload.single("image"), authenticateJWT, sendImageMessage);
+// router.post('/:groupId/sendImageMessage',upload.single("image"), authenticateJWT, sendImageMessage);
 
 
 module.exports = router;
