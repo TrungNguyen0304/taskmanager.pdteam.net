@@ -283,7 +283,7 @@ const ChatMessages = ({
         </div>
       )}
 
-      <div ref={chatEndRef} />
+      <div ref={chatEndRef} /> 
     </div>
   );
 };
