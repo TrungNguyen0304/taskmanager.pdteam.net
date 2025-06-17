@@ -20,6 +20,9 @@ const ChatMessages = ({
   error,
   chatEndRef,
 }) => {
+  // Hardcode URL của server
+  const BASE_URL = "http://localhost:8001"; // Thay bằng URL server thực tế nếu ở production
+
   return (
     <div className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-gray-50">
       <div className="flex flex-col items-center mb-4">
@@ -37,7 +40,7 @@ const ChatMessages = ({
       )}
       {messages.length === 0 ? (
         <div className="text-center text-gray-500 text-xs sm:text-sm">
-          Chưa có tin nhắn nào trong nhóm này. 
+          Chưa có tin nhắn nào trong nhóm này.
         </div>
       ) : (
         messages.map((msg) => {
@@ -75,7 +78,7 @@ const ChatMessages = ({
                     />
                   </button>
                   {openMenuId === msg._id && (
-                    <div className="absolute right-0 bottom-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32">
+                    <div className="absolute right-0 bottom-2 bg-white border rounded-lg shadow z-50 w-28 sm:w-32">
                       <button
                         onClick={() =>
                           handleStartEditMessage(msg._id, msg.text)
@@ -94,8 +97,7 @@ const ChatMessages = ({
                         onClick={() => handleHideMessage(msg._id)}
                         className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                       >
-                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />
-                        Ẩn
+                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
                       </button>
                     </div>
                   )}
@@ -137,7 +139,18 @@ const ChatMessages = ({
                     </div>
                   </div>
                 ) : (
-                  <div className="text-xs sm:text-sm">{msg.text}</div>
+                  <div className="text-xs sm:text-sm">
+                    {/* Hiển thị ảnh nếu có imageUrl */}
+                    {msg.imageUrl && (
+                      <img
+                        src={`${BASE_URL}${msg.imageUrl}`}
+                        alt={msg.fileName || "Uploaded image"}
+                        className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain"
+                      />
+                    )}
+                    {/* Hiển thị text nếu có text */}
+                    {msg.text && <div>{msg.text}</div>}
+                  </div>
                 )}
               </div>
               {!isCurrentUser && (
@@ -167,8 +180,7 @@ const ChatMessages = ({
                         onClick={() => handleHideMessage(msg._id)}
                         className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                       >
-                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />
-                        Ẩn
+                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
                       </button>
                     </div>
                   )}
