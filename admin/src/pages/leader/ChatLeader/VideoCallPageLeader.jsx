@@ -17,7 +17,7 @@ const socket = io("http://localhost:8001", {
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
-}); // Replace with your Socket.IO server URL
+});
 const API_BASE_URL = "http://localhost:8001/api/group";
 
 const MAX_VISIBLE = 5;
@@ -29,8 +29,21 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
     _id: userId || "guest",
     name: "Guest",
   };
+  const token = authToken || localStorage.getItem("token");
 
-  // Initialize participants with current user
+  // Validate user and token
+  if (!token || !currentUser._id || currentUser._id === "guest") {
+    console.error("Invalid authToken or userId:", { authToken: token, userId: currentUser._id });
+    navigate("/login");
+    return (
+      <div className="h-screen bg-gray-900 text-white flex flex-col p-4 relative rounded-2xl shadow-lg">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-lg shadow">
+          Không có token xác thực hoặc thông tin người dùng không hợp lệ. Vui lòng đăng nhập lại.
+        </div>
+      </div>
+    );
+  }
+
   const [participants, setParticipants] = useState([
     {
       id: currentUser._id,
@@ -51,6 +64,7 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
     screenSharers: [],
   });
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState(false);
 
   const selfVideoRef = useRef(null);
   const screenShareVideoRef = useRef(null);
@@ -58,6 +72,7 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
   const peerConnections = useRef(new Map());
   const remoteStreams = useRef(new Map());
   const videoRefs = useRef(new Map());
+  const pendingCandidates = useRef(new Map());
 
   const [visibleParticipantIds, setVisibleParticipantIds] = useState([
     currentUser._id,
@@ -65,7 +80,6 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
 
   const self = participants.find((p) => p.isSelf);
 
-  // WebRTC configuration
   const configuration = {
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
@@ -73,14 +87,41 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
     ],
   };
 
-  // Fetch call status and participants
+  const fetchJSON = async (url) => {
+    console.log("Fetching URL:", url, "with headers:", { Authorization: `Bearer ${token}` });
+    try {
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Full error response:", error.response?.data);
+      throw error;
+    }
+  };
+
+  const postJSON = async (url, body) => {
+    console.log("Posting to URL:", url, "with headers:", { Authorization: `Bearer ${token}` }, "and body:", body);
+    try {
+      const response = await axios.post(url, body, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Full error response:", error.response?.data);
+      throw error;
+    }
+  };
+
   const fetchCallStatus = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/${groupId}/call-status`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      setCallStatus(response.data);
-      const serverParticipants = response.data.participants || [];
+      console.log("Fetching call status for groupId:", groupId);
+      const data = await fetchJSON(`${API_BASE_URL}/${groupId}/call-status`);
+      setCallStatus(data);
+      const serverParticipants = data.participants || [];
       const updatedParticipants = serverParticipants.map((sp) => ({
         id: sp.userId,
         name: sp.userName,
@@ -89,7 +130,6 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
         isMicOff: sp.isMicOff || false,
       }));
 
-      // Ensure current user is included
       if (!updatedParticipants.some((p) => p.isSelf)) {
         updatedParticipants.push({
           id: currentUser._id,
@@ -101,7 +141,6 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
       }
       setParticipants(updatedParticipants);
 
-      // Update visible participant IDs
       const selfId = updatedParticipants.find((p) => p.isSelf)?.id;
       const sortedParticipants = updatedParticipants
         .filter((p) => !p.isSelf)
@@ -116,30 +155,68 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
       ].filter(Boolean);
       setVisibleParticipantIds(newVisibleIds);
       setError(null);
+
+      if (data.inCall) {
+        setNotification(true);
+      }
     } catch (error) {
-      console.error("Error fetching call status:", error.response?.data?.message || error.message);
-      setError("Không thể tải danh sách người tham gia. Vui lòng thử lại.");
+      console.error("Error fetching call status:", error.message);
+      if (error.response?.status === 403) {
+        setError("Bạn không có quyền truy cập nhóm này hoặc token không hợp lệ.");
+      } else {
+        setError("Không thể tải danh sách người tham gia. Vui lòng thử lại.");
+      }
     }
   };
 
-  // Initiate call
+  const addVideoStream = (id, stream, label) => {
+    if (videoRefs.current.has(id)) return;
+    remoteStreams.current.set(id, stream);
+    const videoElement = videoRefs.current.get(id);
+    if (videoElement) {
+      videoElement.srcObject = stream;
+    }
+    setParticipants((prev) => {
+      if (prev.some((p) => p.id === id)) return prev;
+      return [...prev, { id, name: label, isSelf: id === currentUser._id, isCameraOff: false, isMicOff: false }];
+    });
+  };
+
   const initCall = async () => {
     try {
-      await axios.post(`${API_BASE_URL}/${groupId}/call`, {}, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      console.log("Initiating call for groupId:", groupId);
+      await postJSON(`${API_BASE_URL}/${groupId}/call`, {});
       socket.emit("start-call", { groupId, userId: currentUser._id, offer: null });
     } catch (error) {
-      console.error("Error initiating call:", error.response?.data?.message || error.message);
-      setError("Không thể khởi tạo cuộc gọi. Vui lòng thử lại.");
+      console.error("Error initiating call:", error.message);
+      if (error.response?.status === 403) {
+        setError("Bạn không có quyền khởi tạo cuộc gọi hoặc token không hợp lệ.");
+      } else {
+        setError("Không thể khởi tạo cuộc gọi. Vui lòng thử lại.");
+      }
     }
   };
 
-  // Initialize WebRTC, Socket.IO, and fetch participants
+  const joinCall = async () => {
+    setNotification(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setSelfStream(stream);
+      if (selfVideoRef.current) {
+        selfVideoRef.current.srcObject = stream;
+      }
+      addVideoStream(currentUser._id, stream, "Bạn");
+    } catch (error) {
+      console.error("Error joining call:", error);
+      setError("Không thể truy cập camera hoặc micro. Vui lòng kiểm tra quyền truy cập.");
+    }
+  };
+
   useEffect(() => {
     socket.on("connect", () => {
       console.log("Socket connected:", socket.id);
       socket.emit("user-online", currentUser._id);
+      socket.emit("join-group", { userId: currentUser._id, groupId });
     });
     socket.on("connect_error", (err) => {
       console.error("Socket connection error:", err.message);
@@ -159,89 +236,104 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
         if (selfVideoRef.current) {
           selfVideoRef.current.srcObject = stream;
         }
+        addVideoStream(currentUser._id, stream, "Bạn");
 
-        socket.on("call-started", async ({ groupId: callGroupId, userId: callerId, offer }) => {
-          if (callGroupId !== groupId || callerId === currentUser._id) return;
+        socket.on("call-started", async ({ groupId: callGroupId, userId: fromId, userName, offer }) => {
+          if (callGroupId !== groupId || fromId === currentUser._id) return;
+          setNotification(true);
 
-          const peerConnection = new RTCPeerConnection(configuration);
-          peerConnections.current.set(callerId, peerConnection);
+          window.joinCall = async () => {
+            setNotification(false);
+            const pc = new RTCPeerConnection(configuration);
+            peerConnections.current.set(fromId, pc);
 
-          stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-          peerConnection.ontrack = (event) => {
-            const [remoteStream] = event.streams;
-            remoteStreams.current.set(callerId, remoteStream);
-            const videoElement = videoRefs.current.get(callerId);
-            if (videoElement) {
-              videoElement.srcObject = remoteStream;
-            }
+            pc.onicecandidate = (event) => {
+              if (event.candidate) {
+                socket.emit("ice-candidate", {
+                  groupId,
+                  userId: currentUser._id,
+                  candidate: event.candidate,
+                  toUserId: fromId,
+                });
+              }
+            };
+
+            pc.ontrack = (event) => {
+              const [remoteStream] = event.streams;
+              addVideoStream(fromId, remoteStream, userName);
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit("call-answer", { groupId, userId: currentUser._id, answer, toUserId: fromId });
           };
+        });
 
-          peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-              socket.emit("ice-candidate", {
-                groupId,
-                userId: currentUser._id,
-                candidate: event.candidate,
-                toUserId: callerId,
-              });
+        socket.on("call-answer", async ({ groupId: callGroupId, userId: fromId, answer }) => {
+          if (callGroupId !== groupId) return;
+          const pc = peerConnections.current.get(fromId) || peerConnections.current.get(`screen-${fromId}`);
+          if (!pc || pc.signalingState === "stable") return;
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            if (pendingCandidates.current.has(fromId)) {
+              for (const candidate of pendingCandidates.current.get(fromId)) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              }
+              pendingCandidates.current.delete(fromId);
             }
-          };
-
-          if (offer) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit("call-answer", { groupId, userId: currentUser._id, answer, toUserId: callerId });
+          } catch (err) {
+            console.warn("Error setting remote description:", err);
           }
         });
 
-        socket.on("call-answer", async ({ groupId: callGroupId, userId: answererId, answer }) => {
+        socket.on("ice-candidate", async ({ groupId: callGroupId, userId: fromId, candidate }) => {
           if (callGroupId !== groupId) return;
-          const peerConnection = peerConnections.current.get(answererId);
-          if (peerConnection && answer) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-          }
-        });
-
-        socket.on("ice-candidate", ({ groupId: callGroupId, userId: senderId, candidate }) => {
-          if (callGroupId !== groupId) return;
-          const peerConnection = peerConnections.current.get(senderId);
-          if (peerConnection && candidate) {
-            peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          const pc = peerConnections.current.get(fromId) || peerConnections.current.get(`screen-${fromId}`);
+          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+              console.warn("ICE candidate error:", err);
+            }
+          } else {
+            if (!pendingCandidates.current.has(fromId)) {
+              pendingCandidates.current.set(fromId, []);
+            }
+            pendingCandidates.current.get(fromId).push(candidate);
           }
         });
 
         socket.on("call-ended", ({ groupId: callGroupId, userId: endedUserId }) => {
           if (callGroupId !== groupId) return;
-          const peerConnection = peerConnections.current.get(endedUserId);
-          if (peerConnection) {
-            peerConnection.close();
+          const pc = peerConnections.current.get(endedUserId);
+          if (pc) {
+            pc.close();
             peerConnections.current.delete(endedUserId);
             remoteStreams.current.delete(endedUserId);
-            const videoElement = videoRefs.current.get(endedUserId);
-            if (videoElement) {
-              videoElement.srcObject = null;
-            }
+            videoRefs.current.delete(endedUserId);
           }
           fetchCallStatus();
         });
 
-        socket.on("screen-share-started", async ({ groupId: callGroupId, userId: sharerId, offer }) => {
+        socket.on("screen-share-started", async ({ groupId: callGroupId, userId: sharerId, userName, offer }) => {
           if (callGroupId !== groupId || sharerId === currentUser._id) return;
 
-          const peerConnection = new RTCPeerConnection(configuration);
-          peerConnections.current.set(`screen-${sharerId}`, peerConnection);
+          const pc = new RTCPeerConnection(configuration);
+          peerConnections.current.set(`screen-${sharerId}`, pc);
 
-          peerConnection.ontrack = (event) => {
+          pc.ontrack = (event) => {
             const [remoteStream] = event.streams;
             remoteStreams.current.set(`screen-${sharerId}`, remoteStream);
             if (screenShareVideoRef.current) {
               screenShareVideoRef.current.srcObject = remoteStream;
             }
+            addVideoStream(`screen-${sharerId}`, remoteStream, `Màn hình ${userName}`);
           };
 
-          peerConnection.onicecandidate = (event) => {
+          pc.onicecandidate = (event) => {
             if (event.candidate) {
               socket.emit("ice-candidate", {
                 groupId,
@@ -252,20 +344,18 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
             }
           };
 
-          if (offer) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit("call-answer", { groupId, userId: currentUser._id, answer, toUserId: sharerId });
-          }
+          await pc.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit("call-answer", { groupId, userId: currentUser._id, answer, toUserId: sharerId });
           fetchCallStatus();
         });
 
         socket.on("screen-share-stopped", ({ groupId: callGroupId, userId: sharerId }) => {
           if (callGroupId !== groupId) return;
-          const peerConnection = peerConnections.current.get(`screen-${sharerId}`);
-          if (peerConnection) {
-            peerConnection.close();
+          const pc = peerConnections.current.get(`screen-${sharerId}`);
+          if (pc) {
+            pc.close();
             peerConnections.current.delete(`screen-${sharerId}`);
             remoteStreams.current.delete(`screen-${sharerId}`);
             if (screenShareVideoRef.current) {
@@ -299,16 +389,14 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
     };
   }, [groupId, currentUser._id]);
 
-  // Handle camera toggle
   useEffect(() => {
     if (selfStream && self) {
-      selfStream.getVideoTracks().forEach((track) => {
+      selfStream.getVideoTracks().forEach((track) => {  
         track.enabled = !self.isCameraOff;
       });
     }
   }, [self?.isCameraOff, selfStream]);
 
-  // Handle microphone toggle
   useEffect(() => {
     if (selfStream && self) {
       selfStream.getAudioTracks().forEach((track) => {
@@ -317,22 +405,20 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
     }
   }, [self?.isMicOff, selfStream]);
 
-  // Handle screen sharing
   const handleScreenShare = async () => {
     try {
-      await axios.post(`${API_BASE_URL}/${groupId}/screen-share`, {}, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-
+      await postJSON(`${API_BASE_URL}/${groupId}/screen-share`, {});
       if (!isScreenSharing) {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         setIsScreenSharing(true);
-        const peerConnection = new RTCPeerConnection(configuration);
-        peerConnections.current.set(`screen-${currentUser._id}`, peerConnection);
+        addVideoStream(`screen-${currentUser._id}`, stream, "Chia sẻ màn hình");
 
-        stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream));
+        const pc = new RTCPeerConnection(configuration);
+        peerConnections.current.set(`screen-${currentUser._id}`, pc);
 
-        peerConnection.onicecandidate = (event) => {
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+        pc.onicecandidate = (event) => {
           if (event.candidate) {
             socket.emit("ice-candidate", {
               groupId,
@@ -343,8 +429,12 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
           }
         };
 
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
+        pc.ontrack = (event) => {
+          addVideoStream(`remote-screen-${currentUser._id}`, event.streams[0], "Màn hình");
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
         socket.emit("start-screen-share", { groupId, userId: currentUser._id, offer });
 
         stream.getVideoTracks()[0].onended = () => {
@@ -352,26 +442,25 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
         };
       }
     } catch (error) {
-      console.error("Error starting screen share:", error.response?.data?.message || error.message);
+      console.error("Error starting screen share:", error.message);
       setError("Không thể chia sẻ màn hình. Vui lòng thử lại.");
     }
   };
 
   const handleStopScreenShare = async () => {
     setIsScreenSharing(false);
-    const peerConnection = peerConnections.current.get(`screen-${currentUser._id}`);
-    if (peerConnection) {
-      peerConnection.close();
+    const pc = peerConnections.current.get(`screen-${currentUser._id}`);
+    if (pc) {
+      pc.close();
       peerConnections.current.delete(`screen-${currentUser._id}`);
+      remoteStreams.current.delete(`screen-${currentUser._id}`);
       socket.emit("stop-screen-share", { groupId, userId: currentUser._id });
     }
     try {
-      await axios.post(`${API_BASE_URL}/${groupId}/screen-share`, {}, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      await postJSON(`${API_BASE_URL}/${groupId}/screen-share`, {});
       fetchCallStatus();
     } catch (error) {
-      console.error("Error stopping screen share:", error.response?.data?.message || error.message);
+      console.error("Error stopping screen share:", error.message);
       setError("Không thể dừng chia sẻ màn hình. Vui lòng thử lại.");
     }
   };
@@ -383,12 +472,10 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
     peerConnections.current.forEach((pc) => pc.close());
     socket.emit("end-call", { groupId, userId: currentUser._id });
     try {
-      await axios.post(`${API_BASE_URL}/${groupId}/call`, {}, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      await postJSON(`${API_BASE_URL}/${groupId}/call`, {});
       navigate("/chat");
     } catch (error) {
-      console.error("Error ending call:", error.response?.data?.message || error.message);
+      console.error("Error ending call:", error.message);
       navigate("/chat");
     }
   };
@@ -456,6 +543,17 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
           {error}
         </div>
       )}
+      {notification && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-black px-4 py-2 rounded-lg shadow">
+          📞 Nhóm đang có cuộc gọi!
+          <button
+            onClick={joinCall}
+            className="ml-2 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            🎥 Tham gia
+          </button>
+        </div>
+      )}
       <div className="absolute top-4 left-4 text-lg font-semibold">
         Đang gọi nhóm video...
       </div>
@@ -471,8 +569,7 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
         {visibleParticipants.map((user) => (
           <div
             key={user.id}
-            className={`w-full h-52 rounded-xl flex items-center justify-center relative ${user.isSelf ? "bg-blue-700" : "bg-gray-700"
-              }`}
+            className={`w-full h-52 rounded-xl flex items-center justify-center relative ${user.isSelf ? "bg-blue-700" : "bg-gray-700"}`}
           >
             {user.isSelf ? (
               user.isCameraOff ? (
@@ -634,8 +731,9 @@ const VideoCallPageLeader = ({ userId, authToken }) => {
               {participants.map((user) => (
                 <li
                   key={user.id}
-                  className={`flex justify-between items-center py-3 cursor-pointer hover:bg-blue-400 px-3 rounded ${visibleParticipantIds.includes(user.id) ? "bg-blue-700" : ""
-                    } ${user.isSelf ? "cursor-not-allowed" : ""}`}
+                  className={`flex justify-between items-center py-3 cursor-pointer hover:bg-blue-400 px-3 rounded ${
+                    visibleParticipantIds.includes(user.id) ? "bg-blue-700" : ""
+                  } ${user.isSelf ? "cursor-not-allowed" : ""}`}
                   onClick={() => togglePinParticipant(user.id)}
                 >
                   <div>
