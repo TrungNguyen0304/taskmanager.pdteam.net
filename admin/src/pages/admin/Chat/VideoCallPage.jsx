@@ -396,7 +396,7 @@ const VideoCallPage = () => {
         </div>
       )}
       <div className="absolute top-4 left-4 text-lg font-semibold">
-        Đang gọi nhóm video...
+        Đang gọi...
       </div>
       <button
         onClick={handleEndCall}

@@ -10,6 +10,8 @@ import {
   Menu,
   MenuItem,
   ListItemSecondaryAction,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -33,6 +35,10 @@ const NotificationPanel = ({ userId }) => {
   const [selectedNotifId, setSelectedNotifId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   const token = localStorage.getItem("token");
 
@@ -106,7 +112,7 @@ const NotificationPanel = ({ userId }) => {
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
       toast.info(`${data.title} - ${data.message}`, {
-        position: "top-right",
+        position: isMobile ? "top-center" : "top-right",
       });
     });
 
@@ -123,13 +129,15 @@ const NotificationPanel = ({ userId }) => {
       };
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
-      toast.info(`${title}: ${body}`, { position: "top-right" });
+      toast.info(`${title}: ${body}`, {
+        position: isMobile ? "top-center" : "top-right",
+      });
     });
 
     fetchNotifications();
 
     return () => disconnectSocket();
-  }, [userId]);
+  }, [userId, isMobile]);
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -160,10 +168,10 @@ const NotificationPanel = ({ userId }) => {
   const open = Boolean(anchorEl);
 
   return (
-    <div>
+    <div className="flex items-center justify-center">
       <IconButton onClick={handleOpen}>
         <Badge badgeContent={unreadCount} color="error">
-          <NotificationsIcon />
+          <NotificationsIcon className="text-2xl md:text-3xl" />
         </Badge>
       </IconButton>
       <Popover
@@ -172,11 +180,23 @@ const NotificationPanel = ({ userId }) => {
         onClose={handleClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            width: isMobile ? "90vw" : isTablet ? 300 : 350,
+            maxHeight: isMobile ? "60vh" : 400,
+            overflow: "auto",
+          },
+        }}
       >
-        <List sx={{ width: 350, maxHeight: 400, overflow: "auto" }}>
+        <List sx={{ padding: isMobile ? 1 : 2 }}>
           {Array.isArray(notifications) && notifications.length === 0 ? (
             <ListItem>
-              <ListItemText primary="Không có thông báo!" />
+              <ListItemText
+                primary="Không có thông báo!"
+                primaryTypographyProps={{
+                  className: isMobile ? "text-sm" : "text-base",
+                }}
+              />
             </ListItem>
           ) : (
             notifications.map((notif, index) => (
@@ -192,6 +212,7 @@ const NotificationPanel = ({ userId }) => {
                   "&:hover": {
                     backgroundColor: "rgba(0, 0, 0, 0.08)",
                   },
+                  padding: isMobile ? "4px" : "6px",
                 }}
               >
                 <ListItemText
@@ -199,6 +220,7 @@ const NotificationPanel = ({ userId }) => {
                   primaryTypographyProps={{
                     fontWeight: notif.isRead ? "normal" : "bold",
                     color: notif.isRead ? "text.secondary" : "text.primary",
+                    className: isMobile ? "text-sm" : "text-base",
                   }}
                   secondary={
                     <>
@@ -210,10 +232,15 @@ const NotificationPanel = ({ userId }) => {
                             ? "text.secondary"
                             : "text.primary",
                         }}
+                        className={isMobile ? "text-xs" : "text-sm"}
                       >
                         {notif.message}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        className={isMobile ? "text-xs" : "text-sm"}
+                      >
                         {new Date(notif.timestamp).toLocaleString()}
                       </Typography>
                     </>
@@ -224,6 +251,7 @@ const NotificationPanel = ({ userId }) => {
                   <IconButton
                     edge="end"
                     onClick={(e) => handleMenuOpen(e, notif._id)}
+                    size={isMobile ? "small" : "medium"}
                   >
                     <MoreVertIcon />
                   </IconButton>
@@ -246,6 +274,7 @@ const NotificationPanel = ({ userId }) => {
           disabled={
             notifications.find((n) => n._id === selectedNotifId)?.isRead
           }
+          className={isMobile ? "text-sm" : "text-base"}
         >
           <MdBookmarkAdded className="text-lg mr-2" /> Đánh dấu là đã đọc
         </MenuItem>
@@ -254,12 +283,13 @@ const NotificationPanel = ({ userId }) => {
             deleteNotification(selectedNotifId);
             handleMenuClose();
           }}
+          className={isMobile ? "text-sm" : "text-base"}
         >
           <MdDeleteForever className="text-lg mr-2" /> Xóa thông báo
         </MenuItem>
       </Menu>
       <ToastContainer
-        position="top-right"
+        position={isMobile ? "top-center" : "top-right"}
         autoClose={5000}
         hideProgressBar={false}
         newestOnTop
@@ -269,6 +299,10 @@ const NotificationPanel = ({ userId }) => {
         draggable
         pauseOnHover
         theme="colored"
+        toastStyle={{
+          fontSize: isMobile ? "14px" : "16px",
+          padding: isMobile ? "8px" : "12px",
+        }}
       />
     </div>
   );

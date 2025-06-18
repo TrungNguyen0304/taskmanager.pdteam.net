@@ -191,7 +191,7 @@ const ChatMain = ({
               </button>
             </div>
 
-            <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 flex flex-col gap-4 flex-1">
               <button
                 onClick={() => setShowMembers(!showMembers)}
                 className="flex items-center justify-between w-full px-4 py-2 bg-gray-50 border rounded-lg hover:bg-gray-100 transition-colors"
@@ -259,11 +259,11 @@ const ChatMain = ({
                   onClick={() => setAddingMember(!addingMember)}
                   className="flex items-center gap-2 text-sm sm:text-base bg-gray-50 border rounded-lg hover:bg-gray-100 px-4 py-2 w-full transition-colors"
                 >
-                  <UserPlus size={14} className="text-blue-600 sm:w-5 sm:h-5" />{" "}
-                  Thêm thành viên
+                  <UserPlus size={14} className="sm:w-5 sm:h-5" /> Thêm thành
+                  viên
                 </button>
                 {addingMember && (
-                  <div className="flex gap-3 mt-3 items-center">
+                  <div className="flex gap-2 mt-3 items-center">
                     <select
                       value={newMemberId}
                       onChange={(e) => setNewMemberId(e.target.value)}

@@ -11,7 +11,7 @@ const ChatInput = ({
   showFileInput,
   setShowFileInput,
   isUploading,
-  setError, // Add setError to props
+  setError,
 }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -44,10 +44,9 @@ const ChatInput = ({
     // Ngăn gửi nếu đang trong quá trình gửi hoặc tải lên
     if (isSending || isUploading) return;
 
-    setIsSending(true); // Đánh dấu đang gửi
+    setIsSending(true); 
     try {
       if (selectedImage) {
-        // Trigger file upload and wait for completion
         await handleFileChange({ target: { files: [selectedImage] } });
         setSelectedImage(null);
         if (imagePreview) URL.revokeObjectURL(imagePreview);
@@ -62,7 +61,12 @@ const ChatInput = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && (inputText.trim() || selectedImage) && !isUploading && !isSending) {
+    if (
+      e.key === "Enter" &&
+      (inputText.trim() || selectedImage) &&
+      !isUploading &&
+      !isSending
+    ) {
       handleSend("keyboard"); // Gọi handleSend với nguồn là bàn phím
     }
   };
@@ -145,8 +149,10 @@ const ChatInput = ({
         />
 
         <button
-          onClick={handleClickSend} // Sử dụng hàm riêng cho click
-          disabled={(!inputText.trim() && !selectedImage) || isUploading || isSending}
+          onClick={handleClickSend}
+          disabled={
+            (!inputText.trim() && !selectedImage) || isUploading || isSending
+          }
           className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:bg-blue-300 transition-colors duration-200"
           title="Gửi"
         >

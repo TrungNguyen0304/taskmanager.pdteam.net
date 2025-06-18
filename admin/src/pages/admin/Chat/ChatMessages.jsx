@@ -237,7 +237,7 @@ const ChatMessages = ({
                     />
                   </button>
                   {openMenuId === msg._id && (
-                    <div className="absolute left-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
+                    <div className="absolute left-8 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
                       <button
                         onClick={() => handleDeleteMessage(msg._id)}
                         className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
@@ -351,7 +351,7 @@ const ChatMessages = ({
                     />
                   </button>
                   {openMenuId === msg._id && (
-                    <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
+                    <div className="absolute right-8 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
                       {!msg.imageUrl && (
                         <button
                           onClick={() =>
