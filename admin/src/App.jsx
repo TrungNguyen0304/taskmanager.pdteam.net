@@ -56,6 +56,7 @@ import ProjectReport from "./pages/admin/ProjectProgress/ProjectReport";
 import ReportHistoryLeader from "./pages/leader/Projects/ReportHistoryLeader";
 import UpdateUnassigned from "./pages/admin/Projects/updateUnassigned";
 import ShowAllFeedback from "./pages/leader/ShowAllFeedback";
+import { SocketProvider } from "./context/SocketContext";
 
 
 const CompanyLayout = () => {
@@ -174,7 +175,7 @@ const MemberLayout = () => {
 
             <Route path="/chat" element={<ChatMember />} />
             <Route path="/chat/requests" element={<JoinRequestsPageMember />} />
-            <Route path="/chat/video-call" element={<VideoCallPageMember />} />
+            <Route path="/chat/video-call/:groupId" element={<VideoCallPageMember />} />
           </Routes>
         </main>
       </div>
@@ -185,33 +186,35 @@ const MemberLayout = () => {
 const App = () => {
   const isAuthenticated = localStorage.getItem("isLoggedIn") === "true";
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(localStorage.getItem("user")) || { role: "" };
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
-      />
-      <Route
-        path="/*"
-        element={
-          isAuthenticated ? (
-            user?.role === "company" ? (
-              <CompanyLayout />
-            ) : user?.role === "leader" ? (
-              <LeaderLayout />
-            ) : user?.role === "member" ? (
-              <MemberLayout />
+    <SocketProvider>
+      <Routes>
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+        />
+        <Route
+          path="/*"
+          element={
+            isAuthenticated ? (
+              user?.role === "company" ? (
+                <CompanyLayout />
+              ) : user?.role === "leader" ? (
+                <LeaderLayout />
+              ) : user?.role === "member" ? (
+                <MemberLayout />
+              ) : (
+                <Navigate to="/login" replace />
+              )
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/login" replace state={{ from: location }} />
             )
-          ) : (
-            <Navigate to="/login" replace state={{ from: location }} />
-          )
-        }
-      />
-    </Routes>
+          }
+        />
+      </Routes>
+    </SocketProvider>
   );
 };
 

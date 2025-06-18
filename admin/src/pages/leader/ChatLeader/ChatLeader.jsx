@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { SocketContext } from "../../../context/SocketContext";
 import axios from "axios";
-import io from "socket.io-client";
 import ChatSidebar from "./ChatSidebarLeader";
 import ChatMain from "./ChatMainLeader";
 import ChatHomeOutLeader from "./ChatHomeOutLeader";
 
 const API_URL = "http://localhost:8001/api/group";
 const TEAM_API_URL = "http://localhost:8001/api/leader/showallTeam";
-const SOCKET_URL = "http://localhost:8001";
 
-const ChatLeader = () => {
+const ChatMember = () => {
+  const socket = useContext(SocketContext); // Lấy socket từ context
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
   const addMemberRef = useRef(null);
   const createGroupRef = useRef(null);
-  const socketRef = useRef(null);
 
   const currentUser = JSON.parse(localStorage.getItem("user")) || {
     _id: "",
@@ -44,32 +43,112 @@ const ChatLeader = () => {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText, setEditText] = useState("");
   const [showFileInput, setShowFileInput] = useState(false);
+ 
 
+
+  // Lấy danh sách nhóm và thành viên đội
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL, {
-      withCredentials: true,
+    const fetchGroups = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(API_URL, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const fetchedGroups = res.data.map((group) => ({
+          ...group,
+          members: group.members || [],
+        }));
+        setGroups(fetchedGroups);
+        if (fetchedGroups.length > 0 && !selectedGroup) {
+          setSelectedGroup(fetchedGroups[0]);
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Không thể lấy danh sách nhóm");
+      }
+    };
+
+    const fetchTeamMembers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(TEAM_API_URL, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const members = res.data.teams.reduce((acc, team) => [
+          ...acc,
+          ...team.assignedMembers.map((member) => ({
+            _id: member._id,
+            name: member.name,
+          })),
+        ], []);
+        setTeamMembers(members);
+      } catch (err) {
+        setError(err.response?.data?.message || "Không thể lấy danh sách thành viên đội");
+      }
+    };
+
+    fetchGroups();
+    fetchTeamMembers();
+  }, []);
+
+  // Xử lý tham gia/rời nhóm và lấy tin nhắn
+  useEffect(() => {
+    if (!selectedGroup?._id || !socket || !socket.connected) return;
+
+    socket.emit("join-group", {
+      userId: currentUser._id,
+      groupId: selectedGroup._id,
     });
 
-    socketRef.current.on("connect", () => {
-      console.log("Socket connected:", socketRef.current.id);
-      socketRef.current.emit("user-online", currentUser._id);
-    });
+    const fetchMessages = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(`${API_URL}/${selectedGroup._id}/messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMessages(
+          res.data.map((msg) => ({
+            _id: msg._id,
+            senderId: msg.senderId,
+            senderName: msg.senderName || "System",
+            text: msg.message,
+            imageUrl: msg.imageUrl,
+            fileName: msg.fileName,
+            fileSize: msg.fileSize,
+            fileType: msg.fileType,
+            fileId: msg.fileId,
+            timestamp: msg.timestamp,
+            system: msg.senderId === "System",
+            hidden: false,
+          }))
+        );
+      } catch (err) {
+        setError(err.response?.data?.message || "Không thể lấy tin nhắn");
+      }
+    };
 
-    socketRef.current.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      setError("Không thể kết nối đến server WebSocket: " + error.message);
-    });
+    fetchMessages();
 
-    socketRef.current.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
+    return () => {
+      if (selectedGroup?._id && socket && socket.connected) {
+        socket.emit("leave-group", {
+          userId: currentUser._id,
+          groupId: selectedGroup._id,
+        });
+      }
+    };
+  }, [socket, selectedGroup?._id, currentUser._id]);
 
-    socketRef.current.on("user-online", (userId) => {
+
+  // Xử lý các sự kiện socket
+  useEffect(() => {
+    if (!socket || !socket.connected) return;
+
+    socket.on("user-online", (userId) => {
       console.log("User online:", userId);
       setOnlineUsers((prev) => new Set(prev).add(userId));
     });
 
-    socketRef.current.on("user-offline", (userId) => {
+    socket.on("user-offline", (userId) => {
       console.log("User offline:", userId);
       setOnlineUsers((prev) => {
         const newSet = new Set(prev);
@@ -78,7 +157,7 @@ const ChatLeader = () => {
       });
     });
 
-    socketRef.current.on("group-message", (msg) => {
+    socket.on("group-message", (msg) => {
       console.log("Received message:", msg);
       setMessages((prev) => [
         ...prev,
@@ -99,7 +178,7 @@ const ChatLeader = () => {
       ]);
     });
 
-    socketRef.current.on("new-member", ({ groupId, memberName, isLeaving }) => {
+    socket.on("new-member", ({ groupId, memberName, isLeaving }) => {
       if (groupId === selectedGroup?._id) {
         const systemMessage = {
           _id: Date.now(),
@@ -134,7 +213,7 @@ const ChatLeader = () => {
       }
     });
 
-    socketRef.current.on("typing", ({ userId }) => {
+    socket.on("typing", ({ userId }) => {
       setTypingUsers((prev) => new Set(prev).add(userId));
       setTimeout(() => {
         setTypingUsers((prev) => {
@@ -146,99 +225,20 @@ const ChatLeader = () => {
     });
 
     return () => {
-      socketRef.current.disconnect();
+      socket.off("user-online");
+      socket.off("user-offline");
+      socket.off("group-message");
+      socket.off("new-member");
+      socket.off("typing");
     };
-  }, [selectedGroup]);
+  }, [socket, selectedGroup?._id, currentUser._id]);
 
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(API_URL, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const fetchedGroups = res.data.map((group) => ({
-          ...group,
-          members: group.members || [],
-        }));
-        setGroups(fetchedGroups);
-        if (fetchedGroups.length > 0 && !selectedGroup) {
-          setSelectedGroup(fetchedGroups[0]);
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || "Không thể lấy danh sách nhóm");
-      }
-    };
-    fetchGroups();
-  }, []);
-
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(TEAM_API_URL, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const members = res.data.teams.reduce((acc, team) => {
-          return [
-            ...acc,
-            ...team.assignedMembers.map((member) => ({
-              _id: member._id,
-              name: member.name,
-            })),
-          ];
-        }, []);
-        setTeamMembers(members);
-      } catch (err) {
-        setError(
-          err.response?.data?.message || "Không thể lấy danh sách thành viên team"
-        );
-      }
-    };
-    fetchTeamMembers();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedGroup?._id) return;
-
-    const fetchMessages = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(`${API_URL}/${selectedGroup._id}/messages`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setMessages(
-          res.data.map((msg) => ({
-            _id: msg._id,
-            senderId: msg.senderId,
-            senderName: msg.senderName || "System",
-            text: msg.message,
-            imageUrl: msg.imageUrl,
-            fileName: msg.fileName,
-            fileSize: msg.fileSize,
-            fileType: msg.fileType,
-            fileId: msg.fileId,
-            timestamp: msg.timestamp,
-            system: msg.senderId === "System",
-            hidden: false,
-          }))
-        );
-        socketRef.current.emit("join-group", {
-          userId: currentUser._id,
-          groupId: selectedGroup._id,
-        });
-      } catch (err) {
-        setError(err.response?.data?.message || "Không thể lấy tin nhắn");
-      }
-    };
-
-    fetchMessages();
-  }, [selectedGroup, currentUser._id]);
-
+  // Cuộn xuống tin nhắn mới nhất
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Xử lý click ngoài để đóng menu
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (addMemberRef.current && !addMemberRef.current.contains(e.target)) {
@@ -271,7 +271,7 @@ const ChatLeader = () => {
       return;
     }
     if (!text.trim() && !file) {
-      setError("Vui lòng nhập tin nhắn hoặc chọn hình ảnh");
+      setError("Vui lòng nhập tin nhắn hoặc chọn file");
       return;
     }
     try {
@@ -293,11 +293,25 @@ const ChatLeader = () => {
           },
         }
       );
-      console.log("Message/Image sent:", response.data);
+      const msg = response.data;
+      socket.emit("group-message", {
+        _id: msg._id,
+        groupId: selectedGroup._id,
+        senderId: currentUser._id,
+        senderName: currentUser.name,
+        message: text.trim(),
+        imageUrl: msg.imageUrl,
+        fileName: file?.name,
+        fileSize: file?.size,
+        fileType: file?.type,
+        fileId: msg.fileId,
+        timestamp: msg.timestamp,
+      });
       setInputText("");
       setSelectedFile(null);
+      setShowFileInput(false);
     } catch (err) {
-      setError(err.response?.data?.message || "Lỗi khi gửi tin nhắn hoặc ảnh");
+      setError(err.response?.data?.message || "Lỗi khi gửi tin nhắn hoặc file");
     }
   };
 
@@ -316,6 +330,11 @@ const ChatLeader = () => {
       setSelectedGroup({
         ...res.data.group,
         members: res.data.group.members || [],
+      });
+      socket.emit("new-member", {
+        groupId: selectedGroup._id,
+        memberName: teamMembers.find((m) => m._id === newMemberId)?.name,
+        isLeaving: false,
       });
       setNewMemberId("");
       setAddingMember(false);
@@ -339,6 +358,11 @@ const ChatLeader = () => {
         ...prev,
         members: prev.members.filter((_, i) => i !== index),
       }));
+      socket.emit("new-member", {
+        groupId: selectedGroup._id,
+        memberName: member.name,
+        isLeaving: true,
+      });
       setSelectedMemberIndex(null);
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi khi xóa thành viên");
@@ -359,10 +383,17 @@ const ChatLeader = () => {
       setGroups((prev) => prev.filter((group) => group._id !== selectedGroup._id));
       setSelectedGroup(null);
       setHasLeftGroup(true);
-      socketRef.current.emit("leave-group", {
-        userId: currentUser._id,
-        groupId: selectedGroup._id,
-      });
+      if (socket && socket.connected) {
+        socket.emit("leave-group", {
+          userId: currentUser._id,
+          groupId: selectedGroup._id,
+        });
+        socket.emit("new-member", {
+          groupId: selectedGroup._id,
+          memberName: currentUser.name,
+          isLeaving: true,
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi khi rời nhóm");
       if (err.response?.status === 401) {
@@ -380,7 +411,7 @@ const ChatLeader = () => {
       const token = localStorage.getItem("token");
       const res = await axios.post(
         `${API_URL}/create`,
-        { name: newGroupName, members: newGroupMembers },
+        { name: newGroupName, members: [...newGroupMembers, currentUser._id] },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const newGroup = {
@@ -403,10 +434,12 @@ const ChatLeader = () => {
       setNewGroupName("");
       setNewGroupMembers([]);
       setCreatingGroup(false);
-      socketRef.current.emit("join-group", {
-        userId: currentUser._id,
-        groupId: newGroup._id,
-      });
+      if (socket && socket.connected) {
+        socket.emit("join-group", {
+          userId: currentUser._id,
+          groupId: newGroup._id,
+        });
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi khi tạo nhóm");
     }
@@ -467,12 +500,26 @@ const ChatLeader = () => {
     setEditText("");
   };
 
+  const handleTyping = () => {
+    if (selectedGroup?._id && socket && socket.connected) {
+      socket.emit("typing", { userId: currentUser._id, groupId: selectedGroup._id });
+    }
+  };
+
   if (hasLeftGroup) {
     return <ChatHomeOutLeader onBackToChat={() => setHasLeftGroup(false)} />;
   }
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 sm:flex-row">
+      {error && (
+        <div className="absolute top-0 left-0 w-full bg-red-500 text-white p-2 text-center">
+          {error}
+          <button className="ml-2" onClick={() => setError(null)}>
+            X
+          </button>
+        </div>
+      )}
       <ChatSidebar
         groups={groups}
         setSelectedGroup={setSelectedGroup}
@@ -533,12 +580,14 @@ const ChatLeader = () => {
           chatEndRef={chatEndRef}
           addMemberRef={addMemberRef}
           error={error}
-          setError={setError} // Truyền setError
+          setError={setError}
           navigate={navigate}
+          handleTyping={handleTyping}
+       
         />
       )}
     </div>
   );
 };
 
-export default ChatLeader;
+export default ChatMember;
