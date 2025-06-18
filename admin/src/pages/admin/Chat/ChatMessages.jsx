@@ -43,13 +43,11 @@ const ChatMessages = ({
     const diffInDays = Math.floor(diffInHours / 24);
 
     if (diffInHours < 24) {
-      // Trong vòng 24 giờ, hiển thị giờ:phút
       return messageDate.toLocaleTimeString("vi-VN", {
         hour: "2-digit",
         minute: "2-digit",
       });
     } else {
-      // Hiển thị "n ngày trước" nếu quá 24 giờ
       return `${diffInDays} ngày trước`;
     }
   };
@@ -84,6 +82,24 @@ const ChatMessages = ({
       }
     }
   }, [selectedImage, imageMessages]);
+
+  // Add keyboard navigation for modal
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!isModalOpen) return;
+
+      if (event.key === "ArrowLeft") {
+        handlePrevImage();
+      } else if (event.key === "ArrowRight") {
+        handleNextImage();
+      } else if (event.key === "Escape") {
+        handleCloseModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, imageMessages]);
 
   const handleEditSubmit = (messageId) => {
     if (editText.trim() === "") {
@@ -134,6 +150,22 @@ const ChatMessages = ({
     setCurrentImageIndex(index);
   };
 
+  // Handle click navigation on image
+  const handleImageNavigation = (event) => {
+    if (!isModalOpen) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const imageWidth = rect.width;
+    
+    // Click on left half for previous, right half for next
+    if (clickX < imageWidth / 2) {
+      handlePrevImage();
+    } else {
+      handleNextImage();
+    }
+  };
+
   return (
     <div
       className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-gray-50"
@@ -156,7 +188,7 @@ const ChatMessages = ({
             className="absolute right-2 top-1 text-red-500 hover:text-red-700"
             aria-label="Đóng thông báo lỗi"
           >
-            ✕
+            <IoMdClose className="w-5 h-5" />
           </button>
         </div>
       )}
@@ -367,13 +399,13 @@ const ChatMessages = ({
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col z-50">
-          {/* Main Image Centered */}
           <div className="flex-1 flex items-center justify-center">
             <div className="relative max-w-[90vw] max-h-[70vh] mb-20">
               <img
                 src={selectedImage}
                 alt="Full-size image"
-                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg cursor-pointer"
+                onClick={handleImageNavigation}
               />
               <button
                 onClick={handleCloseModal}
