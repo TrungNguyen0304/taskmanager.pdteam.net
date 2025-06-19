@@ -14,6 +14,14 @@ const messageSchema = new mongoose.Schema({
     fileId: String,
     imageUrl: { type: String },
     fileType: String,
+    isRecalled: {
+        type: Boolean,
+        default: false,
+    },
+    isEdited: {
+        type: Boolean,
+        default: false,
+    },
 
 })
 

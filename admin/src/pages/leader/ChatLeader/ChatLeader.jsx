@@ -9,7 +9,7 @@ import ChatHomeOutLeader from "./ChatHomeOutLeader";
 const API_URL = "http://localhost:8001/api/group";
 const TEAM_API_URL = "http://localhost:8001/api/leader/showallTeam";
 
-const ChatMember = () => {
+const ChatLeader = () => {
   const socket = useContext(SocketContext); // Lấy socket từ context
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
@@ -590,4 +590,4 @@ const ChatMember = () => {
   );
 };
 
-export default ChatMember;
+export default ChatLeader;

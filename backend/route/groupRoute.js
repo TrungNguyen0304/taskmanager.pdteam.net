@@ -12,6 +12,8 @@ const {
     getCallStatus,
     startScreenShare,
     startFileTransfer,
+    recallMessage,
+    editMessage
     // sendImageMessage
 } = require('../controller/group');
 const authenticateJWT = require('../middleware/auth.js');
@@ -51,6 +53,11 @@ router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
 // Khởi tạo truyền file P2P
 router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
 
+//thu hồi tin nhắn
+router.delete("/:groupId/messages/:messageId/recall", authenticateJWT, recallMessage);
+
+// sửa tin nhắn 
+router.put("/:groupId/messages/:messageId/edit", authenticateJWT, editMessage);
 // gửi ảnh 
 // router.post('/:groupId/sendImageMessage',upload.single("image"), authenticateJWT, sendImageMessage);
 

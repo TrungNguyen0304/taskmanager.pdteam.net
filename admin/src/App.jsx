@@ -36,10 +36,10 @@ import ReportProjects from "./pages/leader/Projects/ReportProjects";
 import TaskMember from "./pages/member/Task/TaskMember";
 import ChatMember from "./pages/member/ChatMember/ChatMember";
 import JoinRequestsPageMember from "./pages/member/ChatMember/JoinRequestsPageMember";
-import VideoCallPageMember from "./pages/member/ChatMember/VideoCallPageMember";
+// import VideoCallPageMember from "./pages/member/ChatMember/VideoCallPageMember";
 import ChatLeader from "./pages/leader/ChatLeader/ChatLeader";
 import JoinRequestsPageLeader from "./pages/leader/ChatLeader/JoinRequestsPageLeader";
-import VideoCallPageLeader from "./pages/leader/ChatLeader/VideoCallPageLeader";
+// import VideoCallPageLeader from "./pages/leader/ChatLeader/VideoCallPageLeader";
 import Chat from "./pages/admin/Chat/Chat";
 import JoinRequestsPage from "./pages/admin/Chat/JoinRequestsPage";
 import VideoCallPage from "./pages/admin/Chat/VideoCallPage";
@@ -57,6 +57,7 @@ import ReportHistoryLeader from "./pages/leader/Projects/ReportHistoryLeader";
 import UpdateUnassigned from "./pages/admin/Projects/updateUnassigned";
 import ShowAllFeedback from "./pages/leader/ShowAllFeedback";
 import { SocketProvider } from "./context/SocketContext";
+import VideoCallPage1 from "./components/Chat/VideoCallPage1"
 
 
 const CompanyLayout = () => {
@@ -145,7 +146,7 @@ const LeaderLayout = () => {
             <Route path="/chat/requests" element={<JoinRequestsPageLeader />} />
             <Route
               path="/chat/video-call/:groupId"
-              element={<VideoCallPageLeader />}
+              element={<VideoCallPage1/>}
             />
           </Routes>
         </main>
@@ -175,7 +176,7 @@ const MemberLayout = () => {
 
             <Route path="/chat" element={<ChatMember />} />
             <Route path="/chat/requests" element={<JoinRequestsPageMember />} />
-            <Route path="/chat/video-call/:groupId" element={<VideoCallPageMember />} />
+            <Route path="/chat/video-call/:groupId" element={<VideoCallPage1 />} />
           </Routes>
         </main>
       </div>
