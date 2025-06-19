@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { BiDotsVerticalRounded } from "react-icons/bi";
 import { FaRegEyeSlash } from "react-icons/fa";
 import { Edit2, Trash2 } from "lucide-react";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
+import { FaArrowDown, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 const ChatMessages = ({
   messages,
@@ -23,18 +24,83 @@ const ChatMessages = ({
   chatEndRef,
 }) => {
   const BASE_URL = "http://localhost:8001";
-  // State to manage the modal visibility and the selected image
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showToBottom, setShowToBottom] = useState(false);
+  const chatContainerRef = useRef(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Smooth scroll to the latest message
+  const imageMessages = messages
+    .filter((msg) => msg.imageUrl && !msg.hidden)
+    .map((msg) => `${BASE_URL}${msg.imageUrl}`);
+
+  // Hàm định dạng thời gian
+  const formatTimestamp = (timestamp) => {
+    const messageDate = new Date(timestamp);
+    const now = new Date();
+    const diffInMs = now - messageDate;
+    const diffInHours = diffInMs / (1000 * 60 * 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInHours < 24) {
+      return messageDate.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } else {
+      return `${diffInDays} ngày trước`;
+    }
+  };
+
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, chatEndRef]);
 
-  // Handle edit submission with validation
+  useEffect(() => {
+    const handleScroll = () => {
+      if (chatContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } =
+          chatContainerRef.current;
+        setShowToBottom(scrollTop + clientHeight < scrollHeight - 100);
+      }
+    };
+
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedImage && imageMessages.length > 0) {
+      const index = imageMessages.indexOf(selectedImage);
+      if (index !== -1) {
+        setCurrentImageIndex(index);
+      }
+    }
+  }, [selectedImage, imageMessages]);
+
+  // Add keyboard navigation for modal
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!isModalOpen) return;
+
+      if (event.key === "ArrowLeft") {
+        handlePrevImage();
+      } else if (event.key === "ArrowRight") {
+        handleNextImage();
+      } else if (event.key === "Escape") {
+        handleCloseModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, imageMessages]);
+
   const handleEditSubmit = (messageId) => {
     if (editText.trim() === "") {
       alert("Tin nhắn không được để trống.");
@@ -43,21 +109,68 @@ const ChatMessages = ({
     handleSaveEditMessage(messageId);
   };
 
-  // Open the modal with the clicked image
   const handleImageClick = (imageUrl) => {
     setSelectedImage(imageUrl);
     setIsModalOpen(true);
   };
 
-  // Close the modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedImage(null);
+    setCurrentImageIndex(0);
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleScrollToBottom = () => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => {
+      const newIndex = prev > 0 ? prev - 1 : imageMessages.length - 1;
+      setSelectedImage(imageMessages[newIndex]);
+      return newIndex;
+    });
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => {
+      const newIndex = prev < imageMessages.length - 1 ? prev + 1 : 0;
+      setSelectedImage(imageMessages[newIndex]);
+      return newIndex;
+    });
+  };
+
+  const handleThumbnailClick = (imageUrl, index) => {
+    setSelectedImage(imageUrl);
+    setCurrentImageIndex(index);
+  };
+
+  // Handle click navigation on image
+  const handleImageNavigation = (event) => {
+    if (!isModalOpen) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const imageWidth = rect.width;
+    
+    // Click on left half for previous, right half for next
+    if (clickX < imageWidth / 2) {
+      handlePrevImage();
+    } else {
+      handleNextImage();
+    }
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-gray-50">
-      {/* Chat Header */}
+    <div
+      className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-gray-50"
+      ref={chatContainerRef}
+    >
       <div className="flex flex-col items-center mb-6">
         <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-200 rounded-full flex items-center justify-center mb-2 shadow-sm">
           <MdOutlineGroups2 className="w-10 h-10 sm:w-12 sm:h-12 text-gray-600" />
@@ -67,7 +180,6 @@ const ChatMessages = ({
         </div>
       </div>
 
-      {/* Error Message */}
       {error && (
         <div className="relative text-red-500 text-center bg-red-50 px-4 py-2 rounded-lg mb-4 text-xs sm:text-sm shadow-sm">
           {error}
@@ -76,12 +188,11 @@ const ChatMessages = ({
             className="absolute right-2 top-1 text-red-500 hover:text-red-700"
             aria-label="Đóng thông báo lỗi"
           >
-            ✕
+            <IoMdClose className="w-5 h-5" />
           </button>
         </div>
       )}
 
-      {/* Messages List */}
       {messages.length === 0 ? (
         <div className="text-center text-gray-500 text-xs sm:text-sm">
           Chưa có tin nhắn nào trong nhóm này.
@@ -126,7 +237,7 @@ const ChatMessages = ({
                     />
                   </button>
                   {openMenuId === msg._id && (
-                    <div className="absolute left-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
+                    <div className="absolute left-8 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
                       <button
                         onClick={() => handleDeleteMessage(msg._id)}
                         className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
@@ -146,22 +257,26 @@ const ChatMessages = ({
                 </div>
               )}
 
-              {/* Message Content */}
               <div
                 className={`${
                   isCurrentUser ? "ml-auto" : "mr-auto"
                 } max-w-[80%] sm:max-w-[60%] md:max-w-[50%]`}
               >
                 {msg.imageUrl ? (
-                  <img
-                    src={`${BASE_URL}${msg.imageUrl}`}
-                    alt={msg.fileName || "Uploaded image"}
-                    className="rounded-lg object-contain w-full max-w-[200px] sm:max-w-[300px] md:max-w-[400px] cursor-pointer hover:opacity-90 transition-opacity"
-                    loading="lazy"
-                    onClick={() =>
-                      handleImageClick(`${BASE_URL}${msg.imageUrl}`)
-                    }
-                  />
+                  <div>
+                    <img
+                      src={`${BASE_URL}${msg.imageUrl}`}
+                      alt={msg.fileName || "Uploaded image"}
+                      className="rounded-lg object-contain w-full max-w-[200px] sm:max-w-[300px] md:max-w-[400px] cursor-pointer hover:opacity-90 transition-opacity"
+                      loading="lazy"
+                      onClick={() =>
+                        handleImageClick(`${BASE_URL}${msg.imageUrl}`)
+                      }
+                    />
+                    <div className="text-xs text-gray-500 mt-1 text-right">
+                      {formatTimestamp(msg.timestamp)}
+                    </div>
+                  </div>
                 ) : (
                   <div
                     className={`px-3 sm:px-4 py-2 rounded-lg shadow-sm ${
@@ -202,15 +317,23 @@ const ChatMessages = ({
                         </div>
                       </div>
                     ) : (
-                      <div className="text-xs sm:text-sm break-words">
-                        {msg.text}
+                      <div>
+                        <div className="text-xs sm:text-sm break-words">
+                          {msg.text}
+                        </div>
+                        <div
+                          className={`text-xs mt-1 text-right ${
+                            isCurrentUser ? "text-gray-200" : "text-gray-500"
+                          }`}
+                        >
+                          {formatTimestamp(msg.timestamp)}
+                        </div>
                       </div>
                     )}
                   </div>
                 )}
               </div>
 
-              {/* Menu for Current User's Messages (Right Side) */}
               {isCurrentUser && (
                 <div className="relative message-menu">
                   <button
@@ -228,7 +351,7 @@ const ChatMessages = ({
                     />
                   </button>
                   {openMenuId === msg._id && (
-                    <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
+                    <div className="absolute right-8 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
                       {!msg.imageUrl && (
                         <button
                           onClick={() =>
@@ -237,7 +360,8 @@ const ChatMessages = ({
                           className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                           aria-label="Chỉnh sửa tin nhắn"
                         >
-                          <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh sửa
+                          <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh
+                          sửa
                         </button>
                       )}
                       <button
@@ -263,27 +387,75 @@ const ChatMessages = ({
         })
       )}
 
-      {/* Image Preview Modal */}
+      {showToBottom && (
+        <button
+          onClick={handleScrollToBottom}
+          className="fixed bottom-12 right-8 sm:bottom-28 sm:right-10 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-50"
+          aria-label="Quay xuống tin nhắn mới nhất"
+        >
+          <FaArrowDown className="w-5 h-5" />
+        </button>
+      )}
+
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="relative max-w-[90vw] max-h-[90vh]">
-            <img
-              src={selectedImage}
-              alt="Full-size image"
-              className="max-w-full max-h-[90vh] object-contain rounded-lg"
-            />
-            <button
-              onClick={handleCloseModal}
-              className="absolute top-2 right-2 bg-gray-800 text-white rounded-full p-2 hover:bg-gray-700 transition-colors"
-              aria-label="Đóng hình ảnh"
-            >
-              <IoMdClose className="w-5 h-5" />
-            </button>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col z-50">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="relative max-w-[90vw] max-h-[70vh] mb-20">
+              <img
+                src={selectedImage}
+                alt="Full-size image"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg cursor-pointer"
+                onClick={handleImageNavigation}
+              />
+              <button
+                onClick={handleCloseModal}
+                className="absolute top-2 right-2 bg-gray-800 text-white rounded-full p-2 hover:bg-gray-700 transition-colors"
+                aria-label="Đóng hình ảnh"
+              >
+                <IoMdClose className="w-5 h-5" />
+              </button>
+            </div>
           </div>
+
+          {/* Fixed Thumbnail Carousel at Bottom */}
+          {imageMessages.length > 1 && (
+            <div className="fixed bottom-0 left-0 right-0 bg-gray-900 bg-opacity-90 py-4 flex items-center justify-center gap-4 z-50">
+              <button
+                onClick={handlePrevImage}
+                className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
+                aria-label="Ảnh trước"
+              >
+                <FaChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex gap-2 overflow-x-auto max-w-[80vw] custom-scrollbar">
+                {imageMessages.map((img, index) => (
+                  <img
+                    key={img}
+                    src={img}
+                    alt={`Thumbnail ${index + 1}`}
+                    className={`w-16 h-16 object-cover rounded-md cursor-pointer transition-opacity ${
+                      index === currentImageIndex
+                        ? "opacity-100 border-2 border-blue-500"
+                        : "opacity-50 hover:opacity-75"
+                    }`}
+                    onClick={() => handleThumbnailClick(img, index)}
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+              <button
+                onClick={handleNextImage}
+                className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
+                aria-label="Ảnh tiếp theo"
+              >
+                <FaChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      <div ref={chatEndRef} /> 
+      <div ref={chatEndRef} />
     </div>
   );
 };

@@ -170,7 +170,13 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   );
 };
 
-const TaskItem = ({ task, projectStart, selectedTask, setSelectedTask, dateHeaders }) => {
+const TaskItem = ({
+  task,
+  projectStart,
+  selectedTask,
+  setSelectedTask,
+  dateHeaders,
+}) => {
   const { offset, width } = getProgressWidth(task, dateHeaders);
   const isSelected = selectedTask?._id === task._id;
 
@@ -269,7 +275,8 @@ const ProjectProgressDetail = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [ganttPage, setGanttPage] = useState(1);
   const [summaryPage, setSummaryPage] = useState(1);
-  const [tasksPerPage] = useState(3);
+  const ganttTasksPerPage = 2; // 2 tasks per page for progress section
+  const summaryTasksPerPage = 3; // 3 tasks per page for summary section
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -329,6 +336,24 @@ const ProjectProgressDetail = () => {
     fetchProject();
   }, [id]);
 
+  // Update ganttTasks based on selectedTask
+  const ganttTasks = selectedTask
+    ? [selectedTask]
+    : selectedProject?.tasks.slice(
+        (ganttPage - 1) * ganttTasksPerPage,
+        ganttPage * ganttTasksPerPage
+      ) || [];
+  const ganttTotalPages = selectedTask
+    ? 1
+    : Math.ceil(selectedProject?.tasks.length / ganttTasksPerPage) || 1;
+  const summaryTotalPages =
+    Math.ceil(selectedProject?.tasks.length / summaryTasksPerPage) || 1;
+  const summaryTasks =
+    selectedProject?.tasks.slice(
+      (summaryPage - 1) * summaryTasksPerPage,
+      summaryPage * summaryTasksPerPage
+    ) || [];
+
   if (error) {
     return <div className="text-center py-6 text-red-500">{error}</div>;
   }
@@ -336,21 +361,6 @@ const ProjectProgressDetail = () => {
   if (!selectedProject) {
     return <div className="text-center py-6 text-gray-500">Đang tải...</div>;
   }
-
-  const ganttTotalPages = Math.ceil(
-    selectedProject.tasks.length / tasksPerPage
-  );
-  const ganttTasks = selectedProject.tasks.slice(
-    (ganttPage - 1) * tasksPerPage,
-    ganttPage * tasksPerPage
-  );
-  const summaryTotalPages = Math.ceil(
-    selectedProject.tasks.length / tasksPerPage
-  );
-  const summaryTasks = selectedProject.tasks.slice(
-    (summaryPage - 1) * tasksPerPage,
-    summaryPage * tasksPerPage
-  );
 
   const dateHeaders = getDateHeaders(
     selectedProject.tasks,
@@ -552,7 +562,7 @@ const ProjectProgressDetail = () => {
                 </div>
               </div>
 
-              {ganttTotalPages > 1 && (
+              {ganttTotalPages > 1 && !selectedTask && (
                 <Pagination
                   currentPage={ganttPage}
                   totalPages={ganttTotalPages}

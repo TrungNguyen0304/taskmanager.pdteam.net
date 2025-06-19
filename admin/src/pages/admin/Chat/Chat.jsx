@@ -515,7 +515,6 @@ const Chat = () => {
         setError={setError}
       />
       {selectedGroup && (
-        // In Chat.js, update the ChatMain component call
         <ChatMain
           selectedGroup={selectedGroup}
           messages={messages}
