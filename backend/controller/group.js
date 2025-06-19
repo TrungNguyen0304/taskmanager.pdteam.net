@@ -291,6 +291,103 @@ const getGroupMessages = async (req, res) => {
     }
 };
 
+const recallMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user._id;
+
+        if (!mongoose.Types.ObjectId.isValid(messageId)) {
+            return res.status(400).json({ message: "ID tin nhắn không hợp lệ" });
+        }
+
+        const message = await Message.findById(messageId).populate("senderId", "name");
+        if (!message) {
+            return res.status(404).json({ message: "Tin nhắn không tồn tại" });
+        }
+
+        if (message.senderId._id.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Bạn không có quyền thu hồi tin nhắn này" });
+        }
+
+        if (message.isRecalled) {
+            return res.status(400).json({ message: "Tin nhắn đã được thu hồi trước đó" });
+        }
+
+        message.isRecalled = true;
+        message.message = "Tin nhắn đã bị thu hồi";
+        await message.save();
+
+        const io = getIO();
+        io.to(message.groupId.toString()).emit("message-recalled", {
+            messageId: message._id,
+            groupId: message.groupId,
+            senderId: userId,
+            senderName: message.senderId.name,
+            isRecalled: true,
+            message: "Tin nhắn đã bị thu hồi",
+            timestamp: message.timestamp.toISOString(),
+        });
+
+        res.status(200).json({ message: "Thu hồi tin nhắn thành công" });
+    } catch (error) {
+        console.error("Lỗi khi thu hồi tin nhắn:", error);
+        res.status(500).json({ message: "Lỗi khi thu hồi tin nhắn", error: error.message });
+    }
+};
+
+const editMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const { newMessage } = req.body;
+        const userId = req.user._id;
+
+        if (!mongoose.Types.ObjectId.isValid(messageId)) {
+            return res.status(400).json({ message: "ID tin nhắn không hợp lệ" });
+        }
+
+        if (!newMessage || newMessage.trim() === "") {
+            return res.status(400).json({ message: "Tin nhắn mới không được để trống" });
+        }
+
+        const message = await Message.findById(messageId).populate("senderId", "name");
+        if (!message) {
+            return res.status(404).json({ message: "Tin nhắn không tồn tại" });
+        }
+
+        if (message.senderId._id.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "Bạn không có quyền chỉnh sửa tin nhắn này" });
+        }
+
+        if (message.isRecalled) {
+            return res.status(400).json({ message: "Tin nhắn đã bị thu hồi, không thể chỉnh sửa" });
+        }
+
+        const sanitizedMessage = sanitizeHtml(newMessage, { allowedTags: [], allowedAttributes: {} });
+        message.message = sanitizedMessage;
+        message.isEdited = true;
+        await message.save();
+
+        const io = getIO();
+        io.to(message.groupId.toString()).emit("message-edited", {
+            messageId: message._id,
+            groupId: message.groupId,
+            senderId: userId,
+            senderName: message.senderId.name,
+            message: sanitizedMessage,
+            isEdited: true,
+            timestamp: message.timestamp.toISOString(),
+        });
+
+        res.status(200).json({ message: "Chỉnh sửa tin nhắn thành công" });
+    } catch (error) {
+        console.error("Lỗi khi chỉnh sửa tin nhắn:", error);
+        res.status(500).json({ message: "Lỗi khi chỉnh sửa tin nhắn", error: error.message });
+    }
+};
+
+
+
+
 const removeMember = async (req, res) => {
     try {
         const { groupId, userId } = req.params;
@@ -363,6 +460,9 @@ const leaveGroup = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi rời nhóm", error: error.message });
     }
 };
+
+
+
 
 const startCall = async (req, res) => {
     try {
@@ -552,8 +652,13 @@ module.exports = {
     addMember,
     getGroupMessages,
     sendGroupMessage,
+    recallMessage,
+    editMessage,
+
     removeMember,
     leaveGroup,
+
+
     startCall,
     getCallStatus,
     startScreenShare,

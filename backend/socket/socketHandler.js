@@ -165,6 +165,84 @@ function setupSocket(io) {
             socket.to(groupId).emit("typing", { userId });
         });
 
+        socket.on("recall-message", async ({ messageId, userId, groupId }) => {
+            if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
+
+            try {
+                const message = await mongoose.model("Message").findById(messageId);
+                if (!message) {
+                    console.warn(`Tin nhắn ${messageId} không tồn tại`);
+                    return;
+                }
+
+                if (message.senderId.toString() !== userId.toString()) {
+                    console.warn(`Người dùng ${userId} không có quyền thu hồi tin nhắn ${messageId}`);
+                    return;
+                }
+
+                message.isRecalled = true;
+                message.message = "Tin nhắn đã bị thu hồi";
+                await message.save();
+
+                io.to(groupId).emit("message-recalled", {
+                    messageId,
+                    groupId,
+                    senderId: userId,
+                    isRecalled: true,
+                    message: "Tin nhắn đã bị thu hồi",
+                    timestamp: message.timestamp.toISOString(),
+                });
+
+                console.log(`Tin nhắn ${messageId} đã được thu hồi bởi ${userId}`);
+            } catch (error) {
+                console.error("Lỗi khi thu hồi tin nhắn:", error);
+            }
+        });
+
+        socket.on("edit-message", async ({ messageId, userId, groupId, newMessage }) => {
+            if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
+
+            if (!newMessage || newMessage.trim() === "") {
+                console.warn("Tin nhắn mới không hợp lệ");
+                return;
+            }
+
+            try {
+                const message = await mongoose.model("Message").findById(messageId);
+                if (!message) {
+                    console.warn(`Tin nhắn ${messageId} không tồn tại`);
+                    return;
+                }
+
+                if (message.senderId.toString() !== userId.toString()) {
+                    console.warn(`Người dùng ${userId} không có quyền chỉnh sửa tin nhắn ${messageId}`);
+                    return;
+                }
+
+                if (message.isRecalled) {
+                    console.warn(`Tin nhắn ${messageId} đã bị thu hồi, không thể chỉnh sửa`);
+                    return;
+                }
+
+                message.message = newMessage;
+                message.isEdited = true;
+                await message.save();
+
+                io.to(groupId).emit("message-edited", {
+                    messageId,
+                    groupId,
+                    senderId: userId,
+                    message: newMessage,
+                    isEdited: true,
+                    timestamp: message.timestamp.toISOString(),
+                });
+
+                console.log(`Tin nhắn ${messageId} đã được chỉnh sửa bởi ${userId}`);
+            } catch (error) {
+                console.error("Lỗi khi chỉnh sửa tin nhắn:", error);
+            }
+        });
+
         socket.on("start-call", async ({ groupId, userId, offer }) => {
             if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
 
@@ -261,6 +339,7 @@ function setupSocket(io) {
                 io.to(targetSocket).emit("file-data", { groupId, userId, fileId, chunk });
             }
         });
+
         socket.on("leave-group", async ({ userId, groupId }) => {
             if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
 
