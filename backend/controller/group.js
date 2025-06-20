@@ -402,17 +402,14 @@ const deleteMessage = async (req, res) => {
             return res.status(404).json({ message: "Tin nhắn không tồn tại" });
         }
 
-        if (message.isRecalled) {
-            return res.status(400).json({ message: "Tin nhắn đã bị thu hồi, không thể xóa" });
-        }
-
         if (!message.deletedBy) message.deletedBy = [];
+
         if (!message.deletedBy.includes(userId)) {
             message.deletedBy.push(userId);
             await message.save();
         }
 
-        // Gửi socket event để frontend cập nhật UI
+        // Gửi socket event để frontend ẩn tin nhắn này cho user đó
         const io = getIO();
         const userSocket = onlineUsers.get(userId.toString());
         if (userSocket) {
@@ -429,6 +426,7 @@ const deleteMessage = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi xóa tin nhắn", error: error.message });
     }
 };
+
 
 
 
