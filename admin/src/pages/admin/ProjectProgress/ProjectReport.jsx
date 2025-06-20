@@ -156,7 +156,7 @@ const ProjectReport = () => {
 
   const handleSelectReport = (reportId) => {
     setEvaluateReportId(reportId);
-    setIsSelectReportModalOpen(false);
+    setIsSelectReportModalOpen(false);  
     setIsEvaluateModalOpen(true);
     setComment("");
     setScore("");
@@ -174,7 +174,7 @@ const ProjectReport = () => {
     if (value >= 25) return "bg-yellow-500"; // Low progress
     return "bg-red-500"; // Very low or no progress
   };
-  
+
   const handleCloseEvaluateModal = () => {
     setIsEvaluateModalOpen(false);
     setEvaluateReportId(null);
