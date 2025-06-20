@@ -13,7 +13,8 @@ const {
     startScreenShare,
     startFileTransfer,
     recallMessage,
-    editMessage
+    editMessage,
+    deleteMessage
     // sendImageMessage
 } = require('../controller/group');
 const authenticateJWT = require('../middleware/auth.js');
@@ -59,6 +60,10 @@ router.delete("/:groupId/messages/:messageId/recall", authenticateJWT, recallMes
 // sửa tin nhắn 
 router.put("/:groupId/messages/:messageId/edit", authenticateJWT, editMessage);
 
+
+//xóa tin nhắn 
+router.delete("/:groupId/messages/:messageId/delete", authenticateJWT, deleteMessage);
+ 
 // gửi ảnh 
 // router.post('/:groupId/sendImageMessage', upload.single("image"), authenticateJWT, sendImageMessage);
 

@@ -9,6 +9,7 @@ const activeCalls = new Map(); // groupId -> Set<userId>
 const screenShares = new Map(); // groupId -> Set<userId>
 const fileTransfers = new Map(); // future use
 
+
 function getIO() {
     if (!ioInstance) throw new Error("Socket.IO has not been initialized");
     return ioInstance;
@@ -191,11 +192,11 @@ function setupSocket(io) {
                 // Đánh dấu tin nhắn đã thu hồi và xóa tham chiếu đến ảnh/file
                 message.isRecalled = true;
                 message.message = "Tin nhắn đã bị thu hồi";
-                message.imageUrl = null; // Xóa URL ảnh
-                message.fileName = null; // Xóa tên file
-                message.fileSize = null; // Xóa kích thước file
-                message.fileType = null; // Xóa loại file
-                message.fileId = null; // Xóa ID file
+                message.imageUrl = null;
+                message.fileName = null;
+                message.fileSize = null;
+                message.fileType = null;
+                message.fileId = null;
                 await message.save();
 
                 io.to(groupId).emit("message-recalled", {
@@ -205,7 +206,7 @@ function setupSocket(io) {
                     senderName: message.senderId.name,
                     isRecalled: true,
                     message: "Tin nhắn đã bị thu hồi",
-                    imageUrl: null, // Đảm bảo ảnh không còn được gửi
+                    imageUrl: null,
                     fileName: null,
                     fileSize: null,
                     fileType: null,
@@ -262,6 +263,46 @@ function setupSocket(io) {
                 console.error("Lỗi khi chỉnh sửa tin nhắn:", error);
             }
         });
+
+        socket.on("delete-message", async ({ messageId, userId, groupId }) => {
+            if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) {
+                console.warn("ID không hợp lệ");
+                return;
+            }
+
+            try {
+                const message = await Message.findById(messageId);
+                if (!message) {
+                    console.warn(`Tin nhắn ${messageId} không tồn tại`);
+                    return;
+                }
+
+                if (message.isRecalled) {
+                    console.warn(`Tin nhắn ${messageId} đã bị thu hồi, không thể xóa`);
+                    return;
+                }
+
+                if (!message.deletedBy) message.deletedBy = [];
+                if (!message.deletedBy.includes(userId)) {
+                    message.deletedBy.push(userId);
+                    await message.save();
+                }
+
+                const userSocketId = onlineUsers.get(userId); // socket.id của người gửi
+                if (userSocketId) {
+                    io.to(userSocketId).emit("message-deleted", {
+                        messageId,
+                        groupId,
+                        onlyFor: userId, // gợi ý: giúp frontend xử lý xóa cục bộ
+                    });
+                }
+
+                console.log(`Tin nhắn ${messageId} được xóa bởi ${userId} (chỉ cho chính họ)`);
+            } catch (error) {
+                console.error("Lỗi khi xóa tin nhắn:", error);
+            }
+        });
+
 
         socket.on("start-call", async ({ groupId, userId, offer }) => {
             if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
@@ -420,5 +461,6 @@ module.exports = {
     notifyNewMember,
     activeCalls,
     screenShares,
-    fileTransfers
+    fileTransfers,
+    onlineUsers
 };

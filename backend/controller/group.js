@@ -3,7 +3,7 @@ const Group = require("../models/group");
 const Message = require("../models/message");
 const User = require("../models/user");
 const Team = require("../models/team");
-const { getIO, notifyNewMember, screenShares, activeCalls } = require("../socket/socketHandler");
+const { getIO, notifyNewMember, screenShares, activeCalls, onlineUsers } = require("../socket/socketHandler");
 const sanitizeHtml = require("sanitize-html");
 
 
@@ -258,6 +258,7 @@ const sendGroupMessage = async (req, res) => {
 
 const getGroupMessages = async (req, res) => {
     try {
+        const userId = req.user._id;
         const { groupId } = req.params;
         const { skip = 0, limit = 50 } = req.query;
 
@@ -265,11 +266,12 @@ const getGroupMessages = async (req, res) => {
             return res.status(400).json({ message: "ID nhóm không hợp lệ" });
         }
 
-        const messages = await Message.find({ groupId })
+        const messages = await Message.find({ groupId, deletedBy: { $ne: userId } })
             .sort({ timestamp: 1 })
             .skip(Number(skip))
             .limit(Number(limit))
             .populate("senderId", "name");
+
 
         const formattedMessages = messages.map(msg => ({
             _id: msg._id,
@@ -345,6 +347,7 @@ const recallMessage = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi thu hồi tin nhắn", error: error.message });
     }
 };
+
 const editMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
@@ -394,6 +397,51 @@ const editMessage = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi chỉnh sửa tin nhắn", error: error.message });
     }
 };
+
+
+const deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const userId = req.user._id;
+
+        if (!mongoose.Types.ObjectId.isValid(messageId)) {
+            return res.status(400).json({ message: "ID tin nhắn không hợp lệ" });
+        }
+
+        const message = await Message.findById(messageId).populate("senderId", "name");
+        if (!message) {
+            return res.status(404).json({ message: "Tin nhắn không tồn tại" });
+        }
+
+        if (message.isRecalled) {
+            return res.status(400).json({ message: "Tin nhắn đã bị thu hồi, không thể xóa" });
+        }
+
+        if (!message.deletedBy) message.deletedBy = [];
+        if (!message.deletedBy.includes(userId)) {
+            message.deletedBy.push(userId);
+            await message.save();
+        }
+
+        // Gửi socket event để frontend cập nhật UI
+        const io = getIO();
+        const userSocket = onlineUsers.get(userId.toString());
+        if (userSocket) {
+            io.to(userSocket).emit("message-deleted", {
+                messageId: message._id,
+                groupId: message.groupId,
+                onlyFor: userId,
+            });
+        }
+
+        res.status(200).json({ message: "Đã xóa tin nhắn thành công (chỉ bạn không thấy)" });
+    } catch (error) {
+        console.error("Lỗi khi xóa tin nhắn:", error);
+        res.status(500).json({ message: "Lỗi khi xóa tin nhắn", error: error.message });
+    }
+};
+
+
 
 const removeMember = async (req, res) => {
     try {
@@ -661,6 +709,7 @@ module.exports = {
     sendGroupMessage,
     recallMessage,
     editMessage,
+    deleteMessage,
 
     removeMember,
     leaveGroup,
