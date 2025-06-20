@@ -167,7 +167,11 @@ function setupSocket(io) {
         });
 
         socket.on("recall-message", async ({ messageId, userId, groupId }) => {
-            if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) {
+            if (
+                !mongoose.Types.ObjectId.isValid(messageId) ||
+                !mongoose.Types.ObjectId.isValid(userId) ||
+                !mongoose.Types.ObjectId.isValid(groupId)
+            ) {
                 console.warn("ID không hợp lệ");
                 return;
             }
@@ -184,21 +188,7 @@ function setupSocket(io) {
                     return;
                 }
 
-                if (message.isRecalled) {
-                    console.warn(`Tin nhắn ${messageId} đã được thu hồi trước đó`);
-                    return;
-                }
-
-                // Đánh dấu tin nhắn đã thu hồi và xóa tham chiếu đến ảnh/file
-                message.isRecalled = true;
-                message.message = "Tin nhắn đã bị thu hồi";
-                message.imageUrl = null;
-                message.fileName = null;
-                message.fileSize = null;
-                message.fileType = null;
-                message.fileId = null;
-                await message.save();
-
+                // Gửi socket thông báo đã thu hồi (trước khi xóa)
                 io.to(groupId).emit("message-recalled", {
                     messageId,
                     groupId,
@@ -214,11 +204,15 @@ function setupSocket(io) {
                     timestamp: message.timestamp.toISOString(),
                 });
 
-                console.log(`Tin nhắn ${messageId} đã được thu hồi bởi ${userId}`);
+                // XÓA HẲN tin nhắn khỏi MongoDB
+                await mongoose.model("Message").deleteOne({ _id: messageId });
+
+                console.log(`Tin nhắn ${messageId} đã bị thu hồi và XÓA KHỎI DB bởi ${userId}`);
             } catch (error) {
-                console.error("Lỗi khi thu hồi tin nhắn:", error);
+                console.error("Lỗi khi thu hồi và xóa tin nhắn:", error);
             }
         });
+
 
         socket.on("edit-message", async ({ messageId, userId, groupId, newMessage }) => {
             if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
