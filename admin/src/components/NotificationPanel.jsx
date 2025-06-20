@@ -17,6 +17,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   initializeSocket,
@@ -29,6 +30,19 @@ import {
 } from "../services/notificationService";
 import { MdBookmarkAdded, MdDeleteForever } from "react-icons/md";
 
+// Hàm định dạng ngày giờ
+const formatDateTime = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleString("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false, // Định dạng 24 giờ
+  });
+};
+
 const NotificationPanel = ({ userId }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
@@ -39,6 +53,7 @@ const NotificationPanel = ({ userId }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const navigate = useNavigate();
 
   const token = localStorage.getItem("token");
 
@@ -105,7 +120,7 @@ const NotificationPanel = ({ userId }) => {
     onNotification((data) => {
       const newNotif = {
         ...data,
-        timestamp: new Date(),
+        createdAt: new Date().toISOString(), // Đồng bộ với định dạng MongoDB
         isRead: false,
         _id: data._id || `${Date.now()}-${Math.random()}`,
       };
@@ -123,7 +138,7 @@ const NotificationPanel = ({ userId }) => {
       const newNotif = {
         title,
         message: body,
-        timestamp: new Date(),
+        createdAt: new Date().toISOString(), // Đồng bộ với định dạng MongoDB
         isRead: false,
         _id: `${Date.now()}-${Math.random()}`,
       };
@@ -241,7 +256,7 @@ const NotificationPanel = ({ userId }) => {
                         color="text.secondary"
                         className={isMobile ? "text-xs" : "text-sm"}
                       >
-                        {new Date(notif.timestamp).toLocaleString()}
+                        {formatDateTime(notif.createdAt)} {/* Sử dụng createdAt */}
                       </Typography>
                     </>
                   }

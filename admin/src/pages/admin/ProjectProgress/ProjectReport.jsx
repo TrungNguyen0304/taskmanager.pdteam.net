@@ -156,11 +156,23 @@ const ProjectReport = () => {
 
   const handleSelectReport = (reportId) => {
     setEvaluateReportId(reportId);
-    setIsSelectReportModalOpen(false);
+    setIsSelectReportModalOpen(false);  
     setIsEvaluateModalOpen(true);
     setComment("");
     setScore("");
     setEvaluateError(null);
+  };
+
+  const safeProgress = (progress) => {
+    return Math.min(Math.max(progress || 0, 0), 100);
+  };
+
+  const getProgressColor = (progress) => {
+    const value = safeProgress(progress);
+    if (value >= 75) return "bg-green-500"; // High progress
+    if (value >= 50) return "bg-blue-500"; // Medium progress
+    if (value >= 25) return "bg-yellow-500"; // Low progress
+    return "bg-red-500"; // Very low or no progress
   };
 
   const handleCloseEvaluateModal = () => {
@@ -341,11 +353,10 @@ const ProjectReport = () => {
                   >
                     <button
                       onClick={() => handleSelectReport(report._id)}
-                      className={`absolute top-4 right-4 px-5 py-2 rounded-full font-semibold font-sans text-sm transition-all duration-300 shadow-md hover:shadow-lg ${
-                        report.feedback
-                          ? "bg-green-100 text-green-700 cursor-not-allowed"
-                          : "bg-blue-600 text-white hover:bg-blue-700"
-                      }`}
+                      className={`absolute top-4 right-4 px-5 py-2 rounded-full font-semibold font-sans text-sm transition-all duration-300 shadow-md hover:shadow-lg ${report.feedback
+                        ? "bg-green-100 text-green-700 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
                       disabled={report.feedback}
                       aria-label={
                         report.feedback
@@ -373,6 +384,22 @@ const ProjectReport = () => {
                         <p className="text-gray-900 font-sans leading-relaxed">
                           {report.difficulties ||
                             "Không có khó khăn được báo cáo"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 font-medium block mb-2 font-sans">
+                          Tiến độ:
+                        </span>
+                        <div className="relative h-3 w-full rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className={`absolute h-full rounded-full transition-all duration-500 ease-out ${getProgressColor(
+                              report.projectProgress
+                            )}`}
+                            style={{ width: `${safeProgress(report.projectProgress)}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-gray-900 font-sans leading-relaxed mt-2 text-center text-sm sm:text-base">
+                          {safeProgress(report.projectProgress)}%
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -456,11 +483,10 @@ const ProjectReport = () => {
                       <button
                         key={page}
                         onClick={() => onPageChange(page)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 font-sans ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 font-sans ${currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
                         aria-current={currentPage === page ? "page" : undefined}
                       >
                         {page}
@@ -511,11 +537,10 @@ const ProjectReport = () => {
                     key={report._id}
                     onClick={() => handleSelectReport(report._id)}
                     disabled={report.feedback}
-                    className={`w-full text-left p-4 rounded-lg font-sans transition-all duration-200 ${
-                      report.feedback
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-md"
-                    }`}
+                    className={`w-full text-left p-4 rounded-lg font-sans transition-all duration-200 ${report.feedback
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-md"
+                      }`}
                     aria-label={`Chọn báo cáo từ ngày ${formatDate(
                       report.createdAt
                     )}`}

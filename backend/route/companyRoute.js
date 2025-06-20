@@ -36,7 +36,8 @@ const {
   viewProject,
   showAllRoprtProject,
   getCompanyStatistics,
-  cloneProject
+  cloneProject,
+  showOverdueProjects
 } = require("../controller/company.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -303,4 +304,12 @@ router.post(
   authorize("company"),
   cloneProject
 );
+
+router.get(
+  "/showOverdueProjects",
+  authenticateJWT,
+  authorize("company"),
+  showOverdueProjects
+);
+
 module.exports = router;

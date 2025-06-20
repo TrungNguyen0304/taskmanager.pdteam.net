@@ -1229,14 +1229,41 @@ const getAssignedProjects = async (req, res) => {
       sortCriteria = { priority: -1 };
     }
 
+    // Tìm các dự án đã được giao
     const projects = await Project.find({ assignedTeam: { $ne: null } })
       .sort(sortCriteria)
-      .populate("assignedTeam", "name");
+      .populate("assignedTeam", "name assignedLeader")
+      .lean();
+
+    // Lấy tiến độ dự án từ báo cáo mới nhất của leader
+    const projectsWithProgress = await Promise.all(
+      projects.map(async (project) => {
+        // Tìm báo cáo mới nhất liên quan đến dự án này
+        const latestReport = await Report.findOne({ project: project._id })
+          .sort({ createdAt: -1 }) // Sắp xếp theo thời gian tạo, lấy mới nhất
+          .select("projectProgress")
+          .lean();
+
+        // Tính tiến độ trung bình từ projectProgress hoặc đặt mặc định là 0 nếu không có báo cáo
+        const progress = latestReport && latestReport.projectProgress ? latestReport.projectProgress : 0;
+
+        return {
+          _id: project._id,
+          name: project.name,
+          description: project.description,
+          status: project.status,
+          priority: project.priority,
+          deadline: project.deadline,
+          assignedTeam: project.assignedTeam,
+          progress, // Thêm tiến độ dự án từ báo cáo
+        };
+      })
+    );
 
     res.status(200).json({
       message: "Danh sách dự án đã được giao cho team.",
       sortBy: sortOption || "none",
-      projects,
+      projects: projectsWithProgress,
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server.", error: error.message });
@@ -1567,7 +1594,7 @@ const showAllRoprtProject = async (req, res) => {
       res.status(404).json({ massage: "project khong ton tai" })
     }
     const reports = await Report.find({ project: id })
-      .select("content difficulties taskProgress project team createdAt  assignedLeader file")
+      .select("content difficulties projectProgress project team createdAt  assignedLeader file")
       .populate("project", "name description")
       .populate("assignedLeader", "name email")
       // .populate("assignedMembers", "name email")
@@ -2266,6 +2293,76 @@ const cloneProject = async (req, res) => {
   }
 };
 
+// show ra những dự án bị trễ deadline
+const showOverdueProjects = async (req, res) => {
+  try {
+    const sortOption = req.query.sort;
+    let sortCriteria = {};
+
+    // Xác định tiêu chí sắp xếp
+    if (sortOption === "name_asc") {
+      sortCriteria = { name: 1 };
+    } else if (sortOption === "name_desc") {
+      sortCriteria = { name: -1 };
+    } else if (sortOption === "priority_asc") {
+      sortCriteria = { priority: 1 };
+    } else if (sortOption === "priority_desc") {
+      sortCriteria = { priority: -1 };
+    } else if (sortOption === "deadline_asc") {
+      sortCriteria = { deadline: 1 };
+    } else if (sortOption === "deadline_desc") {
+      sortCriteria = { deadline: -1 };
+    }
+
+    // Tìm các dự án bị trễ deadline
+    const projects = await Project.find({
+      deadline: { $lt: new Date() }, // Deadline nhỏ hơn thời gian hiện tại
+      status: { $nin: ["completed", "cancelled"] }, // Loại trừ các dự án đã hoàn thành hoặc bị hủy
+    })
+      .sort(sortCriteria)
+      .populate({
+        path: "assignedTeam",
+        select: "name assignedLeader assignedMembers",
+        populate: [
+          { path: "assignedLeader", select: "name email" },
+          { path: "assignedMembers", select: "name email" },
+        ],
+      })
+      .lean();
+
+    if (projects.length === 0) {
+      return res.status(404).json({ message: "Không có dự án nào bị trễ deadline." });
+    }
+
+    // Tính số ngày trễ deadline cho mỗi dự án
+    const projectsWithOverdueDays = projects.map((project) => {
+      const deadline = new Date(project.deadline);
+      const now = new Date();
+      const overdueDays = Math.ceil((now - deadline) / (1000 * 60 * 60 * 24)); // Tính số ngày trễ
+
+      return {
+        _id: project._id,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        priority: project.priority,
+        deadline: project.deadline,
+        assignedTeam: project.assignedTeam,
+        overdueDays, // Số ngày trễ deadline
+      };
+    });
+
+    res.status(200).json({
+      message: "Danh sách các dự án bị trễ deadline.",
+      sortBy: sortOption || "none",
+      projects: projectsWithOverdueDays,
+    });
+  } catch (error) {
+    console.error("showOverdueProjects error:", error);
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
 //
 module.exports = {
   createUser,
@@ -2302,5 +2399,6 @@ module.exports = {
   viewProject,
   showAllRoprtProject,
   getCompanyStatistics,
-  cloneProject
+  cloneProject,
+  showOverdueProjects
 };

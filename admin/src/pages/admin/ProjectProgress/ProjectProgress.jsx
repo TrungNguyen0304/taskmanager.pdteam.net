@@ -53,6 +53,25 @@ const ProjectProgress = () => {
     }
   };
 
+  const getProgressColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+        return "bg-green-500";
+      case "pending":
+        return "bg-yellow-500";
+      case "in-progress":
+      case "in_progress":
+        return "bg-blue-500";
+      case "cancelled":
+      case "canceled":
+        return "bg-red-500";
+      case "paused":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-400";
+    }
+  };
+
   const getStatusText = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
@@ -63,7 +82,7 @@ const ProjectProgress = () => {
       case "in_progress":
         return "Đang thực hiện";
       case "cancelled":
-      case "canceled": // hỗ trợ cả cách viết của Anh-Mỹ
+      case "canceled":
         return "Đã hủy";
       case "paused":
         return "Tạm ngưng";
@@ -127,46 +146,67 @@ const ProjectProgress = () => {
                     Đội Nhóm
                   </th>
                   <th className="w-[15%] px-4 py-3 text-sm font-semibold sm:text-base">
+                    Tiến độ
+                  </th>
+                  <th className="w-[15%] px-4 py-3 text-sm font-semibold sm:text-base">
                     Hành Động
                   </th>
                 </tr>
               </thead>
               {/* Table Body */}
               <tbody>
-                {projects.map((project) => (
-                  <tr
-                    key={project._id}
-                    className="border-b border-gray-200 transition-colors hover:bg-gray-50"
-                  >
-                    <td className="w-[15%] px-4 py-3 text-sm font-medium text-gray-900 sm:text-base">
-                      {project.name}
-                    </td>
-                    <td className="w-[40%] px-4 py-3 text-sm text-gray-700 sm:text-base">
-                      {truncateDescription(project.description)}
-                    </td>
-                    <td className="w-[15%] px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${getStatusColor(
-                          project.status
-                        )}`}
-                      >
-                        {getStatusText(project.status)}
-                      </span>
-                    </td>
-                    <td className="w-[15%] px-4 py-3 text-sm text-gray-700 sm:text-base">
-                      {project.assignedTeam?.name || "Chưa phân nhóm"}
-                    </td>
-                    <td className="w-[15%] px-4 py-3">
-                      <button
-                        onClick={() => handleViewDetails(project._id)}
-                        className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:text-base"
-                        aria-label={`Xem chi tiết ${project.name}`}
-                      >
-                        Xem chi tiết
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {projects.map((project) => {
+                  // Ensure progress is a safe value (0-100)
+                  const safeProgress = Math.min(Math.max(project.progress || 0, 0), 100);
+                  return (
+                    <tr
+                      key={project._id}
+                      className="border-b border-gray-200 transition-colors hover:bg-gray-50"
+                    >
+                      <td className="w-[15%] px-4 py-3 text-sm font-medium text-gray-900 sm:text-base">
+                        {project.name}
+                      </td>
+                      <td className="w-[40%] px-4 py-3 text-sm text-gray-700 sm:text-base">
+                        {truncateDescription(project.description)}
+                      </td>
+                      <td className="w-[15%] px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${getStatusColor(
+                            project.status
+                          )}`}
+                        >
+                          {getStatusText(project.status)}
+                        </span>
+                      </td>
+                      <td className="w-[15%] px-4 py-3 text-sm text-gray-700 sm:text-base">
+                        {project.assignedTeam?.name || "Chưa phân nhóm"}
+                      </td>
+                      <td className="w-[15%] px-4 py-3">
+                        <div className="relative h-3 w-full">
+                          <div className="absolute h-full w-full rounded-full bg-gray-200"></div>
+                          <div
+                            className={`absolute h-full rounded-full transition-all duration-500 ease-out ${getProgressColor(
+                              project.status
+                            )}`}
+                            style={{ width: `${safeProgress}%` }}
+                          ></div>
+                        </div>
+                        <span className="mt-1 block text-center text-sm text-gray-700 sm:text-base">
+                          {safeProgress}%
+                        </span>
+                      </td>
+                      <td className="w-[15%] px-4 py-3">
+                        <button
+                          onClick={() => handleViewDetails(project._id)}
+                          className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:text-base"
+                          aria-label={`Xem chi tiết ${project.name}`}
+                        >
+                          Xem chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
