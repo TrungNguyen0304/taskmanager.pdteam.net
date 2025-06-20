@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   MoreVertical,
   X,
@@ -6,6 +6,7 @@ import {
   Users,
   ChevronDown,
 } from "lucide-react";
+import axios from "axios";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
@@ -13,6 +14,7 @@ import ChatInput from "./ChatInput";
 const ChatMainLeader = ({
   selectedGroup,
   messages,
+  setMessages,
   inputText,
   setInputText,
   handleSendMessage,
@@ -39,18 +41,45 @@ const ChatMainLeader = ({
   openMenuId,
   setOpenMenuId,
   editingMessageId,
+  setEditingMessageId,
   editText,
   setEditText,
   handleStartEditMessage,
-  handleSaveEditMessage,
-  handleCancelEdit,
   handleDeleteMessage,
   handleHideMessage,
   chatEndRef,
   addMemberRef,
   error,
+  setError,
   navigate,
 }) => {
+  // Fetch messages when group changes to prevent stale data
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedGroup?._id) return;
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `http://localhost:8001/api/group/${selectedGroup._id}/messages`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        // Transform message objects to use 'text' instead of 'message'
+        const transformedMessages = response.data.map((msg) => ({
+          ...msg,
+          text: msg.message,
+        }));
+        setMessages(transformedMessages);
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        setError("Không thể tải tin nhắn. Vui lòng thử lại.");
+      }
+    };
+    fetchMessages();
+  }, [selectedGroup?._id, setMessages, setError]);
+
   return (
     <div className="relative flex flex-col h-full bg-white sm:shadow-lg sm:rounded-r-xl overflow-hidden w-full mx-auto">
       <ChatHeader
@@ -63,6 +92,7 @@ const ChatMainLeader = ({
 
       <ChatMessages
         messages={messages}
+        setMessages={setMessages}
         currentUser={currentUser}
         openMenuId={openMenuId}
         setOpenMenuId={setOpenMenuId}
@@ -70,12 +100,12 @@ const ChatMainLeader = ({
         editText={editText}
         setEditText={setEditText}
         handleStartEditMessage={handleStartEditMessage}
-        handleSaveEditMessage={handleSaveEditMessage}
-        handleCancelEdit={handleCancelEdit}
         handleDeleteMessage={handleDeleteMessage}
         handleHideMessage={handleHideMessage}
         error={error}
+        setError={setError}
         chatEndRef={chatEndRef}
+        groupId={selectedGroup._id}
       />
 
       <ChatInput
@@ -90,7 +120,6 @@ const ChatMainLeader = ({
       {/* Right Sidebar (Slides in from Right) */}
       {sidebarOpen && (
         <>
-          {/* Backdrop for mobile */}
           <div
             className="fixed inset-0 bg-black/50 sm:hidden z-40"
             onClick={() => setSidebarOpen(false)}
