@@ -204,7 +204,6 @@ const ProjectReport = () => {
         ),
       }));
       handleCloseEvaluateModal();
-      alert("Đánh giá báo cáo thành công!");
     } catch (err) {
       setEvaluateError(
         err.response?.data?.message || "Lỗi khi gửi đánh giá. Vui lòng thử lại."

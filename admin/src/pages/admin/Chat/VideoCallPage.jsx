@@ -57,7 +57,7 @@ const VideoCallPage = () => {
     const fetchGroupMembers = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${API_URL}/${groupId}`, {
+        const res = await axios.get(`${API_URL}/`, {  
           headers: { Authorization: `Bearer ${token}` },
         });
         const members = res.data.members.map((member) => ({
