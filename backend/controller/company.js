@@ -7,7 +7,8 @@ const {
   notifyProject,
   notifyProjectRemoval,
   notifyEvaluateCompany,
-  notifyStatusProject
+  notifyStatusProject,
+  notifyMemberTeam
 } = require("../controller/notification");
 const Project = require("../models/project");
 const Task = require("../models/task");
@@ -433,7 +434,7 @@ const updateTeam = async (req, res) => {
     const { name, assignedLeader, assignedMembers, description } = req.body;
 
     // Kiểm tra thông tin bắt buộc
-    if (!name && !assignedLeader && !assignedMembers) {
+    if (!name && !assignedLeader && !assignedMembers && !description) {
       return res
         .status(400)
         .json({ message: "Cần ít nhất một thông tin để cập nhật." });
@@ -441,15 +442,16 @@ const updateTeam = async (req, res) => {
 
     // Kiểm tra leader
     if (assignedLeader) {
-      const leader = await user.findById(assignedLeader);
+      const leader = await User.findById(assignedLeader);
       if (!leader || leader.role !== "leader") {
         return res.status(400).json({ message: "Leader không hợp lệ." });
       }
     }
 
-    // Kiểm tra các member
+    // Kiểm tra các member và xác định thành viên mới
+    let newMembers = [];
     if (assignedMembers) {
-      const members = await user.find({
+      const members = await User.find({
         _id: { $in: assignedMembers },
         role: "member",
       });
@@ -458,11 +460,22 @@ const updateTeam = async (req, res) => {
           .status(400)
           .json({ message: "Một hoặc nhiều thành viên không hợp lệ." });
       }
+
+      // Lấy danh sách thành viên hiện tại của team
+      const currentTeam = await Team.findById(id);
+      if (!currentTeam) {
+        return res.status(404).json({ message: "Team không tồn tại." });
+      }
+
+      // Xác định các thành viên mới
+      const currentMemberIds = currentTeam.assignedMembers.map(String);
+      newMembers = assignedMembers.filter(
+        (memberId) => !currentMemberIds.includes(String(memberId))
+      );
     }
 
     // Tạo object chứa dữ liệu cần cập nhật
     const updateData = {};
-
     if (name) updateData.name = name;
     if (description) updateData.description = description;
     if (assignedLeader) updateData.assignedLeader = assignedLeader;
@@ -472,11 +485,30 @@ const updateTeam = async (req, res) => {
     const updatedTeam = await Team.findByIdAndUpdate(id, updateData, {
       new: true,
     })
-      .populate("assignedLeader", "name ") // chỉ lấy name, email
-      .populate("assignedMembers", "name ");
+      .populate("assignedLeader", "name")
+      .populate("assignedMembers", "name");
 
     if (!updatedTeam) {
       return res.status(404).json({ message: "Team không tồn tại." });
+    }
+
+    // Gửi thông báo nếu có thành viên mới
+    if (newMembers.length > 0) {
+      const newMemberObjects = await User.find({
+        _id: { $in: newMembers },
+      }).select("name _id");
+      console.log("New member objects:", newMemberObjects);
+
+      for (const newMember of newMemberObjects) {
+        console.log(`Calling notifyMemberTeam for new member: ${newMember._id}`);
+        await notifyMemberTeam({
+          team: updatedTeam,
+          newMember: {
+            _id: newMember._id,
+            name: newMember.name,
+          },
+        });
+      }
     }
 
     res.status(200).json({
@@ -490,6 +522,7 @@ const updateTeam = async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error in updateTeam:", error.message);
     res.status(500).json({ message: "Lỗi server.", error: error.message });
   }
 };

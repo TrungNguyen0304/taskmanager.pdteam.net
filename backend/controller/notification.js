@@ -95,8 +95,6 @@ const notifyProjectRemoval = async ({ userId, project }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
-      title,
-      message,
       userId: userIdStr,
       title,
       message,
@@ -175,8 +173,6 @@ const notifyTaskRemoval = async ({ userId, task }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
-      title,
-      message,
       userId: userIdStr,
       title,
       message,
@@ -209,15 +205,13 @@ const notifyTaskRemoval = async ({ userId, task }) => {
 // Thông báo khi member gửi báo cáo
 const notifyReport = async ({ userId, task, report, member }) => {
   const io = getIO();
-  const title = "Báo cáo công việc mới";
+  const title = "Báo cáo công việc";
   const message = `Thành viên ${member} đã gửi báo cáo cho task: ${task.name}`;
   const userIdStr = String(userId);
 
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
-      title,
-      message,
       userId: userIdStr,
       title,
       message,
@@ -226,7 +220,7 @@ const notifyReport = async ({ userId, task, report, member }) => {
     });
 
     if (isUserOnline(userIdStr)) {
-      io.to(userIdStr).emit("report-submitted", {
+      io.to(userIdStr).emit("report-submitted-member", {
         title,
         message,
         reportId: report._id,
@@ -260,8 +254,6 @@ const notifyEvaluateLeader = async ({ userId, feedback, report }) => {
   try {
     // Lưu thông báo vào MongoDB
     await saveNotification({
-      title,
-      message,
       userId: userIdStr,
       title,
       message,
@@ -270,7 +262,7 @@ const notifyEvaluateLeader = async ({ userId, feedback, report }) => {
     });
 
     if (isUserOnline(userIdStr)) {
-      io.to(userIdStr).emit("report-evaluated", {
+      io.to(userIdStr).emit("report-evaluated-member", {
         title,
         message,
         reportId: report._id,
@@ -312,7 +304,7 @@ const notifyStatusTask = async ({ userId, task, member, oldStatus }) => {
     });
 
     if (isUserOnline(userIdStr)) {
-      io.to(userIdStr).emit("report-submitted", {
+      io.to(userIdStr).emit("update-status", {
         title,
         message,
         taskId: task._id,
@@ -355,7 +347,7 @@ const notifyReportCompany = async ({ userId, project, report, leader }) => {
     });
 
     if (isUserOnline(userIdStr)) {
-      io.to(userIdStr).emit("report-submitted", {
+      io.to(userIdStr).emit("report-submitted-leader", {
         title,
         message,
         reportId: report._id,
@@ -397,7 +389,7 @@ const notifyEvaluateCompany = async ({ userId, feedback, report }) => {
     });
 
     if (isUserOnline(userIdStr)) {
-      io.to(userIdStr).emit("report-evaluated", {
+      io.to(userIdStr).emit("report-evaluated-leader", {
         title,
         message,
         reportId: report._id,
@@ -463,6 +455,59 @@ const notifyTaskOverdue = async ({ userId, task }) => {
   }
 };
 
+// thong bao khi tha doi trang thai project
+const notifyStatusProject = async ({ project, oldStatus }) => {
+  const io = getIO();
+  const title = "Trạng thái dự án đã thay đổi";
+  const message = `Công ty đã thay đổi trạng thái dự án "${project.name}" từ ${oldStatus} thành ${project.status}`;
+
+  try {
+    const team = await Team.findById(project.assignedTeam);
+    if (!team || !team.assignedLeader) {
+      console.log(`Không tìm thấy Team hoặc leader cho dự án: ${project._id}`);
+      return;
+    }
+
+    const leaderId = String(team.assignedLeader);
+    if (!leaderId || leaderId === "null" || leaderId === "undefined") {
+      console.log(`Không có leader hợp lệ để thông báo cho dự án: ${project._id}`);
+      return;
+    }
+
+    // Lưu thông báo vào MongoDB
+    await saveNotification({
+      userId: leaderId,
+      title,
+      message,
+      type: "info",
+      source: "system",
+    });
+
+    if (isUserOnline(leaderId)) {
+      io.to(leaderId).emit("project-status-updated", {
+        title,
+        message,
+        projectId: project._id,
+        projectName: project.name,
+        projectStatus: project.status,
+        oldStatus,
+        submittedAt: new Date(),
+      });
+      console.log(`Sent socket to leader room: ${leaderId}`);
+    } else {
+      const user = await User.findById(leaderId);
+      if (user?.fcmToken) {
+        await sendNotification(user.fcmToken, title, message);
+        console.log(`Sent FCM to offline leader with userId: ${leaderId}`);
+      } else {
+        console.log("No FCM token for leader.");
+      }
+    }
+  } catch (error) {
+    console.error(`Error in notifyStatusProject for project ${project._id}:`, error.message);
+  }
+};
+
 // Thông báo khi dự án trễ deadline
 const notifyProjectOverdue = async ({ project }) => {
   const io = getIO();
@@ -515,6 +560,84 @@ const notifyProjectOverdue = async ({ project }) => {
     console.error(`Error in notifyProjectOverdue for project ${project._id}:`, error.message);
   }
 };
+
+// thông báo cho thành viên nhóm khi member mới được thêm vào team 
+
+const notifyMemberTeam = async ({ team, newMember }) => {
+  const io = getIO();
+  const title = "Thành viên mới trong nhóm";
+  const message = `Thành viên ${newMember.name} đã được thêm vào nhóm: ${team.name}`;
+
+  try {
+    // Populate cả assignedMembers và assignedLeader
+    const teamData = await Team.findById(team._id)
+      .populate('assignedMembers', 'name fcmToken')
+      .populate('assignedLeader', 'name fcmToken');
+    if (!teamData) {
+      return;
+    }
+
+    // Danh sách tất cả người nhận thông báo (bao gồm cả leader và members)
+    const recipients = [];
+
+    // Thêm leader vào danh sách recipients (nếu có)
+    if (teamData.assignedLeader) {
+      recipients.push(teamData.assignedLeader);
+    }
+
+    // Thêm members vào danh sách recipients
+    if (teamData.assignedMembers && teamData.assignedMembers.length > 0) {
+      recipients.push(...teamData.assignedMembers);
+    }
+
+    if (recipients.length === 0) {
+      return;
+    }
+
+    // Gửi thông báo cho từng recipient
+    for (const recipient of recipients) {
+      const recipientIdStr = String(recipient._id);
+      // Bỏ qua thành viên mới
+      if (recipientIdStr === String(newMember._id)) {
+        continue;
+      }
+
+      try {
+        // Lưu thông báo vào MongoDB
+        await saveNotification({
+          userId: recipientIdStr,
+          title,
+          message,
+          type: "info",
+          source: "system",
+        });
+
+        if (isUserOnline(recipientIdStr)) {
+          io.to(recipientIdStr).emit("member-added", {
+            title,
+            message,
+            teamId: team._id,
+            teamName: team.name,
+            newMember: {
+              id: newMember._id,
+              name: newMember.name,
+            },
+            submittedAt: new Date(),
+          });
+        } else {
+          if (recipient.fcmToken) {
+            await sendNotification(recipient.fcmToken, title, message);
+          }
+        }
+      } catch (error) {
+        // Lỗi được xử lý âm thầm
+      }
+    }
+  } catch (error) {
+    // Lỗi được xử lý âm thầm
+  }
+};
+
 
 const saveNotification = async ({ userId, title, message, type, source }) => {
   try {
@@ -605,58 +728,6 @@ const deleteNotification = async (req, res) => {
   }
 };
 
-// thong bao khi tha doi trang thai project
-const notifyStatusProject = async ({ project, oldStatus }) => {
-  const io = getIO();
-  const title = "Trạng thái dự án đã thay đổi";
-  const message = `Công ty đã thay đổi trạng thái dự án "${project.name}" từ ${oldStatus} thành ${project.status}`;
-
-  try {
-    const team = await Team.findById(project.assignedTeam);
-    if (!team || !team.assignedLeader) {
-      console.log(`Không tìm thấy Team hoặc leader cho dự án: ${project._id}`);
-      return;
-    }
-
-    const leaderId = String(team.assignedLeader);
-    if (!leaderId || leaderId === "null" || leaderId === "undefined") {
-      console.log(`Không có leader hợp lệ để thông báo cho dự án: ${project._id}`);
-      return;
-    }
-
-    // Lưu thông báo vào MongoDB
-    await saveNotification({
-      userId: leaderId,
-      title,
-      message,
-      type: "info",
-      source: "system",
-    });
-
-    if (isUserOnline(leaderId)) {
-      io.to(leaderId).emit("project-status-updated", {
-        title,
-        message,
-        projectId: project._id,
-        projectName: project.name,
-        projectStatus: project.status,
-        oldStatus,
-        submittedAt: new Date(),
-      });
-      console.log(`Sent socket to leader room: ${leaderId}`);
-    } else {
-      const user = await User.findById(leaderId);
-      if (user?.fcmToken) {
-        await sendNotification(user.fcmToken, title, message);
-        console.log(`Sent FCM to offline leader with userId: ${leaderId}`);
-      } else {
-        console.log("No FCM token for leader.");
-      }
-    }
-  } catch (error) {
-    console.error(`Error in notifyStatusProject for project ${project._id}:`, error.message);
-  }
-};
 
 
 module.exports = {
@@ -675,6 +746,6 @@ module.exports = {
   getNotifications,
   deleteNotification,
   markNotificationAsRead,
-  notifyStatusProject
-
+  notifyStatusProject,
+  notifyMemberTeam
 };
