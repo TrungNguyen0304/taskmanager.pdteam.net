@@ -51,7 +51,7 @@ const ChatMessages = ({
     const socket = io("http://localhost:8001", { autoConnect: true });
     socket.on("connect", () => {
       console.log("Socket.IO connected");
-      reconnectAttempts.current = 0;
+      reconnectAttempts.current = 0; // Reset on successful connection
     });
     socket.on("message-edited", (updatedMessage) => {
       setMessages((prevMessages) =>
@@ -80,6 +80,13 @@ const ChatMessages = ({
         )
       );
     });
+    socket.on("message-deleted", ({ messageId, onlyFor }) => {
+      if (onlyFor === currentUser._id) {
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg._id !== messageId)
+        );
+      }
+    });
     socket.on("connect_error", () => {
       if (reconnectAttempts.current < maxReconnectAttempts) {
         console.log(
@@ -97,7 +104,51 @@ const ChatMessages = ({
       }
     });
     return () => socket.disconnect();
-  }, [setMessages, setError]);
+  }, [setMessages, setError, currentUser._id]);
+
+  // Handle delete message
+  const handleDeleteMessageLocal = async (messageId) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      return;
+    }
+    if (!groupId) {
+      setError("Không tìm thấy ID nhóm.");
+      return;
+    }
+    if (message.isRecalled && message.senderId !== currentUser._id) {
+      setError("Bạn không thể xóa tin nhắn đã thu hồi của người khác.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Vui lòng đăng nhập lại để xóa tin nhắn.");
+        return;
+      }
+      await axios.delete(
+        `http://localhost:8001/api/group/${groupId}/messages/${messageId}/delete`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.filter((msg) => msg._id !== messageId)
+      );
+      setError(null);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error("Lỗi khi xóa tin nhắn:", error);
+      setError(error.response?.data?.message || "Lỗi xảy ra khi xóa tin nhắn.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle recall message
   const handleRecallMessage = async (messageId) => {
@@ -114,10 +165,16 @@ const ChatMessages = ({
       setMessageToRecall(null);
       return;
     }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Vui lòng đăng nhập lại để thu hồi tin nhắn.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
       await axios.delete(
         `http://localhost:8001/api/group/${groupId}/messages/${messageId}/recall`,
         {
@@ -181,6 +238,10 @@ const ChatMessages = ({
         throw new Error("Tin nhắn đã bị thu hồi, không thể chỉnh sửa.");
       }
       const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Vui lòng đăng nhập lại để chỉnh sửa tin nhắn.");
+        return;
+      }
       await axios.put(
         `http://localhost:8001/api/group/${groupId}/messages/${messageId}/edit`,
         { newMessage: editText },
@@ -190,7 +251,6 @@ const ChatMessages = ({
           },
         }
       );
-      // Update local state immediately
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg._id === messageId
@@ -202,7 +262,6 @@ const ChatMessages = ({
             : msg
         )
       );
-      // Clear editing state
       handleStartEditMessage(null, "");
       setError(null);
       setOpenMenuId(null);
@@ -257,14 +316,6 @@ const ChatMessages = ({
 
   const handleImageNavigation = (event) => {
     if (!isModalOpen || imageMessages.length === 0) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const imageWidth = rect.width;
-    if (clickX < imageWidth / 2) {
-      handlePrevImage();
-    } else {
-      handleNextImage();
-    }
   };
 
   useEffect(() => {
@@ -395,30 +446,24 @@ const ChatMessages = ({
                 isCurrentUser ? "justify-end" : "justify-start"
               } items-center gap-2 group`}
             >
-              {isCurrentUser && (
-                <div className="relative message-menu">
-                  <button
-                    onClick={() => handleMenuClick(msg._id)}
-                    className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              <div className="relative message-menu">
+                <button
+                  onClick={() => handleMenuClick(msg._id)}
+                  className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <BiDotsVerticalRounded
+                    size={18}
+                    className="text-gray-600 sm:w-5 sm:h-5"
+                  />
+                </button>
+                {openMenuId === msg._id && (
+                  <div
+                    className={`absolute ${
+                      isCurrentUser ? "right-0" : "left-0"
+                    } bottom-2 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
                   >
-                    <BiDotsVerticalRounded
-                      size={18}
-                      className="text-gray-600 sm:w-5 sm:h-5"
-                    />
-                  </button>
-                  {openMenuId === msg._id && (
-                    <div className="absolute right-0 bottom-2 bg-white border rounded-lg shadow z-50 w-28 sm:w-32">
-                      {msg.isRecalled ? (
-                        <button
-                          onClick={() => {
-                            handleDeleteMessage(msg._id);
-                            setOpenMenuId(null);
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                        >
-                          <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
-                        </button>
-                      ) : (
+                    {!msg.isRecalled ? (
+                      isCurrentUser ? (
                         <>
                           <button
                             onClick={() =>
@@ -433,9 +478,19 @@ const ChatMessages = ({
                           <button
                             onClick={() => handleOpenRecallModal(msg._id)}
                             className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                            disabled={msg.isRecalled}
                           >
                             <Trash2 size={12} className="sm:w-4 sm:h-4" /> Thu
                             hồi
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteMessageLocal(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
                           </button>
                           <button
                             onClick={() => {
@@ -448,11 +503,43 @@ const ChatMessages = ({
                             Ẩn
                           </button>
                         </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              handleDeleteMessageLocal(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleHideMessage(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
+                            Ẩn
+                          </button>
+                        </>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => {
+                          handleDeleteMessageLocal(msg._id);
+                          setOpenMenuId(null);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                      >
+                        <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <div
                 className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg ${
                   isCurrentUser
@@ -528,41 +615,6 @@ const ChatMessages = ({
                   </div>
                 )}
               </div>
-              {!isCurrentUser && (
-                <div className="relative message-menu">
-                  <button
-                    onClick={() => handleMenuClick(msg._id)}
-                    className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <BiDotsVerticalRounded
-                      size={18}
-                      className="text-gray-600 sm:w-5 sm:h-5"
-                    />
-                  </button>
-                  {openMenuId === msg._id && (
-                    <div className="absolute left-0 bottom-8 bg-white border rounded-lg shadow z-10 w-28 sm:w-32">
-                      <button
-                        onClick={() => {
-                          handleDeleteMessage(msg._id);
-                          setOpenMenuId(null);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                      >
-                        <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleHideMessage(msg._id);
-                          setOpenMenuId(null);
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                      >
-                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           );
         })
@@ -643,6 +695,7 @@ const ChatMessages = ({
               <button
                 onClick={handleCloseRecallModal}
                 className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors text-sm"
+                disabled={isLoading}
               >
                 Hủy
               </button>
