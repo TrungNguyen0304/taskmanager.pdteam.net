@@ -31,7 +31,7 @@ const UnassignedTasks = () => {
           navigate("/login");
           return;
         }
-     
+
         const response = await axios.get(
           "http://localhost:8001/api/leader/unassignedTask",
           {
@@ -94,7 +94,9 @@ const UnassignedTasks = () => {
       setIsModalOpen(false);
     } catch (error) {
       console.error("Delete task error:", error.response?.data);
-      setDeleteError(error.response?.data?.message || "Không thể xóa nhiệm vụ.");
+      setDeleteError(
+        error.response?.data?.message || "Không thể xóa nhiệm vụ."
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -102,7 +104,6 @@ const UnassignedTasks = () => {
 
   // Open assign modal
   const handleAssign = (id) => {
-   
     setSelectedTaskId(id);
     setIsAssignModalOpen(true);
     setAssignError("");
@@ -131,9 +132,7 @@ const UnassignedTasks = () => {
       );
       setTasks((prev) => prev.filter((task) => task.id !== selectedTaskId));
       setIsAssignModalOpen(false);
-      alert("Gán nhiệm vụ thành công!");
     } catch (error) {
-    
       setAssignError(
         error.response?.status === 404
           ? "API endpoint không tồn tại. Vui lòng kiểm tra server."
@@ -175,10 +174,14 @@ const UnassignedTasks = () => {
                 <th className="px-4 py-3 text-left font-semibold">#</th>
                 <th className="px-4 py-3 text-left font-semibold">Tên</th>
                 <th className="px-4 py-3 text-left font-semibold">Mô tả</th>
-                <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
+                <th className="px-4 py-3 text-left font-semibold">
+                  Trạng thái
+                </th>
                 <th className="px-4 py-3 text-left font-semibold">Ưu tiên</th>
                 <th className="px-4 py-3 text-left font-semibold">Deadline</th>
-                <th className="px-4 py-3 text-center font-semibold">Hành động</th>
+                <th className="px-4 py-3 text-center font-semibold">
+                  Hành động
+                </th>
               </tr>
             </thead>
             <tbody>

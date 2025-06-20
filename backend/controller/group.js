@@ -385,9 +385,6 @@ const editMessage = async (req, res) => {
     }
 };
 
-
-
-
 const removeMember = async (req, res) => {
     try {
         const { groupId, userId } = req.params;
