@@ -1,16 +1,9 @@
-import React from "react";
-import {
-  MoreVertical,
-  X,
-  UserPlus,
-  Users,
-  ChevronDown,
-  Trash2,
-} from "lucide-react";
+import React, { useEffect } from "react";
+import { MoreVertical, X, UserPlus, Users, ChevronDown } from "lucide-react";
+import axios from "axios";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
-import axios from "axios";
 
 const ChatMain = ({
   selectedGroup,
@@ -19,6 +12,7 @@ const ChatMain = ({
   inputText,
   setInputText,
   handleSendMessage,
+  handleFileChange,
   showFileInput,
   setShowFileInput,
   sidebarOpen,
@@ -41,11 +35,10 @@ const ChatMain = ({
   openMenuId,
   setOpenMenuId,
   editingMessageId,
+  setEditingMessageId,
   editText,
   setEditText,
   handleStartEditMessage,
-  handleSaveEditMessage,
-  handleCancelEdit,
   handleDeleteMessage,
   handleHideMessage,
   chatEndRef,
@@ -53,72 +46,33 @@ const ChatMain = ({
   error,
   setError,
   navigate,
-  isUploading,
-  setIsUploading,
 }) => {
-  // Handle image upload with loading state
-  const customHandleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !selectedGroup?._id) {
-      setError("Không có tệp hoặc nhóm được chọn");
-      return;
-    }
-
-    // Validate file size (e.g., max 5MB) and type
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Kích thước tệp vượt quá 5MB");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      setError("Vui lòng chọn một tệp hình ảnh");
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      const token = localStorage.getItem("token");
-      const formData = new FormData();
-      formData.append("image", file); // Use "image" to match backend middleware
-
-      const response = await axios.post(
-        `http://localhost:8001/api/group/${selectedGroup._id}/sendImageMessage`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      // Update messages state with the response, but check for duplicates
-      setMessages((prev) => {
-        if (prev.some((msg) => msg._id === response.data._id)) return prev;
-        return [
-          ...prev,
+  // Fetch messages when group changes to prevent stale data
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedGroup?._id) return;
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `http://localhost:8001/api/group/${selectedGroup._id}/messages`,
           {
-            _id: response.data._id,
-            senderId: response.data.senderId,
-            senderName: response.data.senderName,
-            imageUrl: response.data.imageUrl,
-            fileName: response.data.fileName,
-            fileSize: response.data.fileSize,
-            fileId: response.data.fileId,
-            fileType: response.data.fileType,
-            timestamp: new Date(response.data.timestamp),
-            system: false,
-            hidden: false,
-          },
-        ];
-      });
-
-      setShowFileInput(false);
-      setIsUploading(false);
-    } catch (err) {
-      setIsUploading(false);
-      setError(err.response?.data?.message || "Lỗi khi gửi hình ảnh");
-    }
-  };
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        // Transform message objects to use 'text' instead of 'message'
+        const transformedMessages = response.data.map((msg) => ({
+          ...msg,
+          text: msg.message,
+        }));
+        setMessages(transformedMessages);
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        setError("Không thể tải tin nhắn. Vui lòng thử lại.");
+      }
+    };
+    fetchMessages();
+  }, [selectedGroup?._id, setMessages, setError]);
 
   return (
     <div className="relative flex flex-col h-full bg-white sm:shadow-lg sm:rounded-r-xl overflow-hidden w-full mx-auto">
@@ -132,6 +86,7 @@ const ChatMain = ({
 
       <ChatMessages
         messages={messages}
+        setMessages={setMessages}
         currentUser={currentUser}
         openMenuId={openMenuId}
         setOpenMenuId={setOpenMenuId}
@@ -139,26 +94,24 @@ const ChatMain = ({
         editText={editText}
         setEditText={setEditText}
         handleStartEditMessage={handleStartEditMessage}
-        handleSaveEditMessage={handleSaveEditMessage}
-        handleCancelEdit={handleCancelEdit}
         handleDeleteMessage={handleDeleteMessage}
         handleHideMessage={handleHideMessage}
         error={error}
+        setError={setError}
         chatEndRef={chatEndRef}
-        isUploading={isUploading}
+        groupId={selectedGroup._id}
       />
 
       <ChatInput
         inputText={inputText}
         setInputText={setInputText}
         handleSendMessage={handleSendMessage}
-        handleFileChange={customHandleFileChange}
+        handleFileChange={handleFileChange}
         showFileInput={showFileInput}
         setShowFileInput={setShowFileInput}
-        isUploading={isUploading}
       />
 
-      {/* Right Sidebar */}
+      {/* Right Sidebar (Slides in from Right) */}
       {sidebarOpen && (
         <>
           <div
@@ -191,7 +144,7 @@ const ChatMain = ({
               </button>
             </div>
 
-            <div className="p-4 flex flex-col gap-4 flex-1">
+            <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
               <button
                 onClick={() => setShowMembers(!showMembers)}
                 className="flex items-center justify-between w-full px-4 py-2 bg-gray-50 border rounded-lg hover:bg-gray-100 transition-colors"
@@ -216,7 +169,7 @@ const ChatMain = ({
                       className="flex justify-between items-center text-xs sm:text-sm text-gray-800"
                     >
                       <span className="flex items-center gap-2">
-                        {member.name} {member.role ? `(${member.role})` : ""}
+                        {member.name}
                         {onlineUsers.has(member._id) && (
                           <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                         )}
@@ -259,11 +212,11 @@ const ChatMain = ({
                   onClick={() => setAddingMember(!addingMember)}
                   className="flex items-center gap-2 text-sm sm:text-base bg-gray-50 border rounded-lg hover:bg-gray-100 px-4 py-2 w-full transition-colors"
                 >
-                  <UserPlus size={14} className="sm:w-5 sm:h-5" /> Thêm thành
-                  viên
+                  <UserPlus size={14} className="text-blue-600 sm:w-5 sm:h-5" />{" "}
+                  Thêm thành viên
                 </button>
                 {addingMember && (
-                  <div className="flex gap-2 mt-3 items-center">
+                  <div className="flex gap-3 mt-3 items-center">
                     <select
                       value={newMemberId}
                       onChange={(e) => setNewMemberId(e.target.value)}
@@ -279,8 +232,7 @@ const ChatMain = ({
                         )
                         .map((member) => (
                           <option key={member._id} value={member._id}>
-                            {member.name}{" "}
-                            {member.role ? `(${member.role})` : ""}
+                            {member.name} ({member.role})
                           </option>
                         ))}
                     </select>
@@ -298,7 +250,7 @@ const ChatMain = ({
                 onClick={handleLeaveGroup}
                 className="mt-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
-                Rời nhóm
+                Giải tán nhóm
               </button>
             </div>
           </div>

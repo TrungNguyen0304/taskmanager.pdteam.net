@@ -5,9 +5,12 @@ import { Edit2, Trash2 } from "lucide-react";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
 import { FaArrowDown, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { io } from "socket.io-client";
+import axios from "axios";
 
 const ChatMessages = ({
   messages,
+  setMessages,
   currentUser,
   openMenuId,
   setOpenMenuId,
@@ -15,98 +18,263 @@ const ChatMessages = ({
   editText,
   setEditText,
   handleStartEditMessage,
-  handleSaveEditMessage,
-  handleCancelEdit,
   handleDeleteMessage,
   handleHideMessage,
   error,
   setError,
   chatEndRef,
+  groupId,
 }) => {
   const BASE_URL = "http://localhost:8001";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showToBottom, setShowToBottom] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
+  const [messageToRecall, setMessageToRecall] = useState(null);
   const chatContainerRef = useRef(null);
+  const thumbnailContainerRef = useRef(null);
+  const editInputRef = useRef(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
 
   const imageMessages = messages
-    .filter((msg) => msg.imageUrl && !msg.hidden)
-    .map((msg) => `${BASE_URL}${msg.imageUrl}`);
+    .filter((msg) => msg.imageUrl && !msg.hidden && !msg.isRecalled)
+    .map((msg) => ({
+      url: `${BASE_URL}${msg.imageUrl}`,
+      fileName: msg.fileName || "Uploaded image",
+    }));
 
-  // Hàm định dạng thời gian
-  const formatTimestamp = (timestamp) => {
-    const messageDate = new Date(timestamp);
-    const now = new Date();
-    const diffInMs = now - messageDate;
-    const diffInHours = diffInMs / (1000 * 60 * 60);
-    const diffInDays = Math.floor(diffInHours / 24);
+  // Socket.IO setup
+  useEffect(() => {
+    const socket = io("http://localhost:8001", { autoConnect: true });
+    socket.on("connect", () => {
+      console.log("Socket.IO connected");
+      reconnectAttempts.current = 0; // Reset on successful connection
+    });
+    socket.on("message-edited", (updatedMessage) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === updatedMessage.messageId
+            ? {
+                ...msg,
+                text: updatedMessage.message,
+                isEdited: updatedMessage.isEdited,
+              }
+            : msg
+        )
+      );
+    });
+    socket.on("message-recalled", (recalledMessage) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === recalledMessage.messageId
+            ? {
+                ...msg,
+                isRecalled: recalledMessage.isRecalled,
+                text: recalledMessage.message,
+                imageUrl: null,
+              }
+            : msg
+        )
+      );
+    });
+    socket.on("message-deleted", ({ messageId, onlyFor }) => {
+      if (onlyFor === currentUser._id) {
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg._id !== messageId)
+        );
+      }
+    });
+    socket.on("connect_error", () => {
+      if (reconnectAttempts.current < maxReconnectAttempts) {
+        console.log(
+          `Socket.IO connection error, retrying (${
+            reconnectAttempts.current + 1
+          }/${maxReconnectAttempts})...`
+        );
+        reconnectAttempts.current += 1;
+        setTimeout(() => socket.connect(), 1000);
+      } else {
+        console.error(
+          "Max reconnect attempts reached. Socket.IO connection failed."
+        );
+        setError("Không thể kết nối đến server. Vui lòng thử lại sau.");
+      }
+    });
+    return () => socket.disconnect();
+  }, [setMessages, setError, currentUser._id]);
 
-    if (diffInHours < 24) {
-      return messageDate.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else {
-      return `${diffInDays} ngày trước`;
+  // Handle delete message
+  const handleDeleteMessageLocal = async (messageId) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      return;
+    }
+    if (!groupId) {
+      setError("Không tìm thấy ID nhóm.");
+      return;
+    }
+    if (message.isRecalled && message.senderId !== currentUser._id) {
+      setError("Bạn không thể xóa tin nhắn đã thu hồi của người khác.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Vui lòng đăng nhập lại để xóa tin nhắn.");
+        return;
+      }
+      await axios.delete(
+        `http://localhost:8001/api/group/${groupId}/messages/${messageId}/delete`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.filter((msg) => msg._id !== messageId)
+      );
+      setError(null);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error("Lỗi khi xóa tin nhắn:", error);
+      setError(error.response?.data?.message || "Lỗi xảy ra khi xóa tin nhắn.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, chatEndRef]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (chatContainerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } =
-          chatContainerRef.current;
-        setShowToBottom(scrollTop + clientHeight < scrollHeight - 100);
-      }
-    };
-
-    const container = chatContainerRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll);
-      return () => container.removeEventListener("scroll", handleScroll);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedImage && imageMessages.length > 0) {
-      const index = imageMessages.indexOf(selectedImage);
-      if (index !== -1) {
-        setCurrentImageIndex(index);
-      }
-    }
-  }, [selectedImage, imageMessages]);
-
-  // Add keyboard navigation for modal
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (!isModalOpen) return;
-
-      if (event.key === "ArrowLeft") {
-        handlePrevImage();
-      } else if (event.key === "ArrowRight") {
-        handleNextImage();
-      } else if (event.key === "Escape") {
-        handleCloseModal();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isModalOpen, imageMessages]);
-
-  const handleEditSubmit = (messageId) => {
-    if (editText.trim() === "") {
-      alert("Tin nhắn không được để trống.");
+  // Handle recall message
+  const handleRecallMessage = async (messageId) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
       return;
     }
-    handleSaveEditMessage(messageId);
+    if (!groupId) {
+      setError("Không tìm thấy ID nhóm.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      return;
+    }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Vui lòng đăng nhập lại để thu hồi tin nhắn.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await axios.delete(
+        `http://localhost:8001/api/group/${groupId}/messages/${messageId}/recall`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId
+            ? {
+                ...msg,
+                isRecalled: true,
+                text: "Tin nhắn đã bị thu hồi",
+                imageUrl: null,
+              }
+            : msg
+        )
+      );
+      setError(null);
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error("Lỗi khi thu hồi tin nhắn:", error);
+      setError(
+        error.response?.data?.message || "Lỗi xảy ra khi thu hồi tin nhắn."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Open recall confirmation modal
+  const handleOpenRecallModal = (messageId) => {
+    setMessageToRecall(messageId);
+    setIsRecallModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  // Close recall confirmation modal
+  const handleCloseRecallModal = () => {
+    setIsRecallModalOpen(false);
+    setMessageToRecall(null);
+  };
+
+  // Handle save edit message
+  const handleEditSubmit = async (messageId) => {
+    if (!editText.trim()) {
+      setError("Tin nhắn không được để trống.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const message = messages.find((msg) => msg._id === messageId);
+      if (!message) {
+        throw new Error("Tin nhắn không tồn tại trong danh sách.");
+      }
+      if (message.isRecalled) {
+        throw new Error("Tin nhắn đã bị thu hồi, không thể chỉnh sửa.");
+      }
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Vui lòng đăng nhập lại để chỉnh sửa tin nhắn.");
+        return;
+      }
+      await axios.put(
+        `http://localhost:8001/api/group/${groupId}/messages/${messageId}/edit`,
+        { newMessage: editText },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId
+            ? {
+                ...msg,
+                text: editText,
+                isEdited: true,
+              }
+            : msg
+        )
+      );
+      handleStartEditMessage(null, "");
+      setError(null);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error("Lỗi khi chỉnh sửa tin nhắn:", error);
+      setError(
+        error.message ||
+          error.response?.data?.message ||
+          "Lỗi khi chỉnh sửa tin nhắn."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImageClick = (imageUrl) => {
@@ -123,24 +291,20 @@ const ChatMessages = ({
     }
   };
 
-  const handleScrollToBottom = () => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
   const handlePrevImage = () => {
+    if (imageMessages.length === 0) return;
     setCurrentImageIndex((prev) => {
       const newIndex = prev > 0 ? prev - 1 : imageMessages.length - 1;
-      setSelectedImage(imageMessages[newIndex]);
+      setSelectedImage(imageMessages[newIndex].url);
       return newIndex;
     });
   };
 
   const handleNextImage = () => {
+    if (imageMessages.length === 0) return;
     setCurrentImageIndex((prev) => {
       const newIndex = prev < imageMessages.length - 1 ? prev + 1 : 0;
-      setSelectedImage(imageMessages[newIndex]);
+      setSelectedImage(imageMessages[newIndex].url);
       return newIndex;
     });
   };
@@ -150,19 +314,93 @@ const ChatMessages = ({
     setCurrentImageIndex(index);
   };
 
-  // Handle click navigation on image
   const handleImageNavigation = (event) => {
-    if (!isModalOpen) return;
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const imageWidth = rect.width;
-    
-    // Click on left half for previous, right half for next
-    if (clickX < imageWidth / 2) {
-      handlePrevImage();
-    } else {
-      handleNextImage();
+    if (!isModalOpen || imageMessages.length === 0) return;
+  };
+
+  useEffect(() => {
+    if (chatEndRef.current && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.senderId === currentUser._id) {
+        chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [messages, chatEndRef, currentUser._id]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (chatContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } =
+          chatContainerRef.current;
+        setShowToBottom(scrollTop + clientHeight < scrollHeight - 100);
+      }
+    };
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedImage && imageMessages.length > 0) {
+      const index = imageMessages.findIndex((img) => img.url === selectedImage);
+      if (index !== -1) {
+        setCurrentImageIndex(index);
+      }
+    }
+  }, [selectedImage, imageMessages]);
+
+  useEffect(() => {
+    if (
+      isModalOpen &&
+      thumbnailContainerRef.current &&
+      imageMessages.length > 1
+    ) {
+      const selectedThumbnail =
+        thumbnailContainerRef.current.children[currentImageIndex];
+      if (selectedThumbnail) {
+        selectedThumbnail.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }
+    }
+  }, [currentImageIndex, isModalOpen, imageMessages.length]);
+
+  useEffect(() => {
+    if (editingMessageId && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingMessageId]);
+
+  const handleStartEdit = (messageId, text) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      return;
+    }
+    if (message.isRecalled) {
+      setError("Tin nhắn đã bị thu hồi, không thể chỉnh sửa.");
+      return;
+    }
+    handleStartEditMessage(messageId, text);
+    setOpenMenuId(null);
+  };
+
+  const handleCancel = () => {
+    handleStartEditMessage(null, "");
+    setOpenMenuId(null);
+  };
+
+  const handleMenuClick = (messageId) => {
+    setOpenMenuId((prev) => (prev === messageId ? null : messageId));
+  };
+
+  const handleScrollToBottom = () => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -171,282 +409,271 @@ const ChatMessages = ({
       className="flex-1 p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-gray-50"
       ref={chatContainerRef}
     >
-      <div className="flex flex-col items-center mb-6">
-        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-200 rounded-full flex items-center justify-center mb-2 shadow-sm">
-          <MdOutlineGroups2 className="w-10 h-10 sm:w-12 sm:h-12 text-gray-600" />
+      <div className="flex flex-col items-center mb-4">
+        <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-2">
+          <MdOutlineGroups2 className="w-12 h-12" />
         </div>
-        <div className="text-lg sm:text-xl font-semibold text-gray-700">
+        <div className="text-lg font-semibold text-gray-500 mb-1">
           Bắt đầu cuộc trò chuyện của bạn
         </div>
       </div>
-
       {error && (
-        <div className="relative text-red-500 text-center bg-red-50 px-4 py-2 rounded-lg mb-4 text-xs sm:text-sm shadow-sm">
+        <div className="text-red-500 text-center bg-red-50 px-4 py-2 rounded-lg mb-4 text-xs sm:text-sm">
           {error}
-          <button
-            onClick={() => setError(null)}
-            className="absolute right-2 top-1 text-red-500 hover:text-red-700"
-            aria-label="Đóng thông báo lỗi"
-          >
-            <IoMdClose className="w-5 h-5" />
-          </button>
         </div>
       )}
-
       {messages.length === 0 ? (
         <div className="text-center text-gray-500 text-xs sm:text-sm">
           Chưa có tin nhắn nào trong nhóm này.
         </div>
       ) : (
-        messages.map((msg, index) => {
+        messages.map((msg) => {
           const isCurrentUser = msg.senderId === currentUser._id;
-          const messageKey = msg._id || `msg-${index}-${msg.timestamp}`;
-
           if (msg.system || msg.hidden) {
             return msg.system ? (
               <div
-                key={messageKey}
+                key={msg._id || msg.timestamp}
                 className="text-center text-xs italic text-gray-500 mb-3"
               >
                 {msg.text}
               </div>
             ) : null;
           }
-
           return (
             <div
-              key={messageKey}
+              key={msg._id || msg.timestamp}
               className={`mb-4 flex ${
                 isCurrentUser ? "justify-end" : "justify-start"
-              } items-start gap-2 group`}
+              } items-center gap-2 group`}
             >
-              {!isCurrentUser && (
-                <div className="relative message-menu">
-                  <button
-                    onClick={() =>
-                      setOpenMenuId((prev) =>
-                        prev === msg._id ? null : msg._id
-                      )
-                    }
-                    className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Mở menu tin nhắn"
+              <div className="relative message-menu">
+                <button
+                  onClick={() => handleMenuClick(msg._id)}
+                  className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <BiDotsVerticalRounded
+                    size={18}
+                    className="text-gray-600 sm:w-5 sm:h-5"
+                  />
+                </button>
+                {openMenuId === msg._id && (
+                  <div
+                    className={`absolute ${
+                      isCurrentUser ? "right-0" : "left-0"
+                    } bottom-2 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
                   >
-                    <BiDotsVerticalRounded
-                      size={18}
-                      className="text-gray-600 sm:w-5 sm:h-5"
-                    />
-                  </button>
-                  {openMenuId === msg._id && (
-                    <div className="absolute left-8 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
+                    {!msg.isRecalled ? (
+                      isCurrentUser ? (
+                        <>
+                          <button
+                            onClick={() =>
+                              handleStartEdit(msg._id, msg.text || "")
+                            }
+                            className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                            disabled={msg.isRecalled}
+                          >
+                            <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh
+                            sửa
+                          </button>
+                          <button
+                            onClick={() => handleOpenRecallModal(msg._id)}
+                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                            disabled={msg.isRecalled}
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4" /> Thu
+                            hồi
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteMessageLocal(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleHideMessage(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
+                            Ẩn
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              handleDeleteMessageLocal(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleHideMessage(msg._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                          >
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
+                            Ẩn
+                          </button>
+                        </>
+                      )
+                    ) : (
                       <button
-                        onClick={() => handleDeleteMessage(msg._id)}
+                        onClick={() => {
+                          handleDeleteMessageLocal(msg._id);
+                          setOpenMenuId(null);
+                        }}
                         className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                        aria-label="Xóa tin nhắn"
                       >
                         <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
                       </button>
-                      <button
-                        onClick={() => handleHideMessage(msg._id)}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                        aria-label="Ẩn tin nhắn"
-                      >
-                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div
-                className={`${
-                  isCurrentUser ? "ml-auto" : "mr-auto"
-                } max-w-[80%] sm:max-w-[60%] md:max-w-[50%]`}
-              >
-                {msg.imageUrl ? (
-                  <div>
-                    <img
-                      src={`${BASE_URL}${msg.imageUrl}`}
-                      alt={msg.fileName || "Uploaded image"}
-                      className="rounded-lg object-contain w-full max-w-[200px] sm:max-w-[300px] md:max-w-[400px] cursor-pointer hover:opacity-90 transition-opacity"
-                      loading="lazy"
-                      onClick={() =>
-                        handleImageClick(`${BASE_URL}${msg.imageUrl}`)
-                      }
-                    />
-                    <div className="text-xs text-gray-500 mt-1 text-right">
-                      {formatTimestamp(msg.timestamp)}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className={`px-3 sm:px-4 py-2 rounded-lg shadow-sm ${
-                      isCurrentUser
-                        ? "bg-blue-600 text-white rounded-br-none"
-                        : "bg-white border border-gray-300 rounded-bl-none"
-                    }`}
-                  >
-                    {!isCurrentUser && (
-                      <div className="text-xs font-semibold mb-1 text-gray-600">
-                        {msg.senderName}
-                      </div>
-                    )}
-                    {editingMessageId === msg._id && isCurrentUser ? (
-                      <div className="flex flex-col gap-2">
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-1 text-xs sm:text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          aria-label="Chỉnh sửa tin nhắn"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEditSubmit(msg._id)}
-                            className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                            aria-label="Lưu tin nhắn đã chỉnh sửa"
-                          >
-                            Lưu
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="bg-gray-300 text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-400 transition-colors text-xs sm:text-sm"
-                            aria-label="Hủy chỉnh sửa"
-                          >
-                            Hủy
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="text-xs sm:text-sm break-words">
-                          {msg.text}
-                        </div>
-                        <div
-                          className={`text-xs mt-1 text-right ${
-                            isCurrentUser ? "text-gray-200" : "text-gray-500"
-                          }`}
-                        >
-                          {formatTimestamp(msg.timestamp)}
-                        </div>
-                      </div>
                     )}
                   </div>
                 )}
               </div>
-
-              {isCurrentUser && (
-                <div className="relative message-menu">
-                  <button
-                    onClick={() =>
-                      setOpenMenuId((prev) =>
-                        prev === msg._id ? null : msg._id
-                      )
-                    }
-                    className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Mở menu tin nhắn"
-                  >
-                    <BiDotsVerticalRounded
-                      size={18}
-                      className="text-gray-600 sm:w-5 sm:h-5"
+              <div
+                className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg ${
+                  isCurrentUser
+                    ? "bg-blue-600 text-white rounded-br-none"
+                    : "bg-white border border-gray-300 rounded-bl-none"
+                } shadow ${
+                  editingMessageId === msg._id ? "editing-message" : ""
+                }`}
+              >
+                {!isCurrentUser && (
+                  <div className="text-xs font-semibold mb-1 text-gray-600">
+                    {msg.senderName}
+                  </div>
+                )}
+                {editingMessageId === msg._id && isCurrentUser ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoading) {
+                          handleEditSubmit(msg._id);
+                        }
+                      }}
+                      ref={editInputRef}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-1 text-xs sm:text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                  </button>
-                  {openMenuId === msg._id && (
-                    <div className="absolute right-8 top-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-28 sm:w-32">
-                      {!msg.imageUrl && (
-                        <button
-                          onClick={() =>
-                            handleStartEditMessage(msg._id, msg.text)
-                          }
-                          className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                          aria-label="Chỉnh sửa tin nhắn"
-                        >
-                          <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh
-                          sửa
-                        </button>
-                      )}
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleDeleteMessage(msg._id)}
-                        className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                        aria-label="Xóa tin nhắn"
+                        onClick={() => handleEditSubmit(msg._id)}
+                        className={`bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm ${
+                          isLoading ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                        disabled={isLoading}
                       >
-                        <Trash2 size={12} className="sm:w-4 sm:h-4" /> Xóa
+                        {isLoading ? "Đang lưu..." : "Lưu"}
                       </button>
                       <button
-                        onClick={() => handleHideMessage(msg._id)}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
-                        aria-label="Ẩn tin nhắn"
+                        onClick={handleCancel}
+                        className="bg-gray-300 text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-400 transition-colors text-xs sm:text-sm"
                       >
-                        <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
+                        Hủy
                       </button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <div className="text-xs sm:text-sm">
+                    {msg.isRecalled ? (
+                      <div className="italic text-gray-400">
+                        Tin nhắn đã bị thu hồi
+                      </div>
+                    ) : (
+                      <>
+                        {msg.imageUrl && (
+                          <img
+                            src={`${BASE_URL}${msg.imageUrl}`}
+                            alt={msg.fileName || "Uploaded image"}
+                            className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain cursor-pointer"
+                            onClick={() =>
+                              handleImageClick(`${BASE_URL}${msg.imageUrl}`)
+                            }
+                          />
+                        )}
+                        {msg.isEdited && (
+                          <span className="text-xs text-gray-400">
+                            (Đã chỉnh sửa)
+                          </span>
+                        )}
+                        {msg.text && <div>{msg.text}</div>}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })
       )}
-
       {showToBottom && (
         <button
           onClick={handleScrollToBottom}
           className="fixed bottom-12 right-8 sm:bottom-28 sm:right-10 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-50"
-          aria-label="Quay xuống tin nhắn mới nhất"
         >
           <FaArrowDown className="w-5 h-5" />
         </button>
       )}
-
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col z-50">
           <div className="flex-1 flex items-center justify-center">
             <div className="relative max-w-[90vw] max-h-[70vh] mb-20">
               <img
                 src={selectedImage}
-                alt="Full-size image"
-                className="max-w-full max-h-[70vh] object-contain rounded-lg cursor-pointer"
+                alt={imageMessages[currentImageIndex]?.fileName || "Image"}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
                 onClick={handleImageNavigation}
               />
               <button
                 onClick={handleCloseModal}
                 className="absolute top-2 right-2 bg-gray-800 text-white rounded-full p-2 hover:bg-gray-700 transition-colors"
-                aria-label="Đóng hình ảnh"
               >
                 <IoMdClose className="w-5 h-5" />
               </button>
             </div>
           </div>
-
-          {/* Fixed Thumbnail Carousel at Bottom */}
           {imageMessages.length > 1 && (
             <div className="fixed bottom-0 left-0 right-0 bg-gray-900 bg-opacity-90 py-4 flex items-center justify-center gap-4 z-50">
               <button
                 onClick={handlePrevImage}
                 className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
-                aria-label="Ảnh trước"
               >
                 <FaChevronLeft className="w-4 h-4" />
               </button>
-              <div className="flex gap-2 overflow-x-auto max-w-[80vw] custom-scrollbar">
+              <div
+                className="flex gap-2 overflow-x-auto max-w-[80vw] custom-scrollbar"
+                ref={thumbnailContainerRef}
+              >
                 {imageMessages.map((img, index) => (
                   <img
-                    key={img}
-                    src={img}
-                    alt={`Thumbnail ${index + 1}`}
+                    key={img.url}
+                    src={img.url}
+                    alt={img.fileName}
                     className={`w-16 h-16 object-cover rounded-md cursor-pointer transition-opacity ${
                       index === currentImageIndex
                         ? "opacity-100 border-2 border-blue-500"
                         : "opacity-50 hover:opacity-75"
                     }`}
-                    onClick={() => handleThumbnailClick(img, index)}
-                    loading="lazy"
+                    onClick={() => handleThumbnailClick(img.url, index)}
                   />
                 ))}
               </div>
               <button
                 onClick={handleNextImage}
                 className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
-                aria-label="Ảnh tiếp theo"
               >
                 <FaChevronRight className="w-4 h-4" />
               </button>
@@ -454,7 +681,37 @@ const ChatMessages = ({
           )}
         </div>
       )}
-
+      {isRecallModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-[90%] max-w-sm shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Xác nhận thu hồi
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Bạn có chắc muốn thu hồi tin nhắn này? Hành động này không thể
+              hoàn tác.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCloseRecallModal}
+                className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors text-sm"
+                disabled={isLoading}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => handleRecallMessage(messageToRecall)}
+                className={`bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm ${
+                  isLoading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang xử lý..." : "Thu hồi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div ref={chatEndRef} />
     </div>
   );

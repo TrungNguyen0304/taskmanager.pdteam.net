@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Send, Plus } from "lucide-react";
+import React, { useState } from "react";
+import { Send, Plus, X } from "lucide-react";
 import { BiSolidImage } from "react-icons/bi";
-import { IoMdClose } from "react-icons/io";
 
 const ChatInput = ({
   inputText,
@@ -10,114 +9,49 @@ const ChatInput = ({
   handleFileChange,
   showFileInput,
   setShowFileInput,
-  isUploading,
-  setError,
+  setError, // Thêm prop để hiển thị lỗi
 }) => {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [isSending, setIsSending] = useState(false); // Thêm trạng thái để ngăn trùng lặp
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const handleInputChange = (e) => {
     setInputText(e.target.value);
   };
 
-  const handleImageSelect = (e) => {
+  const onFileChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
-    // Validate file size (max 5MB) and type
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Kích thước tệp vượt quá 5MB");
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      setError("Vui lòng chọn một tệp hình ảnh");
-      return;
-    }
-
-    setSelectedImage(file);
-    setImagePreview(URL.createObjectURL(file));
-    setShowFileInput(false);
-  };
-
-  const handleSend = async (source) => {
-    // Ngăn gửi nếu đang trong quá trình gửi hoặc tải lên
-    if (isSending || isUploading) return;
-
-    setIsSending(true); 
-    try {
-      if (selectedImage) {
-        await handleFileChange({ target: { files: [selectedImage] } });
-        setSelectedImage(null);
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImagePreview(null);
-      } else if (inputText.trim()) {
-        handleSendMessage();
-        setInputText("");
-      }
-    } finally {
-      setIsSending(false); // Đặt lại trạng thái sau khi gửi xong
+    if (file) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setShowFileInput(false);
+      handleFileChange(file);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (
-      e.key === "Enter" &&
-      (inputText.trim() || selectedImage) &&
-      !isUploading &&
-      !isSending
-    ) {
-      handleSend("keyboard"); // Gọi handleSend với nguồn là bàn phím
+  const onSendMessage = () => {
+    if (inputText.trim() || selectedFile) {
+      handleSendMessage(inputText, selectedFile);
+      setInputText("");
+      setSelectedFile(null);
+      setPreviewUrl(null);
+    } else {
+      setError("Vui lòng nhập tin nhắn hoặc chọn hình ảnh");
     }
   };
 
-  const handleClickSend = () => {
-    if ((inputText.trim() || selectedImage) && !isUploading && !isSending) {
-      handleSend("mouse"); // Gọi handleSend với nguồn là chuột
-    }
+  const removeImage = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
   };
-
-  const handleCancelImage = () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setSelectedImage(null);
-    setImagePreview(null);
-  };
-
-  // Cleanup preview URL on unmount
-  useEffect(() => {
-    return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-    };
-  }, [imagePreview]);
 
   return (
     <div className="border-t bg-white px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-2">
-      {imagePreview && (
-        <div className="relative max-w-[220px] bg-white border border-gray-200 p-2 rounded-xl shadow-sm flex items-center justify-center">
-          <img
-            src={imagePreview}
-            alt="Preview"
-            className="max-w-full rounded-lg object-cover"
-          />
-          <button
-            onClick={handleCancelImage}
-            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow transition"
-            title="Hủy"
-            type="button"
-            disabled={isUploading}
-          >
-            <IoMdClose className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       <div className="flex items-center gap-2 sm:gap-3">
         <div className="relative">
           <button
             onClick={() => setShowFileInput(!showFileInput)}
             className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-all duration-200"
             title="Tải lên file"
-            disabled={isUploading}
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
@@ -130,8 +64,7 @@ const ChatInput = ({
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={handleImageSelect}
-                  disabled={isUploading}
+                  onChange={onFileChange}
                 />
               </label>
             </div>
@@ -140,25 +73,41 @@ const ChatInput = ({
 
         <input
           type="text"
-          placeholder="Nhập tin nhắn..."
+          placeholder={selectedFile ? "Nhập tin nhắn kèm ảnh..." : "Nhập tin nhắn..."}
           value={inputText}
           onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSendMessage();
+          }}
           className="flex-1 border border-gray-200 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm bg-gray-50 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-          disabled={isUploading}
         />
 
         <button
-          onClick={handleClickSend}
-          disabled={
-            (!inputText.trim() && !selectedImage) || isUploading || isSending
-          }
+          onClick={onSendMessage}
+          disabled={!inputText.trim() && !selectedFile}
           className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 disabled:bg-blue-300 transition-colors duration-200"
-          title="Gửi"
+          title="Gửi tin nhắn"
         >
           <Send className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
+
+      {previewUrl && (
+        <div className="relative flex items-center gap-2 mt-2">
+          <img
+            src={previewUrl}
+            alt="Image preview"
+            className="max-w-[80px] max-h-[80px] object-contain rounded-md border border-gray-200"
+          />
+          <button
+            onClick={removeImage}
+            className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-all duration-200"
+            title="Xóa ảnh"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
