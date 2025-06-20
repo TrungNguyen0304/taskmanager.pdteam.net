@@ -166,30 +166,50 @@ function setupSocket(io) {
         });
 
         socket.on("recall-message", async ({ messageId, userId, groupId }) => {
-            if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
+            if (!mongoose.Types.ObjectId.isValid(messageId) || !mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) {
+                console.warn("ID không hợp lệ");
+                return;
+            }
 
             try {
-                const message = await mongoose.model("Message").findById(messageId);
+                const message = await mongoose.model("Message").findById(messageId).populate("senderId", "name");
                 if (!message) {
                     console.warn(`Tin nhắn ${messageId} không tồn tại`);
                     return;
                 }
 
-                if (message.senderId.toString() !== userId.toString()) {
+                if (message.senderId._id.toString() !== userId.toString()) {
                     console.warn(`Người dùng ${userId} không có quyền thu hồi tin nhắn ${messageId}`);
                     return;
                 }
 
+                if (message.isRecalled) {
+                    console.warn(`Tin nhắn ${messageId} đã được thu hồi trước đó`);
+                    return;
+                }
+
+                // Đánh dấu tin nhắn đã thu hồi và xóa tham chiếu đến ảnh/file
                 message.isRecalled = true;
                 message.message = "Tin nhắn đã bị thu hồi";
+                message.imageUrl = null; // Xóa URL ảnh
+                message.fileName = null; // Xóa tên file
+                message.fileSize = null; // Xóa kích thước file
+                message.fileType = null; // Xóa loại file
+                message.fileId = null; // Xóa ID file
                 await message.save();
 
                 io.to(groupId).emit("message-recalled", {
                     messageId,
                     groupId,
                     senderId: userId,
+                    senderName: message.senderId.name,
                     isRecalled: true,
                     message: "Tin nhắn đã bị thu hồi",
+                    imageUrl: null, // Đảm bảo ảnh không còn được gửi
+                    fileName: null,
+                    fileSize: null,
+                    fileType: null,
+                    fileId: null,
                     timestamp: message.timestamp.toISOString(),
                 });
 
