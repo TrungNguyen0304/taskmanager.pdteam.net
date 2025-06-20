@@ -41,17 +41,35 @@ const ChatMessages = ({
 
   const imageMessages = messages
     .filter((msg) => msg.imageUrl && !msg.hidden && !msg.isRecalled)
-    .map((msg) => ({
+    ?.map((msg) => ({
       url: `${BASE_URL}${msg.imageUrl}`,
       fileName: msg.fileName || "Uploaded image",
     }));
+
+  // Hàm định dạng thời gian
+  const formatTimestamp = (timestamp) => {
+    const messageDate = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - messageDate;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours >= 24) {
+      return `${diffDays} ngày`;
+    } else {
+      return messageDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  };
 
   // Socket.IO setup
   useEffect(() => {
     const socket = io("http://localhost:8001", { autoConnect: true });
     socket.on("connect", () => {
       console.log("Socket.IO connected");
-      reconnectAttempts.current = 0; // Reset on successful connection
+      reconnectAttempts.current = 0;
     });
     socket.on("message-edited", (updatedMessage) => {
       setMessages((prevMessages) =>
@@ -446,6 +464,46 @@ const ChatMessages = ({
                 isCurrentUser ? "justify-end" : "justify-start"
               } items-center gap-2 group`}
             >
+              {!isCurrentUser && (
+                <div
+                  className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg bg-white border border-gray-300 rounded-bl-none shadow ${
+                    editingMessageId === msg._id ? "editing-message" : ""
+                  }`}
+                >
+                  <div className="text-xs font-semibold mb-1 text-gray-600">
+                    {msg.senderName}
+                  </div>
+                  <div className="text-xs sm:text-sm">
+                    {msg.isRecalled ? (
+                      <div className="italic text-gray-400">
+                        Tin nhắn đã bị thu hồi
+                      </div>
+                    ) : (
+                      <>
+                        {msg.imageUrl && (
+                          <img
+                            src={`${BASE_URL}${msg.imageUrl}`}
+                            alt={msg.fileName || "Uploaded image"}
+                            className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain cursor-pointer"
+                            onClick={() =>
+                              handleImageClick(`${BASE_URL}${msg.imageUrl}`)
+                            }
+                          />
+                        )}
+                        {msg.isEdited && (
+                          <span className="text-xs text-gray-400">
+                            (Đã chỉnh sửa)
+                          </span>
+                        )}
+                        {msg.text && <div>{msg.text}</div>}
+                      </>
+                    )}
+                    <div className="text-xs text-gray-400 mt-1">
+                      {formatTimestamp(msg.timestamp)}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="relative message-menu">
                 <button
                   onClick={() => handleMenuClick(msg._id)}
@@ -459,8 +517,8 @@ const ChatMessages = ({
                 {openMenuId === msg._id && (
                   <div
                     className={`absolute ${
-                      isCurrentUser ? "right-0" : "left-0"
-                    } bottom-2 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
+                      isCurrentUser ? "right-8" : "left-8"
+                    } bottom-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
                   >
                     {!msg.isRecalled ? (
                       isCurrentUser ? (
@@ -540,81 +598,77 @@ const ChatMessages = ({
                   </div>
                 )}
               </div>
-              <div
-                className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg ${
-                  isCurrentUser
-                    ? "bg-blue-600 text-white rounded-br-none"
-                    : "bg-white border border-gray-300 rounded-bl-none"
-                } shadow ${
-                  editingMessageId === msg._id ? "editing-message" : ""
-                }`}
-              >
-                {!isCurrentUser && (
-                  <div className="text-xs font-semibold mb-1 text-gray-600">
-                    {msg.senderName}
-                  </div>
-                )}
-                {editingMessageId === msg._id && isCurrentUser ? (
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="text"
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !isLoading) {
-                          handleEditSubmit(msg._id);
-                        }
-                      }}
-                      ref={editInputRef}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-1 text-xs sm:text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditSubmit(msg._id)}
-                        className={`bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm ${
-                          isLoading ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? "Đang lưu..." : "Lưu"}
-                      </button>
-                      <button
-                        onClick={handleCancel}
-                        className="bg-gray-300 text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-400 transition-colors text-xs sm:text-sm"
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs sm:text-sm">
-                    {msg.isRecalled ? (
-                      <div className="italic text-gray-400">
-                        Tin nhắn đã bị thu hồi
+              {isCurrentUser && (
+                <div
+                  className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg bg-blue-600 text-white rounded-br-none shadow ${
+                    editingMessageId === msg._id ? "editing-message" : ""
+                  }`}
+                >
+                  {editingMessageId === msg._id ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !isLoading) {
+                            handleEditSubmit(msg._id);
+                          }
+                        }}
+                        ref={editInputRef}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-1 text-xs sm:text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditSubmit(msg._id)}
+                          className={`bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm ${
+                            isLoading ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? "Đang lưu..." : "Lưu"}
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="bg-gray-300 text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-400 transition-colors text-xs sm:text-sm"
+                        >
+                          Hủy
+                        </button>
                       </div>
-                    ) : (
-                      <>
-                        {msg.imageUrl && (
-                          <img
-                            src={`${BASE_URL}${msg.imageUrl}`}
-                            alt={msg.fileName || "Uploaded image"}
-                            className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain cursor-pointer"
-                            onClick={() =>
-                              handleImageClick(`${BASE_URL}${msg.imageUrl}`)
-                            }
-                          />
-                        )}
-                        {msg.isEdited && (
-                          <span className="text-xs text-gray-400">
-                            (Đã chỉnh sửa)
-                          </span>
-                        )}
-                        {msg.text && <div>{msg.text}</div>}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs sm:text-sm">
+                      {msg.isRecalled ? (
+                        <div className="italic text-gray-400">
+                          Tin nhắn đã bị thu hồi
+                        </div>
+                      ) : (
+                        <>
+                          {msg.imageUrl && (
+                            <img
+                              src={`${BASE_URL}${msg.imageUrl}`}
+                              alt={msg.fileName || "Uploaded image"}
+                              className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain cursor-pointer"
+                              onClick={() =>
+                                handleImageClick(`${BASE_URL}${msg.imageUrl}`)
+                              }
+                            />
+                          )}
+                          {msg.isEdited && (
+                            <span className="text-xs text-gray-400">
+                              (Đã chỉnh sửa)
+                            </span>
+                          )}
+                          {msg.text && <div>{msg.text}</div>}
+                        </>
+                      )}
+                      <div className="text-xs text-gray-200 mt-1">
+                        {formatTimestamp(msg.timestamp)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })
