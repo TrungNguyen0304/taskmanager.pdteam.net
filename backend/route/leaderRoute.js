@@ -22,7 +22,8 @@ const {
   viewProject,
   getStatistics,
   showallMember,
-  getReportProject
+  getReportProject,
+  showOverdueTasks
 } = require("../controller/leader.js");
 const authenticateJWT = require("../middleware/auth.js");
 const authorize = require("../middleware/authorize.js");
@@ -151,5 +152,7 @@ router.get("/getStatistics/", authenticateJWT, getStatistics);
 
 // lay lịch sử report 
 router.get("/getReportProject/:id", authenticateJWT, authorize("leader"),  getReportProject);
+
+router.get("/showOverdueTasks/", authenticateJWT, authorize("leader"),  showOverdueTasks);
 
 module.exports = router;

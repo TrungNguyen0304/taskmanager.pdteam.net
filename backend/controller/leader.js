@@ -1813,6 +1813,78 @@ const getReportProject = async (req, res) => {
   }
 };
 
+// show ra những task bị trễ deadline
+const showOverdueTasks = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { sortBy = "deadline", order = "asc" } = req.query;
+
+    // 1. Find all teams where user is leader
+    const teams = await Team.find({ assignedLeader: userId }).select("_id");
+    if (!teams || teams.length === 0) {
+      return res.status(403).json({ message: "Bạn không là leader của bất kỳ team nào." });
+    }
+
+    const teamIds = teams.map(team => team._id);
+
+    // 2. Find all projects assigned to these teams
+    const projects = await Project.find({ assignedTeam: { $in: teamIds } }).select("_id");
+    if (!projects || projects.length === 0) {
+      return res.status(200).json({ 
+        message: "Không có project nào thuộc team của bạn.", 
+        tasks: [] 
+      });
+    }
+
+    const projectIds = projects.map(project => project._id);
+
+    // 3. Find tasks that are past deadline and not completed
+    const currentDate = new Date();
+    const sortOption = { [sortBy]: order === "asc" ? 1 : -1 };
+
+    const overdueTasks = await Task.find({
+      projectId: { $in: projectIds },
+      deadline: { $lt: currentDate },
+      status: { $ne: "completed" }
+    })
+      .populate("assignedMember", "name _id")
+      .populate("projectId", "name")
+      .sort(sortOption)
+      .lean();
+
+    // 4. Format response
+    const formattedTasks = overdueTasks.map(task => ({
+      _id: task._id,
+      name: task.name,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      progress: task.progress,
+      deadline: task.deadline,
+      project: {
+        _id: task.projectId?._id || null,
+        name: task.projectId?.name || "Không rõ"
+      },
+      assignedMember: task.assignedMember ? {
+        _id: task.assignedMember._id,
+        name: task.assignedMember.name
+      } : null,
+      assignedAt: task.assignedAt
+    }));
+
+    res.status(200).json({
+      message: overdueTasks.length > 0 
+        ? "Lấy danh sách task quá hạn thành công." 
+        : "Không có task nào quá hạn.",
+      tasks: formattedTasks
+    });
+
+  } catch (error) {
+    console.error("Lỗi trong showOverdueTasks:", error);
+    res.status(500).json({ message: "Lỗi server.", error: error.message });
+  }
+};
+
 module.exports = {
   getMyTeam,
   viewAssignedProject,
@@ -1836,5 +1908,6 @@ module.exports = {
   viewProject,
   getStatistics,
   showallMember,
-  getReportProject
+  getReportProject,
+  showOverdueTasks
 };

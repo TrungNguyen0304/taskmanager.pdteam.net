@@ -17,6 +17,12 @@ const notificationSchema = new mongoose.Schema(
       required: true,
     },
     isRead: { type: Boolean, default: false },
+    targetId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    targetType: {
+      type: String, enum: ["task", "report", "project", "team", "feedback"],
+      default: null
+    },
+
   },
   { timestamps: true }
 );
