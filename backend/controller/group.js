@@ -313,8 +313,14 @@ const recallMessage = async (req, res) => {
             return res.status(400).json({ message: "Tin nhắn đã được thu hồi trước đó" });
         }
 
+        // Đánh dấu tin nhắn đã thu hồi và xóa tham chiếu đến ảnh (nếu có)
         message.isRecalled = true;
         message.message = "Tin nhắn đã bị thu hồi";
+        message.imageUrl = null; // Xóa URL ảnh
+        message.fileName = null; // Xóa tên file
+        message.fileSize = null; // Xóa kích thước file
+        message.fileType = null; // Xóa loại file
+        message.fileId = null; // Xóa ID file
         await message.save();
 
         const io = getIO();
@@ -325,16 +331,20 @@ const recallMessage = async (req, res) => {
             senderName: message.senderId.name,
             isRecalled: true,
             message: "Tin nhắn đã bị thu hồi",
+            imageUrl: null, // Đảm bảo ảnh không còn được gửi
+            fileName: null,
+            fileSize: null,
+            fileType: null,
+            fileId: null,
             timestamp: message.timestamp.toISOString(),
         });
 
-        res.status(200).json({ message: "Thu hồi tin nhắn thành công" });
+        res.status(200).json({ message: "Thu hồi tin nhắn và ảnh (nếu có) thành công" });
     } catch (error) {
         console.error("Lỗi khi thu hồi tin nhắn:", error);
         res.status(500).json({ message: "Lỗi khi thu hồi tin nhắn", error: error.message });
     }
 };
-
 const editMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
