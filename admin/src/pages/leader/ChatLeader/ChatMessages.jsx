@@ -5,6 +5,10 @@ import { Edit2, Trash2 } from "lucide-react";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
 import { FaArrowDown, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { io } from "socket.io-client";
+import axios from "axios";
+import { RiResetLeftFill } from "react-icons/ri";
+
 
 const ChatMessages = ({
   messages,
@@ -280,11 +284,11 @@ const ChatMessages = ({
                           </button>
                           <button
                             onClick={() => handleOpenRecallModal(msg._id)}
-                            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
+                            className="flex items-center gap-2 px-4 py-2 text-violet-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                             disabled={msg.isRecalled}
                           >
-                            <Trash2 size={12} className="sm:w-4 sm:h-4" /> Thu
-                            hồi
+                            <RiResetLeftFill size={12} className="sm:w-4 sm:h-4" />
+                            Thu hồi
                           </button>
                           <button
                             onClick={() => {
