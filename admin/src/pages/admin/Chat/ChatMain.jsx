@@ -39,14 +39,28 @@ const ChatMain = ({
   editText,
   setEditText,
   handleStartEditMessage,
+  handleSaveEditMessage,
+  handleCancelEdit,
   handleDeleteMessage,
   handleHideMessage,
+  handleOpenRecallModal,
+  handleRecallMessage,
+  handleCloseRecallModal,
+  isRecallModalOpen,
+  messageToRecall,
   chatEndRef,
   addMemberRef,
+  recallModalRef,
   error,
   setError,
   navigate,
+  handleTyping,
 }) => {
+  // Debug props
+  useEffect(() => {
+    console.log("Recall modal props changed:", { isRecallModalOpen, messageToRecall });
+  }, [isRecallModalOpen, messageToRecall]);
+
   // Fetch messages when group changes to prevent stale data
   useEffect(() => {
     const fetchMessages = async () => {
@@ -59,7 +73,6 @@ const ChatMain = ({
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        // Transform message objects to use 'text' instead of 'message'
         const transformedMessages = response.data.map((msg) => ({
           ...msg,
           text: msg.message,
@@ -94,12 +107,19 @@ const ChatMain = ({
         editText={editText}
         setEditText={setEditText}
         handleStartEditMessage={handleStartEditMessage}
+        handleSaveEditMessage={handleSaveEditMessage}
+        handleCancelEdit={handleCancelEdit}
         handleDeleteMessage={handleDeleteMessage}
         handleHideMessage={handleHideMessage}
+        handleOpenRecallModal={handleOpenRecallModal}
+        handleRecallMessage={handleRecallMessage}
+        handleCloseRecallModal={handleCloseRecallModal}
+        isRecallModalOpen={isRecallModalOpen}
+        messageToRecall={messageToRecall}
         error={error}
         setError={setError}
         chatEndRef={chatEndRef}
-        groupId={selectedGroup._id}
+        recallModalRef={recallModalRef}
       />
 
       <ChatInput
@@ -109,9 +129,9 @@ const ChatMain = ({
         handleFileChange={handleFileChange}
         showFileInput={showFileInput}
         setShowFileInput={setShowFileInput}
+        handleTyping={handleTyping}
       />
 
-      {/* Right Sidebar (Slides in from Right) */}
       {sidebarOpen && (
         <>
           <div
@@ -169,7 +189,7 @@ const ChatMain = ({
                       className="flex justify-between items-center text-xs sm:text-sm text-gray-800"
                     >
                       <span className="flex items-center gap-2">
-                        {member.name}
+                        {member.name} ({member.role})
                         {onlineUsers.has(member._id) && (
                           <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                         )}
@@ -250,7 +270,7 @@ const ChatMain = ({
                 onClick={handleLeaveGroup}
                 className="mt-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
-                Giải tán nhóm
+                Rời nhóm
               </button>
             </div>
           </div>
