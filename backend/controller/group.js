@@ -226,7 +226,7 @@ const sendGroupMessage = async (req, res) => {
             message: sanitizedMessage,
             fileName: file?.originalname || null,
             fileSize: file?.size || null,
-            imageUrl: file ? `/uploads/reports/${file.filename}` : null,
+            fileUrl: file ? `/uploads/reports/${file.filename}` : null,
             fileId: file ? `file_${Date.now()}` : null,
             fileType: file?.mimetype || null,
             timestamp: new Date(),
@@ -241,7 +241,7 @@ const sendGroupMessage = async (req, res) => {
             senderId: userId,
             senderName: user.name,
             message: sanitizedMessage,
-            imageUrl: newMessage.imageUrl,
+            fileUrl: newMessage.fileUrl,
             fileName: newMessage.fileName,
             fileSize: newMessage.fileSize,
             fileType: newMessage.fileType,
@@ -280,7 +280,7 @@ const getGroupMessages = async (req, res) => {
             senderName: msg.senderId.name,
             message: msg.message,
             timestamp: msg.timestamp,
-            imageUrl: msg.imageUrl,
+            fileUrl: msg.fileUrl,
             fileId: msg.fileId,
             fileName: msg.fileName,
             fileSize: msg.fileSize,
@@ -397,7 +397,6 @@ const editMessage = async (req, res) => {
         res.status(500).json({ message: "Lỗi khi chỉnh sửa tin nhắn", error: error.message });
     }
 };
-
 
 const deleteMessage = async (req, res) => {
     try {

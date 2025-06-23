@@ -34,7 +34,7 @@ router.post('/:groupId/members', authenticateJWT, addMember);
 router.get('/:groupId/messages', authenticateJWT, getGroupMessages);
 
 // Gửi tin nhắn nhóm
-router.post('/:groupId/messages', upload.single("image"), authenticateJWT, sendGroupMessage);
+router.post('/:groupId/messages', upload.single("file"), authenticateJWT, sendGroupMessage);
 
 // Xóa một thành viên
 router.delete("/:groupId/members/:userId", authenticateJWT, removeMember);

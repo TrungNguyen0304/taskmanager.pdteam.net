@@ -134,30 +134,39 @@ function setupSocket(io) {
             console.log(`Người dùng ${userId} đã tham gia nhóm ${groupId}`);
         });
 
-        socket.on("group-message", ({ userId, groupId, message }) => {
-            if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
-
+        socket.on("group-message", ({ senderId, groupId, senderName, message, fileUrl, fileName, fileSize, fileType, fileId, timestamp }) => {
+            // Kiểm tra tính hợp lệ của senderId và groupId
+            if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(groupId)) {
+                return;
+            }
+            // Phát sự kiện group-message đến tất cả client trong groupId
             io.to(groupId).emit("group-message", {
-                senderId: userId,
-                groupId,
-                message,
-                timestamp: new Date().toISOString(),
-            });
-        });
-
-        socket.on("group-image", ({ senderId, groupId, imageUrl, fileName, fileSize, fileType, timestamp }) => {
-            if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
-
-            io.to(groupId).emit("group-image", {
                 senderId,
                 groupId,
-                imageUrl,
-                fileName,
-                fileSize,
-                fileType,
-                timestamp
+                senderName,
+                message: message || "", // Đảm bảo message luôn là string, ngay cả khi không có
+                fileUrl: fileUrl || null, // Null nếu không có file
+                fileName: fileName || null,
+                fileSize: fileSize || null,
+                fileType: fileType || null,
+                fileId: fileId || null,
+                timestamp: timestamp || new Date().toISOString(), // Sử dụng timestamp từ client hoặc tạo mới
             });
         });
+
+        // socket.on("group-image", ({ senderId, groupId, imageUrl, fileName, fileSize, fileType, timestamp }) => {
+        //     if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
+
+        //     io.to(groupId).emit("group-image", {
+        //         senderId,
+        //         groupId,
+        //         imageUrl,
+        //         fileName,
+        //         fileSize,
+        //         fileType,
+        //         timestamp
+        //     });
+        // });
 
         socket.on("typing", ({ userId, groupId }) => {
             if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
