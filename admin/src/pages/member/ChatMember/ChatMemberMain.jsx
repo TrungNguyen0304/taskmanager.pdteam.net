@@ -63,7 +63,7 @@ const ChatMainMember = ({
 }) => {
   // Debug props
   useEffect(() => {
-    console.log("Recall modal props changed:", { isRecallModalOpen, messageToRecall });
+    // console.log("Recall modal props changed:", { isRecallModalOpen, messageToRecall });
   }, [isRecallModalOpen, messageToRecall]);
 
   // Fetch messages when group changes to prevent stale data
