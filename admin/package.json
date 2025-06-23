@@ -46,6 +46,7 @@
     "stream-browserify": "^3.0.0",
     "util": "^0.12.5",
     "vite": "^6.3.5",
+    "vite-plugin-node-polyfills": "^0.23.0",
     "yup": "^1.6.1"
   },
   "devDependencies": {
