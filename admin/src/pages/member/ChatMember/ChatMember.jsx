@@ -10,11 +10,12 @@ const API_URL = "http://localhost:8001/api/group";
 const TEAM_API_URL = "http://localhost:8001/api/member/showallTeam";
 
 const ChatMember = () => {
-  const socket = useContext(SocketContext); // Lấy socket từ context
+  const socket = useContext(SocketContext);
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
   const addMemberRef = useRef(null);
   const createGroupRef = useRef(null);
+  const recallModalRef = useRef(null); // Thêm ref cho recall modal
 
   const currentUser = JSON.parse(localStorage.getItem("user")) || {
     _id: "",
@@ -43,9 +44,10 @@ const ChatMember = () => {
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editText, setEditText] = useState("");
   const [showFileInput, setShowFileInput] = useState(false);
-  
+  const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
+  const [messageToRecall, setMessageToRecall] = useState(null);
 
-  // Lấy danh sách nhóm và thành viên đội
+  // Fetch groups and team members
   useEffect(() => {
     const fetchGroups = async () => {
       try {
@@ -72,16 +74,21 @@ const ChatMember = () => {
         const res = await axios.get(TEAM_API_URL, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const members = res.data.teams.reduce((acc, team) => [
-          ...acc,
-          ...team.assignedMembers.map((member) => ({
-            _id: member._id,
-            name: member.name,
-          })),
-        ], []);
+        const members = res.data.teams.reduce(
+          (acc, team) => [
+            ...acc,
+            ...team.assignedMembers.map((member) => ({
+              _id: member._id,
+              name: member.name,
+            })),
+          ],
+          []
+        );
         setTeamMembers(members);
       } catch (err) {
-        setError(err.response?.data?.message || "Không thể lấy danh sách thành viên đội");
+        setError(
+          err.response?.data?.message || "Không thể lấy danh sách thành viên đội"
+        );
       }
     };
 
@@ -89,7 +96,7 @@ const ChatMember = () => {
     fetchTeamMembers();
   }, []);
 
-  // Xử lý tham gia/rời nhóm và lấy tin nhắn
+  // Handle join/leave group and fetch messages
   useEffect(() => {
     if (!selectedGroup?._id || !socket || !socket.connected) return;
 
@@ -118,6 +125,8 @@ const ChatMember = () => {
             timestamp: msg.timestamp,
             system: msg.senderId === "System",
             hidden: false,
+            isRecalled: msg.isRecalled || false,
+            isEdited: msg.isEdited || false,
           }))
         );
       } catch (err) {
@@ -137,17 +146,15 @@ const ChatMember = () => {
     };
   }, [socket, selectedGroup?._id, currentUser._id]);
 
-  // Xử lý các sự kiện socket
+  // Handle socket events
   useEffect(() => {
     if (!socket || !socket.connected) return;
 
     socket.on("user-online", (userId) => {
-      console.log("User online:", userId);
       setOnlineUsers((prev) => new Set(prev).add(userId));
     });
 
     socket.on("user-offline", (userId) => {
-      console.log("User offline:", userId);
       setOnlineUsers((prev) => {
         const newSet = new Set(prev);
         newSet.delete(userId);
@@ -156,7 +163,6 @@ const ChatMember = () => {
     });
 
     socket.on("group-message", (msg) => {
-      console.log("Received message:", msg);
       setMessages((prev) => [
         ...prev,
         {
@@ -172,6 +178,8 @@ const ChatMember = () => {
           timestamp: msg.timestamp,
           system: msg.senderId === "System",
           hidden: false,
+          isRecalled: false,
+          isEdited: false,
         },
       ]);
     });
@@ -222,32 +230,82 @@ const ChatMember = () => {
       }, 3000);
     });
 
+    socket.on("message-edited", (updatedMessage) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === updatedMessage.messageId
+            ? {
+                ...msg,
+                text: updatedMessage.message,
+                isEdited: updatedMessage.isEdited,
+              }
+            : msg
+        )
+      );
+    });
+
+    socket.on("message-recalled", (recalledMessage) => {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === recalledMessage.messageId
+            ? {
+                ...msg,
+                isRecalled: recalledMessage.isRecalled,
+                text: recalledMessage.message,
+                imageUrl: null,
+              }
+            : msg
+        )
+      );
+      if (recalledMessage.messageId === messageToRecall) {
+        setIsRecallModalOpen(false);
+        setMessageToRecall(null);
+      }
+    });
+
+    socket.on("message-deleted", ({ messageId, onlyFor }) => {
+      if (onlyFor === currentUser._id) {
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg._id !== messageId)
+        );
+      }
+    });
+
     return () => {
       socket.off("user-online");
       socket.off("user-offline");
       socket.off("group-message");
       socket.off("new-member");
       socket.off("typing");
+      socket.off("message-edited");
+      socket.off("message-recalled");
+      socket.off("message-deleted");
     };
-  }, [socket, selectedGroup?._id, currentUser._id]);
+  }, [socket, selectedGroup?._id, currentUser._id, messageToRecall]);
 
-  // Cuộn xuống tin nhắn mới nhất
+  // Scroll to latest message
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Xử lý click ngoài để đóng menu
+  // Handle click outside to close menus
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (addMemberRef.current && !addMemberRef.current.contains(e.target)) {
+      if (
+        addMemberRef.current &&
+        !addMemberRef.current.contains(e.target) &&
+        createGroupRef.current &&
+        !createGroupRef.current.contains(e.target) &&
+        recallModalRef.current &&
+        !recallModalRef.current.contains(e.target) &&
+        !e.target.closest(".message-menu")
+      ) {
         setAddingMember(false);
-      }
-      if (createGroupRef.current && !createGroupRef.current.contains(e.target)) {
         setCreatingGroup(false);
-      }
-      if (!e.target.closest(".message-menu")) {
         setOpenMenuId(null);
         setEditingMessageId(null);
+        setIsRecallModalOpen(false);
+        setMessageToRecall(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -444,16 +502,159 @@ const ChatMember = () => {
   };
 
   const handleDeleteMessage = async (messageId) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      return;
+    }
+    if (!selectedGroup?._id) {
+      setError("Không tìm thấy ID nhóm.");
+      return;
+    }
+    if (message.isRecalled && message.senderId !== currentUser._id) {
+      setError("Bạn không thể xóa tin nhắn đã thu hồi của người khác.");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/${selectedGroup._id}/messages/${messageId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      if (!token) {
+        setError("Vui lòng đăng nhập lại để xóa tin nhắn.");
+        return;
+      }
+      await axios.delete(
+        `${API_URL}/${selectedGroup._id}/messages/${messageId}/delete`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.filter((msg) => msg._id !== messageId)
+      );
+      socket.emit("message-deleted", {
+        messageId,
+        onlyFor: currentUser._id,
       });
-      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+      setError(null);
       setOpenMenuId(null);
     } catch (err) {
       setError(err.response?.data?.message || "Lỗi khi xóa tin nhắn");
     }
+  };
+
+  const handleRecallMessage = async (messageId) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      return;
+    }
+    if (!selectedGroup?._id) {
+      setError("Không tìm thấy ID nhóm.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      return;
+    }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Vui lòng đăng nhập lại để thu hồi tin nhắn.");
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+      return;
+    }
+
+    try {
+      await axios.delete(
+        `${API_URL}/${selectedGroup._id}/messages/${messageId}/recall`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId
+            ? {
+                ...msg,
+                isRecalled: true,
+                text: "Tin nhắn đã bị thu hồi",
+                imageUrl: null,
+              }
+            : msg
+        )
+      );
+      socket.emit("message-recalled", {
+        messageId,
+        message: "Tin nhắn đã bị thu hồi",
+        isRecalled: true,
+      });
+      setError(null);
+      setIsRecallModalOpen(false);
+      setMessageToRecall(null);
+    } catch (err) {
+      setError(err.response?.data?.message || "Lỗi khi thu hồi tin nhắn");
+    }
+  };
+
+  const handleEditSubmit = async (messageId) => {
+    if (!editText.trim()) {
+      setError("Tin nhắn không được để trống.");
+      return;
+    }
+    try {
+      const message = messages.find((msg) => msg._id === messageId);
+      if (!message) {
+        throw new Error("Tin nhắn không tồn tại trong danh sách.");
+      }
+      if (message.isRecalled) {
+        throw new Error("Tin nhắn đã bị thu hồi, không thể chỉnh sửa.");
+      }
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Vui lòng đăng nhập lại để chỉnh sửa tin nhắn.");
+        return;
+      }
+      await axios.put(
+        `${API_URL}/${selectedGroup._id}/messages/${messageId}/edit`,
+        { newMessage: editText },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === messageId
+            ? {
+                ...msg,
+                text: editText,
+                isEdited: true,
+              }
+            : msg
+        )
+      );
+      socket.emit("message-edited", {
+        messageId,
+        message: editText,
+        isEdited: true,
+      });
+      setEditingMessageId(null);
+      setEditText("");
+      setError(null);
+      setOpenMenuId(null);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Lỗi khi chỉnh sửa tin nhắn");
+    }
+  };
+
+  const handleOpenRecallModal = (messageId) => {
+    setMessageToRecall(messageId);
+    setIsRecallModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  const handleCloseRecallModal = () => {
+    setIsRecallModalOpen(false);
+    setMessageToRecall(null);
   };
 
   const handleHideMessage = (messageId) => {
@@ -464,33 +665,18 @@ const ChatMember = () => {
   };
 
   const handleStartEditMessage = (messageId, text) => {
+    const message = messages.find((msg) => msg._id === messageId);
+    if (!message) {
+      setError("Tin nhắn không tồn tại.");
+      return;
+    }
+    if (message.isRecalled) {
+      setError("Tin nhắn đã bị thu hồi, không thể chỉnh sửa.");
+      return;
+    }
     setEditingMessageId(messageId);
     setEditText(text);
     setOpenMenuId(null);
-  };
-
-  const handleSaveEditMessage = async (messageId) => {
-    if (!editText.trim()) {
-      setError("Tin nhắn không được để trống");
-      return;
-    }
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `${API_URL}/${selectedGroup._id}/messages/${messageId}`,
-        { message: editText.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg._id === messageId ? { ...msg, text: editText.trim() } : msg
-        )
-      );
-      setEditingMessageId(null);
-      setEditText("");
-    } catch (err) {
-      setError(err.response?.data?.message || "Lỗi khi chỉnh sửa tin nhắn");
-    }
   };
 
   const handleCancelEdit = () => {
@@ -571,12 +757,18 @@ const ChatMember = () => {
           editText={editText}
           setEditText={setEditText}
           handleStartEditMessage={handleStartEditMessage}
-          handleSaveEditMessage={handleSaveEditMessage}
+          handleSaveEditMessage={handleEditSubmit}
           handleCancelEdit={handleCancelEdit}
           handleDeleteMessage={handleDeleteMessage}
           handleHideMessage={handleHideMessage}
+          handleOpenRecallModal={handleOpenRecallModal}
+          handleRecallMessage={handleRecallMessage}
+          handleCloseRecallModal={handleCloseRecallModal}
+          isRecallModalOpen={isRecallModalOpen}
+          messageToRecall={messageToRecall}
           chatEndRef={chatEndRef}
           addMemberRef={addMemberRef}
+          recallModalRef={recallModalRef} // Truyền ref
           error={error}
           setError={setError}
           navigate={navigate}
