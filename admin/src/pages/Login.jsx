@@ -217,25 +217,6 @@ const Login = () => {
               {formik.isSubmitting ? "Đang đăng nhập..." : "Đăng Nhập"}
             </button>
           </form>
-
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500">
-              Bằng cách đăng nhập, bạn đồng ý với{" "}
-              <a
-                href="#"
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Điều khoản dịch vụ
-              </a>{" "}
-              và{" "}
-              <a
-                href="#"
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Chính sách bảo mật
-              </a>
-            </p>
-          </div>
         </div>
       </div>
     </div>
