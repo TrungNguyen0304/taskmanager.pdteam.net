@@ -45,14 +45,27 @@ const ChatMainLeader = ({
   editText,
   setEditText,
   handleStartEditMessage,
+  handleSaveEditMessage,
+  handleCancelEdit,
   handleDeleteMessage,
   handleHideMessage,
+  handleOpenRecallModal,
+  handleRecallMessage,
+  handleCloseRecallModal,
+  isRecallModalOpen,
+  messageToRecall,
   chatEndRef,
   addMemberRef,
+  recallModalRef, // Nhận ref từ ChatLeader
   error,
   setError,
   navigate,
 }) => {
+  // Debug props
+  useEffect(() => {
+    console.log("Recall modal props changed:", { isRecallModalOpen, messageToRecall });
+  }, [isRecallModalOpen, messageToRecall]);
+
   // Fetch messages when group changes to prevent stale data
   useEffect(() => {
     const fetchMessages = async () => {
@@ -65,7 +78,6 @@ const ChatMainLeader = ({
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        // Transform message objects to use 'text' instead of 'message'
         const transformedMessages = response.data.map((msg) => ({
           ...msg,
           text: msg.message,
@@ -100,12 +112,19 @@ const ChatMainLeader = ({
         editText={editText}
         setEditText={setEditText}
         handleStartEditMessage={handleStartEditMessage}
+        handleSaveEditMessage={handleSaveEditMessage}
+        handleCancelEdit={handleCancelEdit}
         handleDeleteMessage={handleDeleteMessage}
         handleHideMessage={handleHideMessage}
+        handleOpenRecallModal={handleOpenRecallModal}
+        handleRecallMessage={handleRecallMessage}
+        handleCloseRecallModal={handleCloseRecallModal}
+        isRecallModalOpen={isRecallModalOpen}
+        messageToRecall={messageToRecall}
         error={error}
         setError={setError}
         chatEndRef={chatEndRef}
-        groupId={selectedGroup._id}
+        recallModalRef={recallModalRef} // Truyền ref xuống
       />
 
       <ChatInput
@@ -117,7 +136,6 @@ const ChatMainLeader = ({
         setShowFileInput={setShowFileInput}
       />
 
-      {/* Right Sidebar (Slides in from Right) */}
       {sidebarOpen && (
         <>
           <div

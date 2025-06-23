@@ -61,7 +61,6 @@ async function notifyNewMember(groupId, memberId, memberName, isLeaving = false)
 
 function setupSocket(io) {
     ioInstance = io;
-
     io.on("connection", (socket) => {
         console.log("Socket connected:", socket.id);
 
