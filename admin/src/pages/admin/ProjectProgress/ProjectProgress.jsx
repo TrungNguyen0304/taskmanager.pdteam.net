@@ -124,7 +124,7 @@ const ProjectProgress = () => {
   return (
     <div className="p-0 md:p-4">
       <div className="mx-auto w-full">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl lg:text-4xl">
+        <h1 className="mb-6 text-2xl font-bold text-blue-600 sm:mb-8 sm:text-3xl lg:text-4xl">
           Danh Sách Dự Án
         </h1>
         <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
