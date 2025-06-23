@@ -9,7 +9,6 @@ import { RiResetLeftFill } from "react-icons/ri";
 
 const ChatMessages = ({
   messages,
-  setMessages,
   currentUser,
   openMenuId,
   setOpenMenuId,
@@ -27,15 +26,14 @@ const ChatMessages = ({
   isRecallModalOpen,
   messageToRecall,
   error,
-  setError,
   chatEndRef,
-  recallModalRef,
+  recallModalRef, // Nhận ref từ ChatLeader
 }) => {
   const BASE_URL = "http://localhost:8001";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showToBottom, setShowToBottom] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Thêm trạng thái loading
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const chatContainerRef = useRef(null);
   const thumbnailContainerRef = useRef(null);
