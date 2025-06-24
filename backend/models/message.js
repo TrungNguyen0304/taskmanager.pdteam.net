@@ -12,7 +12,7 @@ const messageSchema = new mongoose.Schema({
     fileName: String,
     fileSize: Number,
     fileId: String,
-    imageUrl: { type: String },
+    fileUrl: { type: String },
     fileType: String,
     isRecalled: {
         type: Boolean,
