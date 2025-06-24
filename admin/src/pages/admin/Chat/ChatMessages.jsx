@@ -330,7 +330,12 @@ const ChatMessages = ({
                             className="flex items-center gap-2 px-4 py-2 text-violet-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                             disabled={msg.isRecalled}
                           >
-                            <RiResetLeftFill size={12} className="sm:w-4 sm:h-4" /> Thu hồi
+                            <RiResetLeftFill
+                              size={12}
+                              className="sm:w-4 sm:h-4"
+                            />
+                            Thu hồi
+                         
                           </button>
                           <button
                             onClick={() => {

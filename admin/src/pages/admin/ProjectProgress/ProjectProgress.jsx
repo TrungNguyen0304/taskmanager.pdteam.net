@@ -124,19 +124,19 @@ const ProjectProgress = () => {
   return (
     <div className="p-0 md:p-4">
       <div className="mx-auto w-full">
-        <h1 className="mb-6 text-2xl font-bold text-gray-900 sm:mb-8 sm:text-3xl lg:text-4xl">
+        <h1 className="mb-6 text-2xl font-bold text-blue-600 sm:mb-8 sm:text-3xl lg:text-4xl">
           Danh Sách Dự Án
         </h1>
         <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left">
+            <table className="w-full min-w-[980px] border-collapse text-left">
               {/* Table Header */}
               <thead className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white">
                 <tr>
                   <th className="w-[15%] px-4 py-3 text-sm font-semibold sm:text-base">
                     Tên Dự Án
                   </th>
-                  <th className="w-[40%] px-4 py-3 text-sm font-semibold sm:text-base">
+                  <th className="w-[25%] px-4 py-3 text-sm font-semibold sm:text-base">
                     Mô Tả
                   </th>
                   <th className="w-[15%] px-4 py-3 text-sm font-semibold sm:text-base">
@@ -157,7 +157,10 @@ const ProjectProgress = () => {
               <tbody>
                 {projects.map((project) => {
                   // Ensure progress is a safe value (0-100)
-                  const safeProgress = Math.min(Math.max(project.progress || 0, 0), 100);
+                  const safeProgress = Math.min(
+                    Math.max(project.progress || 0, 0),
+                    100
+                  );
                   return (
                     <tr
                       key={project._id}
@@ -166,12 +169,12 @@ const ProjectProgress = () => {
                       <td className="w-[15%] px-4 py-3 text-sm font-medium text-gray-900 sm:text-base">
                         {project.name}
                       </td>
-                      <td className="w-[40%] px-4 py-3 text-sm text-gray-700 sm:text-base">
+                      <td className="w-[25%] px-4 py-3 text-sm text-gray-700 sm:text-base">
                         {truncateDescription(project.description)}
                       </td>
                       <td className="w-[15%] px-4 py-3">
                         <span
-                          className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${getStatusColor(
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium text-center ${getStatusColor(
                             project.status
                           )}`}
                         >

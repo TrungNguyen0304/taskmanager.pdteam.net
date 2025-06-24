@@ -269,7 +269,7 @@ const TaskMember = () => {
                     </div>
                     <div className="flex gap-3">
                       <span
-                        className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-medium border ${getStatusStyle(
+                        className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-medium border text-center ${getStatusStyle(
                           task.status
                         )}`}
                       >
