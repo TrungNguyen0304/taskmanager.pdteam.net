@@ -4,8 +4,8 @@ import axios from "axios";
 import { ArrowLeft } from "lucide-react";
 
 const ReportProjects = () => {
-  const { id: projectId } = useParams(); 
-  const navigate = useNavigate(); 
+  const { id: projectId } = useParams();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     content: "",
     projectProgress: "",
@@ -72,7 +72,7 @@ const ReportProjects = () => {
     <div className="p-0 md:p-4">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center text-blue-600 hover:underline text-base md:text-xl mb-4"
+        className="flex items-center text-blue-600 hover:underline text-xl md:text-2xl mb-4"
       >
         <ArrowLeft className="w-6 h-6 mr-1" />
         Quay lại
