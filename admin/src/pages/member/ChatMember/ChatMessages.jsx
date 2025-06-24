@@ -617,13 +617,13 @@ const ChatMessages = ({
                     <>
                       <button
                         onClick={handlePrevFile}
-                        className="absolute left-0 top-0 h-full w-1/2 bg-transparent hover:bg-black hover:bg-opacity-20 transition-colors flex items-center justify-start pl-4"
+                        className="absolute left-0 top-0 h-full w-1/2 bg-transparent flex items-center justify-start pl-4"
                       >
                         <FaChevronLeft className="w-8 h-8 text-white opacity-50 hover:opacity-100" />
                       </button>
                       <button
                         onClick={handleNextFile}
-                        className="absolute right-0 top-0 h-full w-1/2 bg-transparent hover:bg-black hover:bg-opacity-20 transition-colors flex items-center justify-end pr-4"
+                        className="absolute right-0 top-0 h-full w-1/2 bg-transparent transition-colors flex items-center justify-end pr-4"
                       >
                         <FaChevronRight className="w-8 h-8 text-white opacity-50 hover:opacity-100" />
                       </button>
