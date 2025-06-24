@@ -142,7 +142,7 @@ const Chat = () => {
             senderId: msg.senderId,
             senderName: msg.senderName || "System",
             text: msg.message,
-            imageUrl: msg.imageUrl,
+            fileUrl: msg.fileUrl,
             fileName: msg.fileName,
             fileSize: msg.fileSize,
             fileType: msg.fileType,
@@ -195,7 +195,7 @@ const Chat = () => {
           senderId: msg.senderId,
           senderName: msg.senderName || "System",
           text: msg.message,
-          imageUrl: msg.imageUrl,
+          fileUrl: msg.fileUrl,
           fileName: msg.fileName,
           fileSize: msg.fileSize,
           fileType: msg.fileType,
@@ -277,7 +277,7 @@ const Chat = () => {
                 ...msg,
                 isRecalled: recalledMessage.isRecalled,
                 text: recalledMessage.message,
-                imageUrl: null,
+                fileUrl: null,
               }
             : msg
         )
@@ -359,7 +359,7 @@ const Chat = () => {
       const token = localStorage.getItem("token");
       const formData = new FormData();
       if (file) {
-        formData.append("image", file);
+        formData.append("file", file);
       }
       if (text.trim()) {
         formData.append("message", text.trim());
@@ -381,7 +381,7 @@ const Chat = () => {
         senderId: currentUser._id,
         senderName: currentUser.name,
         message: text.trim(),
-        imageUrl: msg.imageUrl,
+        fileUrl: msg.fileUrl,
         fileName: file?.name,
         fileSize: file?.size,
         fileType: file?.type,
@@ -603,7 +603,7 @@ const Chat = () => {
                 ...msg,
                 isRecalled: true,
                 text: "Tin nhắn đã bị thu hồi",
-                imageUrl: null,
+                fileUrl: null,
               }
             : msg
         )

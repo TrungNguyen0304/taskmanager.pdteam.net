@@ -4,8 +4,9 @@ import { FaRegEyeSlash } from "react-icons/fa";
 import { Edit2, Trash2 } from "lucide-react";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
-import { FaArrowDown, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaArrowDown, FaChevronLeft, FaChevronRight, FaFileAlt, FaDownload } from "react-icons/fa";
 import { RiResetLeftFill } from "react-icons/ri";
+import { v4 as uuidv4 } from "uuid";
 
 const ChatMessages = ({
   messages,
@@ -27,23 +28,48 @@ const ChatMessages = ({
   messageToRecall,
   error,
   chatEndRef,
-  recallModalRef, // Nhận ref từ ChatLeader
+  recallModalRef,
 }) => {
   const BASE_URL = "http://localhost:8001";
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [showToBottom, setShowToBottom] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Thêm trạng thái loading
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const chatContainerRef = useRef(null);
   const thumbnailContainerRef = useRef(null);
   const editInputRef = useRef(null);
 
-  const imageMessages = messages
-    .filter((msg) => msg.imageUrl && !msg.hidden && !msg.isRecalled)
-    ?.map((msg) => ({
-      url: `${BASE_URL}${msg.imageUrl}`,
-      fileName: msg.fileName || "Uploaded image",
+  // Lọc tin nhắn trùng lặp và gán uniqueId
+  const uniqueMessages = Array.from(
+    new Map(messages.map((msg) => [msg._id, msg])).values()
+  ).map((msg) => ({
+    ...msg,
+    uniqueId: msg._id || uuidv4(),
+  }));
+
+  // Kiểm tra trùng lặp và log để debug
+  useEffect(() => {
+    const seenIds = new Set();
+    const duplicates = messages.filter((msg) => {
+      const id = msg._id || msg.timestamp;
+      if (seenIds.has(id)) return true;
+      seenIds.add(id);
+      return false;
+    });
+    if (duplicates.length > 0) {
+   
+    }
+  }, [messages]);
+
+  // Lọc các file (ảnh hoặc file khác) để hiển thị trong modal
+  const fileMessages = uniqueMessages
+    .filter((msg) => msg.fileUrl && !msg.hidden && !msg.isRecalled)
+    .map((msg) => ({
+      url: `${BASE_URL}${msg.fileUrl}`,
+      fileName: msg.fileName || "Uploaded file",
+      fileType: msg.fileType || "application/octet-stream",
+      fileSize: msg.fileSize ? (msg.fileSize / 1024).toFixed(2) + " KB" : null,
     }));
 
   // Format timestamp
@@ -64,41 +90,56 @@ const ChatMessages = ({
     }
   };
 
-  const handleImageClick = (imageUrl) => {
-    setSelectedImage(imageUrl);
+  // Kiểm tra xem file có phải là ảnh không
+  const isImage = (fileType) => fileType && fileType.startsWith("image/");
+
+  // Xử lý tải file
+  const handleDownloadFile = (fileUrl, fileName) => {
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Xử lý nhấp vào file
+  const handleFileClick = (file) => {
+    setSelectedFile(file);
+    setCurrentFileIndex(fileMessages.findIndex((f) => f.url === file.url));
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setSelectedImage(null);
-    setCurrentImageIndex(0);
+    setSelectedFile(null);
+    setCurrentFileIndex(0);
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const handlePrevImage = () => {
-    if (imageMessages.length === 0) return;
-    setCurrentImageIndex((prev) => {
-      const newIndex = prev > 0 ? prev - 1 : imageMessages.length - 1;
-      setSelectedImage(imageMessages[newIndex].url);
+  const handlePrevFile = () => {
+    if (fileMessages.length === 0) return;
+    setCurrentFileIndex((prev) => {
+      const newIndex = prev > 0 ? prev - 1 : fileMessages.length - 1;
+      setSelectedFile(fileMessages[newIndex]);
       return newIndex;
     });
   };
 
-  const handleNextImage = () => {
-    if (imageMessages.length === 0) return;
-    setCurrentImageIndex((prev) => {
-      const newIndex = prev < imageMessages.length - 1 ? prev + 1 : 0;
-      setSelectedImage(imageMessages[newIndex].url);
+  const handleNextFile = () => {
+    if (fileMessages.length === 0) return;
+    setCurrentFileIndex((prev) => {
+      const newIndex = prev < fileMessages.length - 1 ? prev + 1 : 0;
+      setSelectedFile(fileMessages[newIndex]);
       return newIndex;
     });
   };
 
-  const handleThumbnailClick = (imageUrl, index) => {
-    setSelectedImage(imageUrl);
-    setCurrentImageIndex(index);
+  const handleThumbnailClick = (file, index) => {
+    setSelectedFile(file);
+    setCurrentFileIndex(index);
   };
 
   const handleScrollToBottom = () => {
@@ -108,19 +149,18 @@ const ChatMessages = ({
   };
 
   useEffect(() => {
-    if (chatEndRef.current && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
+    if (chatEndRef.current && uniqueMessages.length > 0) {
+      const lastMessage = uniqueMessages[uniqueMessages.length - 1];
       if (lastMessage.senderId === currentUser._id) {
         chatEndRef.current.scrollIntoView({ behavior: "smooth" });
       }
     }
-  }, [messages, chatEndRef, currentUser._id]);
+  }, [uniqueMessages, chatEndRef, currentUser._id]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (chatContainerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } =
-          chatContainerRef.current;
+        const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
         setShowToBottom(scrollTop + clientHeight < scrollHeight - 100);
       }
     };
@@ -132,22 +172,17 @@ const ChatMessages = ({
   }, []);
 
   useEffect(() => {
-    if (selectedImage && imageMessages.length > 0) {
-      const index = imageMessages.findIndex((img) => img.url === selectedImage);
+    if (selectedFile && fileMessages.length > 0) {
+      const index = fileMessages.findIndex((f) => f.url === selectedFile.url);
       if (index !== -1) {
-        setCurrentImageIndex(index);
+        setCurrentFileIndex(index);
       }
     }
-  }, [selectedImage, imageMessages]);
+  }, [selectedFile, fileMessages]);
 
   useEffect(() => {
-    if (
-      isModalOpen &&
-      thumbnailContainerRef.current &&
-      imageMessages.length > 1
-    ) {
-      const selectedThumbnail =
-        thumbnailContainerRef.current.children[currentImageIndex];
+    if (isModalOpen && thumbnailContainerRef.current && fileMessages.length > 1) {
+      const selectedThumbnail = thumbnailContainerRef.current.children[currentFileIndex];
       if (selectedThumbnail) {
         selectedThumbnail.scrollIntoView({
           behavior: "smooth",
@@ -156,7 +191,7 @@ const ChatMessages = ({
         });
       }
     }
-  }, [currentImageIndex, isModalOpen, imageMessages.length]);
+  }, [currentFileIndex, isModalOpen, fileMessages.length]);
 
   useEffect(() => {
     if (editingMessageId && editInputRef.current) {
@@ -186,17 +221,17 @@ const ChatMessages = ({
           {error}
         </div>
       )}
-      {messages.length === 0 ? (
+      {uniqueMessages.length === 0 ? (
         <div className="text-center text-gray-500 text-xs sm:text-sm">
           Chưa có tin nhắn nào trong nhóm này.
         </div>
       ) : (
-        messages.map((msg) => {
+        uniqueMessages.map((msg) => {
           const isCurrentUser = msg.senderId === currentUser._id;
           if (msg.system || msg.hidden) {
             return msg.system ? (
               <div
-                key={msg._id || msg.timestamp}
+                key={msg.uniqueId}
                 className="text-center text-xs italic text-gray-500 mb-3"
               >
                 {msg.text}
@@ -205,10 +240,8 @@ const ChatMessages = ({
           }
           return (
             <div
-              key={msg._id || msg.timestamp}
-              className={`mb-4 flex ${
-                isCurrentUser ? "justify-end" : "justify-start"
-              } items-center gap-2 group`}
+              key={msg.uniqueId}
+              className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"} items-center gap-2 group`}
             >
               {!isCurrentUser && (
                 <div
@@ -221,25 +254,46 @@ const ChatMessages = ({
                   </div>
                   <div className="text-xs sm:text-sm">
                     {msg.isRecalled ? (
-                      <div className="italic text-gray-400">
-                        Tin nhắn đã bị thu hồi
-                      </div>
+                      <div className="italic text-gray-400">Tin nhắn đã bị thu hồi</div>
                     ) : (
                       <>
-                        {msg.imageUrl && (
-                          <img
-                            src={`${BASE_URL}${msg.imageUrl}`}
-                            alt={msg.fileName || "Uploaded image"}
-                            className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain cursor-pointer"
+                        {msg.fileUrl && (
+                          <div
+                            className="flex items-center gap-2 mb-2 p-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
                             onClick={() =>
-                              handleImageClick(`${BASE_URL}${msg.imageUrl}`)
+                              handleFileClick({
+                                url: `${BASE_URL}${msg.fileUrl}`,
+                                fileName: msg.fileName,
+                                fileType: msg.fileType,
+                                fileSize: msg.fileSize ? (msg.fileSize / 1024).toFixed(2) + " KB" : null,
+                              })
                             }
-                          />
+                          >
+                            {isImage(msg.fileType) ? (
+                              <img
+                                src={`${BASE_URL}${msg.fileUrl}`}
+                                alt={msg.fileName || "Uploaded image"}
+                                className="max-w-[200px] sm:max-w-[300px] rounded-lg object-contain"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <FaFileAlt className="w-8 h-8 text-gray-600" />
+                                <div>
+                                  <p className="text-xs font-medium text-gray-800 truncate max-w-[150px]">
+                                    {msg.fileName || "File"}
+                                  </p>
+                                  {msg.fileSize && (
+                                    <p className="text-xs text-gray-500">
+                                      {(msg.fileSize / 1024).toFixed(2)} KB
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                         {msg.isEdited && (
-                          <span className="text-xs text-gray-400">
-                            (Đã chỉnh sửa)
-                          </span>
+                          <span className="text-xs text-gray-400">(Đã chỉnh sửa)</span>
                         )}
                         {msg.text && <div>{msg.text}</div>}
                       </>
@@ -255,29 +309,21 @@ const ChatMessages = ({
                   onClick={() => handleMenuClick(msg._id)}
                   className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <BiDotsVerticalRounded
-                    size={18}
-                    className="text-gray-600 sm:w-5 sm:h-5"
-                  />
+                  <BiDotsVerticalRounded size={18} className="text-gray-600 sm:w-5 sm:h-5" />
                 </button>
                 {openMenuId === msg._id && (
                   <div
-                    className={`absolute ${
-                      isCurrentUser ? "right-8" : "left-8"
-                    } bottom-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
+                    className={`absolute ${isCurrentUser ? "right-8" : "left-8"} bottom-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
                   >
                     {!msg.isRecalled ? (
                       isCurrentUser ? (
                         <>
                           <button
-                            onClick={() =>
-                              handleStartEditMessage(msg._id, msg.text || "")
-                            }
+                            onClick={() => handleStartEditMessage(msg._id, msg.text || "")}
                             className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                             disabled={msg.isRecalled}
                           >
-                            <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh
-                            sửa
+                            <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh sửa
                           </button>
                           <button
                             onClick={() => handleOpenRecallModal(msg._id)}
@@ -289,6 +335,7 @@ const ChatMessages = ({
                               className="sm:w-4 sm:h-4"
                             />
                             Thu hồi
+                          
                           </button>
                           <button
                             onClick={() => {
@@ -306,8 +353,7 @@ const ChatMessages = ({
                             }}
                             className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                           >
-                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
-                            Ẩn
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
                           </button>
                         </>
                       ) : (
@@ -328,8 +374,7 @@ const ChatMessages = ({
                             }}
                             className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                           >
-                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
-                            Ẩn
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
                           </button>
                         </>
                       )
@@ -388,25 +433,46 @@ const ChatMessages = ({
                   ) : (
                     <div className="text-xs sm:text-sm">
                       {msg.isRecalled ? (
-                        <div className="italic text-gray-400">
-                          Tin nhắn đã bị thu hồi
-                        </div>
+                        <div className="italic text-gray-400">Tin nhắn đã bị thu hồi</div>
                       ) : (
                         <>
-                          {msg.imageUrl && (
-                            <img
-                              src={`${BASE_URL}${msg.imageUrl}`}
-                              alt={msg.fileName || "Uploaded image"}
-                              className="max-w-[200px] sm:max-w-[300px] rounded-lg mb-2 object-contain cursor-pointer"
+                          {msg.fileUrl && (
+                            <div
+                              className="flex items-center gap-2 mb-2 p-2 bg-blue-700 rounded-lg cursor-pointer hover:bg-blue-800 transition-colors"
                               onClick={() =>
-                                handleImageClick(`${BASE_URL}${msg.imageUrl}`)
+                                handleFileClick({
+                                  url: `${BASE_URL}${msg.fileUrl}`,
+                                  fileName: msg.fileName,
+                                  fileType: msg.fileType,
+                                  fileSize: msg.fileSize ? (msg.fileSize / 1024).toFixed(2) + " KB" : null,
+                                })
                               }
-                            />
+                            >
+                              {isImage(msg.fileType) ? (
+                                <img
+                                  src={`${BASE_URL}${msg.fileUrl}`}
+                                  alt={msg.fileName || "Uploaded image"}
+                                  className="max-w-[200px] sm:max-w-[300px] rounded-lg object-contain"
+                                />
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <FaFileAlt className="w-8 h-8 text-white" />
+                                  <div>
+                                    <p className="text-xs font-medium text-white truncate max-w-[150px]">
+                                      {msg.fileName || "File"}
+                                    </p>
+                                    {msg.fileSize && (
+                                      <p className="text-xs text-gray-300">
+                                        {(msg.fileSize / 1024).toFixed(2)} KB
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
                           {msg.isEdited && (
-                            <span className="text-xs text-gray-400">
-                              (Đã chỉnh sửa)
-                            </span>
+                            <span className="text-xs text-gray-400">(Đã chỉnh sửa)</span>
                           )}
                           {msg.text && <div>{msg.text}</div>}
                         </>
@@ -430,15 +496,33 @@ const ChatMessages = ({
           <FaArrowDown className="w-5 h-5" />
         </button>
       )}
-      {isModalOpen && (
+      {isModalOpen && selectedFile && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex flex-col z-50">
           <div className="flex-1 flex items-center justify-center">
             <div className="relative max-w-[90vw] max-h-[70vh] mb-20">
-              <img
-                src={selectedImage}
-                alt={imageMessages[currentImageIndex]?.fileName || "Image"}
-                className="max-w-full max-h-[70vh] object-contain rounded-lg"
-              />
+              {isImage(selectedFile.fileType) ? (
+                <img
+                  src={selectedFile.url}
+                  alt={selectedFile.fileName || "File"}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-4 bg-gray-800 p-6 rounded-lg">
+                  <FaFileAlt className="w-16 h-16 text-gray-300" />
+                  <p className="text-white text-sm font-medium truncate max-w-[300px]">
+                    {selectedFile.fileName}
+                  </p>
+                  {selectedFile.fileSize && (
+                    <p className="text-gray-400 text-xs">{selectedFile.fileSize}</p>
+                  )}
+                  <button
+                    onClick={() => handleDownloadFile(selectedFile.url, selectedFile.fileName)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <FaDownload className="w-4 h-4" /> Tải xuống
+                  </button>
+                </div>
+              )}
               <button
                 onClick={handleCloseModal}
                 className="absolute top-2 right-2 bg-gray-800 text-white rounded-full p-2 hover:bg-gray-700 transition-colors"
@@ -447,10 +531,10 @@ const ChatMessages = ({
               </button>
             </div>
           </div>
-          {imageMessages.length > 1 && (
+          {fileMessages.length > 1 && (
             <div className="fixed bottom-0 left-0 right-0 bg-gray-900 bg-opacity-90 py-4 flex items-center justify-center gap-4 z-50">
               <button
-                onClick={handlePrevImage}
+                onClick={handlePrevFile}
                 className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
               >
                 <FaChevronLeft className="w-4 h-4" />
@@ -459,22 +543,32 @@ const ChatMessages = ({
                 className="flex gap-2 overflow-x-auto max-w-[80vw] custom-scrollbar"
                 ref={thumbnailContainerRef}
               >
-                {imageMessages.map((img, index) => (
-                  <img
-                    key={img.url}
-                    src={img.url}
-                    alt={img.fileName}
-                    className={`w-16 h-16 object-cover rounded-md cursor-pointer transition-opacity ${
-                      index === currentImageIndex
+                {fileMessages.map((file, index) => (
+                  <div
+                    key={file.url}
+                    className={`w-16 h-16 rounded-md cursor-pointer transition-opacity ${
+                      index === currentFileIndex
                         ? "opacity-100 border-2 border-blue-500"
                         : "opacity-50 hover:opacity-75"
                     }`}
-                    onClick={() => handleThumbnailClick(img.url, index)}
-                  />
+                    onClick={() => handleThumbnailClick(file, index)}
+                  >
+                    {isImage(file.fileType) ? (
+                      <img
+                        src={file.url}
+                        alt={file.fileName}
+                        className="w-full h-full object-cover rounded-md"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-700 flex items-center justify-center rounded-md">
+                        <FaFileAlt className="w-8 h-8 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
               <button
-                onClick={handleNextImage}
+                onClick={handleNextFile}
                 className="bg-gray-800 text-white p-2 rounded-full hover:bg-gray-700 transition-colors"
               >
                 <FaChevronRight className="w-4 h-4" />
@@ -489,12 +583,9 @@ const ChatMessages = ({
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         >
           <div className="bg-white rounded-lg p-6 w-[90%] max-w-sm shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Xác nhận thu hồi
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Xác nhận thu hồi</h3>
             <p className="text-sm text-gray-600 mb-6">
-              Bạn có chắc muốn thu hồi tin nhắn này? Hành động này không thể
-              hoàn tác.
+              Bạn có chắc muốn thu hồi tin nhắn này? Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-end gap-3">
               <button

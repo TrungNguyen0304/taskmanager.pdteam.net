@@ -226,7 +226,7 @@ const sendGroupMessage = async (req, res) => {
             message: sanitizedMessage,
             fileName: file?.originalname || null,
             fileSize: file?.size || null,
-            imageUrl: file ? `/uploads/reports/${file.filename}` : null,
+            fileUrl: file ? `/uploads/reports/${file.filename}` : null,
             fileId: file ? `file_${Date.now()}` : null,
             fileType: file?.mimetype || null,
             timestamp: new Date(),
@@ -241,7 +241,7 @@ const sendGroupMessage = async (req, res) => {
             senderId: userId,
             senderName: user.name,
             message: sanitizedMessage,
-            imageUrl: newMessage.imageUrl,
+            fileUrl: newMessage.fileUrl,
             fileName: newMessage.fileName,
             fileSize: newMessage.fileSize,
             fileType: newMessage.fileType,
@@ -280,7 +280,7 @@ const getGroupMessages = async (req, res) => {
             senderName: msg.senderId.name,
             message: msg.message,
             timestamp: msg.timestamp,
-            imageUrl: msg.imageUrl,
+            fileUrl: msg.fileUrl,
             fileId: msg.fileId,
             fileName: msg.fileName,
             fileSize: msg.fileSize,
@@ -318,7 +318,7 @@ const recallMessage = async (req, res) => {
         // Đánh dấu tin nhắn đã thu hồi và xóa tham chiếu đến ảnh (nếu có)
         message.isRecalled = true;
         message.message = "Tin nhắn đã bị thu hồi";
-        message.imageUrl = null; // Xóa URL ảnh
+        message.fileUrl = null; // Xóa URL ảnh
         message.fileName = null; // Xóa tên file
         message.fileSize = null; // Xóa kích thước file
         message.fileType = null; // Xóa loại file
@@ -333,7 +333,7 @@ const recallMessage = async (req, res) => {
             senderName: message.senderId.name,
             isRecalled: true,
             message: "Tin nhắn đã bị thu hồi",
-            imageUrl: null, // Đảm bảo ảnh không còn được gửi
+            fileUrl: null, // Đảm bảo ảnh không còn được gửi
             fileName: null,
             fileSize: null,
             fileType: null,

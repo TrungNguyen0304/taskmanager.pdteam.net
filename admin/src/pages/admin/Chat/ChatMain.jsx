@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { MoreVertical, X, UserPlus, Users, ChevronDown } from "lucide-react";
 import axios from "axios";
 import ChatHeader from "./ChatHeader";
-import ChatMessages from "./ChatMessages";
+import  ChatMessages  from "./ChatMessages";
 import ChatInput from "./ChatInput";
 
 const ChatMain = ({
