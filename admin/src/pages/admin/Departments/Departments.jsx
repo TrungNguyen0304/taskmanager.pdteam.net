@@ -144,7 +144,7 @@ const Departments = () => {
       <div className="w-full mx-auto bg-white p-6 rounded-xl shadow-md">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-1">
+            <h2 className="text-2xl md:text-3xl font-bold text-blue-600 mb-1">
               Quản Lý Phòng Ban
             </h2>
             <p className="text-gray-600">

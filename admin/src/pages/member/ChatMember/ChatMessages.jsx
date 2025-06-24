@@ -1,10 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { BiDotsVerticalRounded } from "react-icons/bi";
 import { FaRegEyeSlash } from "react-icons/fa";
 import { Edit2, Trash2 } from "lucide-react";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
-import { FaArrowDown, FaChevronLeft, FaChevronRight, FaFileAlt, FaDownload } from "react-icons/fa";
+import {
+  FaArrowDown,
+  FaChevronLeft,
+  FaChevronRight,
+  FaFileAlt,
+  FaDownload,
+} from "react-icons/fa";
 import { RiResetLeftFill } from "react-icons/ri";
 import { v4 as uuidv4 } from "uuid";
 
@@ -39,10 +45,11 @@ const ChatMessages = ({
   const chatContainerRef = useRef(null);
   const thumbnailContainerRef = useRef(null);
   const editInputRef = useRef(null);
+  const isUserScrolledUp = useRef(false);
 
   // Lọc tin nhắn trùng lặp và gán uniqueId
   const uniqueMessages = Array.from(
-    new Map(messages.map((msg) => [msg._id, msg])).values()
+    new Map(messages.map((msg) => [msg._id || msg.timestamp, msg])).values()
   ).map((msg) => ({
     ...msg,
     uniqueId: msg._id || uuidv4(),
@@ -50,31 +57,35 @@ const ChatMessages = ({
 
   // Kiểm tra trùng lặp và log để debug
   useEffect(() => {
-    const seenIds = new Set();
-    const duplicates = messages.filter((msg) => {
-      const id = msg._id || msg.timestamp;
-      if (seenIds.has(id)) return true;
-      seenIds.add(id);
-      return false;
-    });
-    if (duplicates.length > 0) {
-   
+    if (process.env.NODE_ENV === "development") {
+      const seenIds = new Set();
+      const duplicates = messages.filter((msg) => {
+        const id = msg._id || msg.timestamp;
+        if (seenIds.has(id)) return true;
+        seenIds.add(id);
+        return false;
+      });
+      if (duplicates.length > 0) {
+        console.warn("Duplicate messages detected:", duplicates);
+      }
     }
   }, [messages]);
 
-  // Lọc các file (ảnh hoặc file khác) để hiển thị trong modal
+  // Lọc các file để hiển thị trong modal
   const fileMessages = uniqueMessages
     .filter((msg) => msg.fileUrl && !msg.hidden && !msg.isRecalled)
     .map((msg) => ({
       url: `${BASE_URL}${msg.fileUrl}`,
       fileName: msg.fileName || "Uploaded file",
       fileType: msg.fileType || "application/octet-stream",
-      fileSize: msg.fileSize ? (msg.fileSize / 1024).toFixed(2) + " KB" : null,
+      fileSize: msg.fileSize ? `${(msg.fileSize / 1024).toFixed(2)} KB` : null,
     }));
 
   // Format timestamp
-  const formatTimestamp = (timestamp) => {
+  const formatTimestamp = useCallback((timestamp) => {
+    if (!timestamp) return "";
     const messageDate = new Date(timestamp);
+    if (isNaN(messageDate.getTime())) return "";
     const now = new Date();
     const diffMs = now - messageDate;
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -82,86 +93,89 @@ const ChatMessages = ({
 
     if (diffHours >= 24) {
       return `${diffDays} ngày`;
-    } else {
-      return messageDate.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
     }
-  };
+    return messageDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, []);
 
   // Kiểm tra xem file có phải là ảnh không
-  const isImage = (fileType) => fileType && fileType.startsWith("image/");
+  const isImage = useCallback((fileType) => fileType?.startsWith("image/"), []);
 
   // Xử lý tải file
-  const handleDownloadFile = (fileUrl, fileName) => {
+  const handleDownloadFile = useCallback((fileUrl, fileName) => {
     const link = document.createElement("a");
     link.href = fileUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, []);
 
   // Xử lý nhấp vào file
-  const handleFileClick = (file) => {
-    setSelectedFile(file);
-    setCurrentFileIndex(fileMessages.findIndex((f) => f.url === file.url));
-    setIsModalOpen(true);
-  };
+  const handleFileClick = useCallback(
+    (file) => {
+      setSelectedFile(file);
+      setCurrentFileIndex(fileMessages.findIndex((f) => f.url === file.url));
+      setIsModalOpen(true);
+    },
+    [fileMessages]
+  );
 
-  const handleCloseModal = () => {
+  // Đóng modal
+  const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedFile(null);
     setCurrentFileIndex(0);
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  };
+  }, [chatEndRef]);
 
-  const handlePrevFile = () => {
-    if (fileMessages.length === 0) return;
+  // Chuyển file trước
+  const handlePrevFile = useCallback(() => {
+    if (fileMessages.length <= 1) return;
     setCurrentFileIndex((prev) => {
       const newIndex = prev > 0 ? prev - 1 : fileMessages.length - 1;
       setSelectedFile(fileMessages[newIndex]);
       return newIndex;
     });
-  };
+  }, [fileMessages]);
 
-  const handleNextFile = () => {
-    if (fileMessages.length === 0) return;
+  // Chuyển file tiếp theo
+  const handleNextFile = useCallback(() => {
+    if (fileMessages.length <= 1) return;
     setCurrentFileIndex((prev) => {
       const newIndex = prev < fileMessages.length - 1 ? prev + 1 : 0;
       setSelectedFile(fileMessages[newIndex]);
       return newIndex;
     });
-  };
+  }, [fileMessages]);
 
-  const handleThumbnailClick = (file, index) => {
+  // Xử lý nhấp vào thumbnail
+  const handleThumbnailClick = useCallback((file, index) => {
     setSelectedFile(file);
     setCurrentFileIndex(index);
-  };
+  }, []);
 
-  const handleScrollToBottom = () => {
+  // Cuộn xuống dưới cùng
+  const handleScrollToBottom = useCallback(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+      isUserScrolledUp.current = false;
     }
-  };
+  }, [chatEndRef]);
 
-  useEffect(() => {
-    if (chatEndRef.current && uniqueMessages.length > 0) {
-      const lastMessage = uniqueMessages[uniqueMessages.length - 1];
-      if (lastMessage.senderId === currentUser._id) {
-        chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-      }
-    }
-  }, [uniqueMessages, chatEndRef, currentUser._id]);
-
+  // Theo dõi hành vi cuộn và hiển thị nút "To Bottom"
   useEffect(() => {
     const handleScroll = () => {
       if (chatContainerRef.current) {
-        const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-        setShowToBottom(scrollTop + clientHeight < scrollHeight - 100);
+        const { scrollTop, scrollHeight, clientHeight } =
+          chatContainerRef.current;
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        setShowToBottom(!isNearBottom);
+        isUserScrolledUp.current = !isNearBottom;
       }
     };
     const container = chatContainerRef.current;
@@ -171,6 +185,24 @@ const ChatMessages = ({
     }
   }, []);
 
+  // Cuộn tự động khi có tin nhắn mới
+  useEffect(() => {
+    if (
+      chatEndRef.current &&
+      uniqueMessages.length > 0 &&
+      !isUserScrolledUp.current
+    ) {
+      const lastMessage = uniqueMessages[uniqueMessages.length - 1];
+      if (
+        lastMessage.senderId === currentUser?._id ||
+        chatContainerRef.current.scrollTop === 0
+      ) {
+        chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [uniqueMessages, currentUser?._id, chatEndRef]);
+
+  // Cập nhật chỉ số file khi modal mở
   useEffect(() => {
     if (selectedFile && fileMessages.length > 0) {
       const index = fileMessages.findIndex((f) => f.url === selectedFile.url);
@@ -180,9 +212,15 @@ const ChatMessages = ({
     }
   }, [selectedFile, fileMessages]);
 
+  // Cuộn thumbnail vào đúng vị trí
   useEffect(() => {
-    if (isModalOpen && thumbnailContainerRef.current && fileMessages.length > 1) {
-      const selectedThumbnail = thumbnailContainerRef.current.children[currentFileIndex];
+    if (
+      isModalOpen &&
+      thumbnailContainerRef.current &&
+      fileMessages.length > 1
+    ) {
+      const selectedThumbnail =
+        thumbnailContainerRef.current.children[currentFileIndex];
       if (selectedThumbnail) {
         selectedThumbnail.scrollIntoView({
           behavior: "smooth",
@@ -193,15 +231,52 @@ const ChatMessages = ({
     }
   }, [currentFileIndex, isModalOpen, fileMessages.length]);
 
+  // Tự động focus vào input khi chỉnh sửa
   useEffect(() => {
     if (editingMessageId && editInputRef.current) {
       editInputRef.current.focus();
     }
   }, [editingMessageId]);
 
-  const handleMenuClick = (messageId) => {
-    setOpenMenuId((prev) => (prev === messageId ? null : messageId));
-  };
+  // Xử lý sự kiện bàn phím để chuyển ảnh và thoát modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isModalOpen) return;
+      if (e.key === "ArrowLeft") {
+        handlePrevFile();
+      } else if (e.key === "ArrowRight") {
+        handleNextFile();
+      } else if (e.key === "Escape") {
+        handleCloseModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen, handlePrevFile, handleNextFile, handleCloseModal]);
+
+  // Xử lý click chuột để chuyển ảnh
+  const handleImageClick = useCallback(
+    (e) => {
+      if (!isModalOpen || !isImage(selectedFile.fileType)) return;
+      const rect = e.target.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      if (clickX < width / 2) {
+        handlePrevFile();
+      } else {
+        handleNextFile();
+      }
+    },
+    [isModalOpen, selectedFile, handlePrevFile, handleNextFile, isImage]
+  );
+
+  // Xử lý click menu
+  const handleMenuClick = useCallback(
+    (messageId) => {
+      setOpenMenuId((prev) => (prev === messageId ? null : messageId));
+    },
+    [setOpenMenuId]
+  );
 
   return (
     <div
@@ -227,7 +302,7 @@ const ChatMessages = ({
         </div>
       ) : (
         uniqueMessages.map((msg) => {
-          const isCurrentUser = msg.senderId === currentUser._id;
+          const isCurrentUser = msg.senderId === currentUser?._id;
           if (msg.system || msg.hidden) {
             return msg.system ? (
               <div
@@ -241,7 +316,9 @@ const ChatMessages = ({
           return (
             <div
               key={msg.uniqueId}
-              className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"} items-center gap-2 group`}
+              className={`mb-4 flex ${
+                isCurrentUser ? "justify-end" : "justify-start"
+              } items-start gap-2 group`}
             >
               {!isCurrentUser && (
                 <div
@@ -250,11 +327,13 @@ const ChatMessages = ({
                   }`}
                 >
                   <div className="text-xs font-semibold mb-1 text-gray-600">
-                    {msg.senderName}
+                    {msg.senderName || "Unknown User"}
                   </div>
                   <div className="text-xs sm:text-sm">
                     {msg.isRecalled ? (
-                      <div className="italic text-gray-400">Tin nhắn đã bị thu hồi</div>
+                      <div className="italic text-gray-400">
+                        Tin nhắn đã bị thu hồi
+                      </div>
                     ) : (
                       <>
                         {msg.fileUrl && (
@@ -265,7 +344,9 @@ const ChatMessages = ({
                                 url: `${BASE_URL}${msg.fileUrl}`,
                                 fileName: msg.fileName,
                                 fileType: msg.fileType,
-                                fileSize: msg.fileSize ? (msg.fileSize / 1024).toFixed(2) + " KB" : null,
+                                fileSize: msg.fileSize
+                                  ? `${(msg.fileSize / 1024).toFixed(2)} KB`
+                                  : null,
                               })
                             }
                           >
@@ -274,6 +355,9 @@ const ChatMessages = ({
                                 src={`${BASE_URL}${msg.fileUrl}`}
                                 alt={msg.fileName || "Uploaded image"}
                                 className="max-w-[200px] sm:max-w-[300px] rounded-lg object-contain"
+                                onError={(e) =>
+                                  (e.target.src = "/fallback-image.png")
+                                }
                               />
                             ) : (
                               <div className="flex items-center gap-2">
@@ -293,7 +377,9 @@ const ChatMessages = ({
                           </div>
                         )}
                         {msg.isEdited && (
-                          <span className="text-xs text-gray-400">(Đã chỉnh sửa)</span>
+                          <span className="text-xs text-gray-400 mr-2">
+                            (Đã chỉnh sửa)
+                          </span>
                         )}
                         {msg.text && <div>{msg.text}</div>}
                       </>
@@ -309,28 +395,40 @@ const ChatMessages = ({
                   onClick={() => handleMenuClick(msg._id)}
                   className="p-1 hover:bg-gray-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <BiDotsVerticalRounded size={18} className="text-gray-600 sm:w-5 sm:h-5" />
+                  <BiDotsVerticalRounded
+                    size={18}
+                    className="text-gray-600 sm:w-5 sm:h-5"
+                  />
                 </button>
                 {openMenuId === msg._id && (
                   <div
-                    className={`absolute ${isCurrentUser ? "right-8" : "left-8"} bottom-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
+                    className={`absolute ${
+                      isCurrentUser ? "right-8" : "left-8"
+                    } top-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
                   >
                     {!msg.isRecalled ? (
                       isCurrentUser ? (
                         <>
                           <button
-                            onClick={() => handleStartEditMessage(msg._id, msg.text || "")}
+                            onClick={() =>
+                              handleStartEditMessage(msg._id, msg.text || "")
+                            }
                             className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                             disabled={msg.isRecalled}
                           >
-                            <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh sửa
+                            <Edit2 size={12} className="sm:w-4 sm:h-4" /> Chỉnh
+                            sửa
                           </button>
                           <button
                             onClick={() => handleOpenRecallModal(msg._id)}
                             className="flex items-center gap-2 px-4 py-2 text-violet-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                             disabled={msg.isRecalled}
                           >
-                            <RiResetLeftFill size={12} className="sm:w-4 sm:h-4" /> Thu hồi
+                            <RiResetLeftFill
+                              size={12}
+                              className="sm:w-4 sm:h-4"
+                            />
+                            Thu hồi
                           </button>
                           <button
                             onClick={() => {
@@ -348,7 +446,8 @@ const ChatMessages = ({
                             }}
                             className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                           >
-                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
+                            Ẩn
                           </button>
                         </>
                       ) : (
@@ -369,7 +468,8 @@ const ChatMessages = ({
                             }}
                             className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                           >
-                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" /> Ẩn
+                            <FaRegEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />{" "}
+                            Ẩn
                           </button>
                         </>
                       )
@@ -397,7 +497,7 @@ const ChatMessages = ({
                     <div className="flex flex-col gap-2">
                       <input
                         type="text"
-                        value={editText}
+                        value={editText || ""}
                         onChange={(e) => setEditText(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !isLoading) {
@@ -428,7 +528,9 @@ const ChatMessages = ({
                   ) : (
                     <div className="text-xs sm:text-sm">
                       {msg.isRecalled ? (
-                        <div className="italic text-gray-400">Tin nhắn đã bị thu hồi</div>
+                        <div className="italic text-gray-400">
+                          Tin nhắn đã bị thu hồi
+                        </div>
                       ) : (
                         <>
                           {msg.fileUrl && (
@@ -439,7 +541,9 @@ const ChatMessages = ({
                                   url: `${BASE_URL}${msg.fileUrl}`,
                                   fileName: msg.fileName,
                                   fileType: msg.fileType,
-                                  fileSize: msg.fileSize ? (msg.fileSize / 1024).toFixed(2) + " KB" : null,
+                                  fileSize: msg.fileSize
+                                    ? `${(msg.fileSize / 1024).toFixed(2)} KB`
+                                    : null,
                                 })
                               }
                             >
@@ -448,6 +552,9 @@ const ChatMessages = ({
                                   src={`${BASE_URL}${msg.fileUrl}`}
                                   alt={msg.fileName || "Uploaded image"}
                                   className="max-w-[200px] sm:max-w-[300px] rounded-lg object-contain"
+                                  onError={(e) =>
+                                    (e.target.src = "/fallback-image.png")
+                                  }
                                 />
                               ) : (
                                 <div className="flex items-center gap-2">
@@ -467,7 +574,9 @@ const ChatMessages = ({
                             </div>
                           )}
                           {msg.isEdited && (
-                            <span className="text-xs text-gray-400">(Đã chỉnh sửa)</span>
+                            <span className="text-xs text-gray-400 mr-2">
+                              (Đã chỉnh sửa)
+                            </span>
                           )}
                           {msg.text && <div>{msg.text}</div>}
                         </>
@@ -496,11 +605,31 @@ const ChatMessages = ({
           <div className="flex-1 flex items-center justify-center">
             <div className="relative max-w-[90vw] max-h-[70vh] mb-20">
               {isImage(selectedFile.fileType) ? (
-                <img
-                  src={selectedFile.url}
-                  alt={selectedFile.fileName || "File"}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
-                />
+                <div className="relative">
+                  <img
+                    src={selectedFile.url}
+                    alt={selectedFile.fileName || "File"}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg cursor-pointer"
+                    onError={(e) => (e.target.src = "/fallback-image.png")}
+                    onClick={handleImageClick}
+                  />
+                  {fileMessages.length > 1 && (
+                    <>
+                      <button
+                        onClick={handlePrevFile}
+                        className="absolute left-0 top-0 h-full w-1/2 bg-transparent hover:bg-black hover:bg-opacity-20 transition-colors flex items-center justify-start pl-4"
+                      >
+                        <FaChevronLeft className="w-8 h-8 text-white opacity-50 hover:opacity-100" />
+                      </button>
+                      <button
+                        onClick={handleNextFile}
+                        className="absolute right-0 top-0 h-full w-1/2 bg-transparent hover:bg-black hover:bg-opacity-20 transition-colors flex items-center justify-end pr-4"
+                      >
+                        <FaChevronRight className="w-8 h-8 text-white opacity-50 hover:opacity-100" />
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
                 <div className="flex flex-col items-center gap-4 bg-gray-800 p-6 rounded-lg">
                   <FaFileAlt className="w-16 h-16 text-gray-300" />
@@ -508,10 +637,17 @@ const ChatMessages = ({
                     {selectedFile.fileName}
                   </p>
                   {selectedFile.fileSize && (
-                    <p className="text-gray-400 text-xs">{selectedFile.fileSize}</p>
+                    <p className="text-gray-400 text-xs">
+                      {selectedFile.fileSize}
+                    </p>
                   )}
                   <button
-                    onClick={() => handleDownloadFile(selectedFile.url, selectedFile.fileName)}
+                    onClick={() =>
+                      handleDownloadFile(
+                        selectedFile.url,
+                        selectedFile.fileName
+                      )
+                    }
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
                   >
                     <FaDownload className="w-4 h-4" /> Tải xuống
@@ -553,6 +689,7 @@ const ChatMessages = ({
                         src={file.url}
                         alt={file.fileName}
                         className="w-full h-full object-cover rounded-md"
+                        onError={(e) => (e.target.src = "/fallback-image.png")}
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-700 flex items-center justify-center rounded-md">
@@ -578,9 +715,12 @@ const ChatMessages = ({
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         >
           <div className="bg-white rounded-lg p-6 w-[90%] max-w-sm shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Xác nhận thu hồi</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Xác nhận thu hồi
+            </h3>
             <p className="text-sm text-gray-600 mb-6">
-              Bạn có chắc muốn thu hồi tin nhắn này? Hành động này không thể hoàn tác.
+              Bạn có chắc muốn thu hồi tin nhắn này? Hành động này không thể
+              hoàn tác.
             </p>
             <div className="flex justify-end gap-3">
               <button
