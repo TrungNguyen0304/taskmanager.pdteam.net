@@ -338,7 +338,7 @@ const ChatMessages = ({
                       <>
                         {msg.fileUrl && (
                           <div
-                            className="flex items-center gap-2 mb-2 p-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                            className="flex items-center gap-2 mb-2 rounded-lg cursor-pointer py-2 transition-colors"
                             onClick={() =>
                               handleFileClick({
                                 url: `${BASE_URL}${msg.fileUrl}`,
@@ -535,7 +535,7 @@ const ChatMessages = ({
                         <>
                           {msg.fileUrl && (
                             <div
-                              className="flex items-center gap-2 mb-2 p-2 bg-blue-700 rounded-lg cursor-pointer hover:bg-blue-800 transition-colors"
+                              className="flex items-center gap-2 mb-2 rounded-lg cursor-pointer py-2 transition-colors"
                               onClick={() =>
                                 handleFileClick({
                                   url: `${BASE_URL}${msg.fileUrl}`,
