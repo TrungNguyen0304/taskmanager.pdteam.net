@@ -1,8 +1,15 @@
 import React, { useEffect } from "react";
-import { MoreVertical, X, UserPlus, Users, ChevronDown } from "lucide-react";
+import {
+  MoreVertical,
+  X,
+  UserPlus,
+  Users,
+  ChevronDown,
+  Trash2,
+} from "lucide-react";
 import axios from "axios";
 import ChatHeader from "./ChatHeader";
-import  ChatMessages  from "./ChatMessages";
+import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 
 const ChatMain = ({
@@ -58,7 +65,10 @@ const ChatMain = ({
 }) => {
   // Debug props
   useEffect(() => {
-    console.log("Recall modal props changed:", { isRecallModalOpen, messageToRecall });
+    console.log("Recall modal props changed:", {
+      isRecallModalOpen,
+      messageToRecall,
+    });
   }, [isRecallModalOpen, messageToRecall]);
 
   // Fetch messages when group changes to prevent stale data
@@ -215,7 +225,7 @@ const ChatMain = ({
                                 onClick={() => handleRemoveMember(index)}
                                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-xs sm:text-sm"
                               >
-                                <Trash2 size={12} className="sm:w-4 sm:h-4" />{" "}
+                                <Trash2 size={12} className="sm:w-4 sm:h-4" />
                                 Xóa
                               </button>
                             </div>
