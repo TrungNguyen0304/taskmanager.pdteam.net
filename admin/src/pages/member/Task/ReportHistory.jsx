@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  FileText,
-  Download,
-  ArrowLeft,
-  MessageSquare,
-} from "lucide-react";
+import { FileText, Download, ArrowLeft, MessageSquare } from "lucide-react";
 import axios from "axios";
 import CommentModal from "./CommentModal";
 
@@ -205,7 +200,7 @@ const ReportHistory = () => {
           <>
             {/* Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-              <div className="min-w-[1000px]">
+              <div className="min-w-[1400px] md:min-w-[1000px]">
                 <table className="w-full table-auto">
                   <thead className="bg-blue-100">
                     <tr>
@@ -259,7 +254,9 @@ const ReportHistory = () => {
                         </td>
                         <td className="py-4 px-6 text-sm">
                           <button
-                            onClick={() => handleOpenCommentModal(report.reportId)}
+                            onClick={() =>
+                              handleOpenCommentModal(report.reportId)
+                            }
                             className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
                           >
                             <MessageSquare className="w-5 h-5" />
@@ -314,10 +311,11 @@ const ReportHistory = () => {
                 <button
                   onClick={() => paginate(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg border ${currentPage === 1
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-blue-600 hover:bg-blue-50"
-                    }`}
+                  className={`px-4 py-2 rounded-lg border ${
+                    currentPage === 1
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-blue-600 hover:bg-blue-50"
+                  }`}
                 >
                   Trước
                 </button>
@@ -326,10 +324,11 @@ const ReportHistory = () => {
                     <button
                       key={page}
                       onClick={() => paginate(page)}
-                      className={`px-4 py-2 rounded-lg border ${currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-blue-600 hover:bg-blue-50"
-                        }`}
+                      className={`px-4 py-2 rounded-lg border ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-blue-600 hover:bg-blue-50"
+                      }`}
                     >
                       {page}
                     </button>
@@ -338,10 +337,11 @@ const ReportHistory = () => {
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`px-4 py-2 rounded-lg border ${currentPage === totalPages
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-blue-600 hover:bg-blue-50"
-                    }`}
+                  className={`px-4 py-2 rounded-lg border ${
+                    currentPage === totalPages
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-blue-600 hover:bg-blue-50"
+                  }`}
                 >
                   Sau
                 </button>
