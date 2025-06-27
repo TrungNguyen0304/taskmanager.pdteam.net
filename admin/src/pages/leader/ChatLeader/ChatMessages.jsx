@@ -66,7 +66,7 @@ const ChatMessages = ({
         return false;
       });
       if (duplicates.length > 0) {
-        console.warn("Duplicate messages detected:", duplicates);
+        // console.warn("Duplicate messages detected:", duplicates);
       }
     }
   }, [messages]);
@@ -303,28 +303,50 @@ const ChatMessages = ({
       ) : (
         uniqueMessages.map((msg) => {
           const isCurrentUser = msg.senderId === currentUser?._id;
-          if (msg.system || msg.hidden) {
-            return msg.system ? (
+          if (msg.isCallInvite && msg.callGroupId) {
+            return (
               <div
                 key={msg.uniqueId}
-                className="text-center text-xs italic text-gray-500 mb-3"
+                className="flex justify-center my-4"
               >
-                {msg.text}
+                <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg text-sm flex items-center gap-4 shadow-md max-w-[90%]">
+                  <span className="font-medium">{msg.text}</span>
+                  <button
+                    onClick={() =>
+                      window.location.href = `/chat/video-call/${msg.callGroupId}`
+                    }
+                    className="flex items-center gap-2 bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition text-xs"
+                    title="Nhấn để tham gia cuộc gọi"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14m-6 0V10a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2H11a2 2 0 01-2-2z"
+                      />
+                    </svg>
+                    Tham gia
+                  </button>
+                </div>
               </div>
-            ) : null;
+            );
           }
           return (
             <div
               key={msg.uniqueId}
-              className={`mb-4 flex ${
-                isCurrentUser ? "justify-end" : "justify-start"
-              } items-start gap-2 group`}
+              className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"
+                } items-start gap-2 group`}
             >
               {!isCurrentUser && (
                 <div
-                  className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg bg-white border border-gray-300 rounded-bl-none shadow ${
-                    editingMessageId === msg._id ? "editing-message" : ""
-                  }`}
+                  className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg bg-white border border-gray-300 rounded-bl-none shadow ${editingMessageId === msg._id ? "editing-message" : ""
+                    }`}
                 >
                   <div className="text-xs font-semibold mb-1 text-gray-600">
                     {msg.senderName || "Unknown User"}
@@ -402,9 +424,8 @@ const ChatMessages = ({
                 </button>
                 {openMenuId === msg._id && (
                   <div
-                    className={`absolute ${
-                      isCurrentUser ? "right-8" : "left-8"
-                    } top-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
+                    className={`absolute ${isCurrentUser ? "right-8" : "left-8"
+                      } top-0 bg-white border rounded-lg shadow z-50 w-28 sm:w-32`}
                   >
                     {!msg.isRecalled ? (
                       isCurrentUser ? (
@@ -489,9 +510,8 @@ const ChatMessages = ({
               </div>
               {isCurrentUser && (
                 <div
-                  className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg bg-blue-600 text-white rounded-br-none shadow ${
-                    editingMessageId === msg._id ? "editing-message" : ""
-                  }`}
+                  className={`max-w-[80%] sm:max-w-[70%] px-3 sm:px-4 py-2 rounded-lg bg-blue-600 text-white rounded-br-none shadow ${editingMessageId === msg._id ? "editing-message" : ""
+                    }`}
                 >
                   {editingMessageId === msg._id ? (
                     <div className="flex flex-col gap-2">
@@ -510,9 +530,8 @@ const ChatMessages = ({
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleSaveEditMessage(msg._id)}
-                          className={`bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm ${
-                            isLoading ? "opacity-50 cursor-not-allowed" : ""
-                          }`}
+                          className={`bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm ${isLoading ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
                           disabled={isLoading}
                         >
                           {isLoading ? "Đang lưu..." : "Lưu"}
@@ -677,11 +696,10 @@ const ChatMessages = ({
                 {fileMessages.map((file, index) => (
                   <div
                     key={file.url}
-                    className={`w-16 h-16 rounded-md cursor-pointer transition-opacity ${
-                      index === currentFileIndex
-                        ? "opacity-100 border-2 border-blue-500"
-                        : "opacity-50 hover:opacity-75"
-                    }`}
+                    className={`w-16 h-16 rounded-md cursor-pointer transition-opacity ${index === currentFileIndex
+                      ? "opacity-100 border-2 border-blue-500"
+                      : "opacity-50 hover:opacity-75"
+                      }`}
                     onClick={() => handleThumbnailClick(file, index)}
                   >
                     {isImage(file.fileType) ? (
@@ -732,9 +750,8 @@ const ChatMessages = ({
               </button>
               <button
                 onClick={() => handleRecallMessage(messageToRecall)}
-                className={`bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm ${
-                  isLoading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className={`bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm ${isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 disabled={isLoading}
               >
                 {isLoading ? "Đang xử lý..." : "Thu hồi"}

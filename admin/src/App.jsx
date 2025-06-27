@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/admin/Home";
+
 import Login from "./pages/Login";
 import CreateUser from "./pages/admin/Users/CreateUser";
 import UpdateUser from "./pages/admin/Users/UpdateUser";
@@ -91,7 +92,7 @@ const CompanyLayout = () => {
             <Route path="/project-unassigned" element={<Unassigned />} />
             <Route path="/create-projects" element={<CreateProject />} />
             <Route path="/update-Assigned/:id" element={<UpdateProject />} />
-            <Route path="/update-Unassigned/:id" element={<UpdateUnassigned/>}/>
+            <Route path="/update-Unassigned/:id" element={<UpdateUnassigned />} />
             <Route path="/project-detail/:id" element={<ProjectDetail />} />
             <Route path="/projectprogress" element={<ProjectProgress />} />
             <Route
@@ -146,7 +147,7 @@ const LeaderLayout = () => {
             <Route path="/chat/requests" element={<JoinRequestsPageLeader />} />
             <Route
               path="/chat/video-call/:groupId"
-              element={<VideoCallPage1/>}
+              element={<VideoCallPage1 />}
             />
           </Routes>
         </main>
