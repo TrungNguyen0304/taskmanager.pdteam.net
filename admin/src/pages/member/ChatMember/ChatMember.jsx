@@ -15,7 +15,7 @@ const ChatMember = () => {
   const chatEndRef = useRef(null);
   const addMemberRef = useRef(null);
   const createGroupRef = useRef(null);
-  const recallModalRef = useRef(null); // Thêm ref cho recall modal
+  const recallModalRef = useRef(null);
 
   const currentUser = JSON.parse(localStorage.getItem("user")) || {
     _id: "",
@@ -46,24 +46,36 @@ const ChatMember = () => {
   const [showFileInput, setShowFileInput] = useState(false);
   const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
   const [messageToRecall, setMessageToRecall] = useState(null);
+  const [isGroupInCall, setIsGroupInCall] = useState(false);
 
   // Fetch groups and team members
   useEffect(() => {
     const fetchGroups = async () => {
       try {
         const token = localStorage.getItem("token");
+        if (!token) {
+          console.error("fetchGroups: Không tìm thấy token, chuyển hướng đến đăng nhập");
+          navigate("/login");
+          return;
+        }
         const res = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const fetchedGroups = res.data.map((group) => ({
-          ...group,
-          members: group.members || [],
-        }));
+        const fetchedGroups = res.data
+          .filter((group) => group.members.some((member) => member._id === currentUser._id))
+          .map((group) => ({
+            ...group,
+            members: group.members || [],
+          }));
         setGroups(fetchedGroups);
         if (fetchedGroups.length > 0 && !selectedGroup) {
           setSelectedGroup(fetchedGroups[0]);
+        } else if (fetchedGroups.length === 0) {
+          console.warn("fetchGroups: Không tìm thấy nhóm nào cho người dùng", currentUser._id);
+          setError("Bạn không thuộc nhóm nào. Vui lòng tạo hoặc tham gia nhóm.");
         }
       } catch (err) {
+        console.error("fetchGroups: Lỗi khi lấy danh sách nhóm", err);
         setError(err.response?.data?.message || "Không thể lấy danh sách nhóm");
       }
     };
@@ -183,6 +195,39 @@ const ChatMember = () => {
         },
       ]);
     });
+    socket.on("call-started", ({ groupId: callGroupId, userId, offer, userName }) => {
+      if (callGroupId === selectedGroup?._id && userId !== currentUser._id) {
+        console.log("🔥 Đã nhận được call-started bên ngoài VideoCallPage", { from: userName, offer });
+        localStorage.setItem("pendingOffer", JSON.stringify({ groupId: callGroupId, offer, userId, userName }));
+        setIsGroupInCall(true);
+      }
+    });
+
+    socket.on("call-notification", ({ groupId, userName, message }) => {
+      console.log("✅ GỌI THÀNH CÔNG:", message);
+      if (groupId === selectedGroup?._id) {
+        setIsGroupInCall(true);
+        setMessages(prev => [
+          ...prev,
+          {
+            _id: Date.now(),
+            senderId: "System",
+            senderName: "System",
+            text: message,
+            timestamp: new Date().toISOString(),
+            system: true,
+            isCallInvite: true,
+            callGroupId: groupId,
+          }
+        ]);
+      }
+    });
+
+    socket.on("call-ended", ({ groupId }) => {
+      if (groupId === selectedGroup?._id) {
+        setIsGroupInCall(false);
+      }
+    });
 
     socket.on("new-member", ({ groupId, memberName, isLeaving }) => {
       if (groupId === selectedGroup?._id) {
@@ -235,10 +280,10 @@ const ChatMember = () => {
         prevMessages.map((msg) =>
           msg._id === updatedMessage.messageId
             ? {
-                ...msg,
-                text: updatedMessage.message,
-                isEdited: updatedMessage.isEdited,
-              }
+              ...msg,
+              text: updatedMessage.message,
+              isEdited: updatedMessage.isEdited,
+            }
             : msg
         )
       );
@@ -249,11 +294,11 @@ const ChatMember = () => {
         prevMessages.map((msg) =>
           msg._id === recalledMessage.messageId
             ? {
-                ...msg,
-                isRecalled: recalledMessage.isRecalled,
-                text: recalledMessage.message,
-                fileUrl: null,
-              }
+              ...msg,
+              isRecalled: recalledMessage.isRecalled,
+              text: recalledMessage.message,
+              fileUrl: null,
+            }
             : msg
         )
       );
@@ -275,11 +320,14 @@ const ChatMember = () => {
       socket.off("user-online");
       socket.off("user-offline");
       socket.off("group-message");
+      socket.off("call-started");
       socket.off("new-member");
       socket.off("typing");
       socket.off("message-edited");
       socket.off("message-recalled");
       socket.off("message-deleted");
+      socket.off("call-notification");
+      socket.off("call-ended");
     };
   }, [socket, selectedGroup?._id, currentUser._id, messageToRecall]);
 
@@ -575,11 +623,11 @@ const ChatMember = () => {
         prevMessages.map((msg) =>
           msg._id === messageId
             ? {
-                ...msg,
-                isRecalled: true,
-                text: "Tin nhắn đã bị thu hồi",
-                fileUrl: null,
-              }
+              ...msg,
+              isRecalled: true,
+              text: "Tin nhắn đã bị thu hồi",
+              fileUrl: null,
+            }
             : msg
         )
       );
@@ -625,10 +673,10 @@ const ChatMember = () => {
         prevMessages.map((msg) =>
           msg._id === messageId
             ? {
-                ...msg,
-                text: editText,
-                isEdited: true,
-              }
+              ...msg,
+              text: editText,
+              isEdited: true,
+            }
             : msg
         )
       );
@@ -768,11 +816,12 @@ const ChatMember = () => {
           messageToRecall={messageToRecall}
           chatEndRef={chatEndRef}
           addMemberRef={addMemberRef}
-          recallModalRef={recallModalRef} // Truyền ref
+          recallModalRef={recallModalRef}
           error={error}
           setError={setError}
           navigate={navigate}
           handleTyping={handleTyping}
+          isGroupInCall={isGroupInCall}
         />
       )}
     </div>

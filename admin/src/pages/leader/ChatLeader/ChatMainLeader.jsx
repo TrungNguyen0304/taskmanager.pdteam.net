@@ -61,6 +61,8 @@ const ChatMainLeader = ({
   error,
   setError,
   navigate,
+  isGroupInCall,
+
 }) => {
   // Debug props
   useEffect(() => {
@@ -101,6 +103,7 @@ const ChatMainLeader = ({
         navigate={navigate}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        isGroupInCall={isGroupInCall}
       />
 
       <ChatMessages
@@ -144,9 +147,8 @@ const ChatMainLeader = ({
             onClick={() => setSidebarOpen(false)}
           />
           <div
-            className={`fixed top-0 right-0 h-full w-64 sm:w-72 bg-white border-l shadow-xl z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${
-              sidebarOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+            className={`fixed top-0 right-0 h-full w-64 sm:w-72 bg-white border-l shadow-xl z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "translate-x-full"
+              }`}
           >
             <div className="flex items-center justify-between px-4 py-4 border-b bg-gray-50">
               <div>
@@ -180,9 +182,8 @@ const ChatMainLeader = ({
                 </span>
                 <ChevronDown
                   size={14}
-                  className={`sm:w-5 sm:h-5 ${
-                    showMembers ? "rotate-180" : ""
-                  } transition-transform text-gray-600`}
+                  className={`sm:w-5 sm:h-5 ${showMembers ? "rotate-180" : ""
+                    } transition-transform text-gray-600`}
                 />
               </button>
 

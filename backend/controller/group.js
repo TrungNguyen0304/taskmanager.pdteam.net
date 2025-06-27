@@ -516,187 +516,187 @@ const leaveGroup = async (req, res) => {
 
 
 
-const startCall = async (req, res) => {
-    try {
-        const { groupId } = req.params;
-        const userId = req.user._id;
+// const startCall = async (req, res) => {
+//     try {
+//         const { groupId } = req.params;
+//         const userId = req.user._id;
 
-        if (!mongoose.Types.ObjectId.isValid(groupId)) {
-            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
-        }
+//         if (!mongoose.Types.ObjectId.isValid(groupId)) {
+//             return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+//         }
 
-        const group = await Group.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: "Nhóm không tồn tại" });
-        }
+//         const group = await Group.findById(groupId);
+//         if (!group) {
+//             return res.status(404).json({ message: "Nhóm không tồn tại" });
+//         }
 
-        if (!group.members.map(id => id.toString()).includes(userId.toString())) {
-            return res.status(403).json({ message: "Bạn không có trong nhóm" });
-        }
+//         if (!group.members.map(id => id.toString()).includes(userId.toString())) {
+//             return res.status(403).json({ message: "Bạn không có trong nhóm" });
+//         }
 
-        // Gửi tín hiệu đến tất cả thành viên trong nhóm để chuẩn bị signaling
-        const io = getIO();
-        group.members.forEach(memberId => {
-            if (memberId.toString() !== userId.toString()) {
-                io.to(memberId.toString()).emit("call-started", {
-                    groupId,
-                    callerId: userId,
-                });
-            }
-        });
+//         // Gửi tín hiệu đến tất cả thành viên trong nhóm để chuẩn bị signaling
+//         const io = getIO();
+//         group.members.forEach(memberId => {
+//             if (memberId.toString() !== userId.toString()) {
+//                 io.to(memberId.toString()).emit("call-started", {
+//                     groupId,
+//                     callerId: userId,
+//                 });
+//             }
+//         });
 
-        res.status(200).json({ message: "Khởi tạo cuộc gọi thành công" });
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi khi khởi tạo cuộc gọi", error: error.message });
-    }
-};
+//         res.status(200).json({ message: "Khởi tạo cuộc gọi thành công" });
+//     } catch (error) {
+//         res.status(500).json({ message: "Lỗi khi khởi tạo cuộc gọi", error: error.message });
+//     }
+// };
 
-const startScreenShare = async (req, res) => {
-    try {
-        const { groupId } = req.params;
-        const userId = req.user._id;
-        const { offer } = req.body; // 🎯 Nhận offer từ client
+// const startScreenShare = async (req, res) => {
+//     try {
+//         const { groupId } = req.params;
+//         const userId = req.user._id;
+//         const { offer } = req.body; // 🎯 Nhận offer từ client
 
-        if (!offer || !offer.sdp || !offer.type) {
-            return res.status(400).json({ message: "Offer không hợp lệ" });
-        }
+//         if (!offer || !offer.sdp || !offer.type) {
+//             return res.status(400).json({ message: "Offer không hợp lệ" });
+//         }
 
-        if (!mongoose.Types.ObjectId.isValid(groupId)) {
-            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
-        }
+//         if (!mongoose.Types.ObjectId.isValid(groupId)) {
+//             return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+//         }
 
-        const group = await Group.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: "Nhóm không tồn tại" });
-        }
+//         const group = await Group.findById(groupId);
+//         if (!group) {
+//             return res.status(404).json({ message: "Nhóm không tồn tại" });
+//         }
 
-        if (!group.members.map(id => id.toString()).includes(userId.toString())) {
-            return res.status(403).json({ message: "Bạn không có trong nhóm" });
-        }
+//         if (!group.members.map(id => id.toString()).includes(userId.toString())) {
+//             return res.status(403).json({ message: "Bạn không có trong nhóm" });
+//         }
 
-        const io = getIO();
+//         const io = getIO();
 
-        group.members.forEach(memberId => {
-            if (memberId.toString() !== userId.toString()) {
-                io.to(memberId.toString()).emit("screen-share-started", {
-                    groupId,
-                    userId,
-                    userName: req.user.name || "Không tên", // hoặc lấy từ DB
-                    offer, // ✅ Gửi offer vào socket event
-                });
-            }
-        });
+//         group.members.forEach(memberId => {
+//             if (memberId.toString() !== userId.toString()) {
+//                 io.to(memberId.toString()).emit("screen-share-started", {
+//                     groupId,
+//                     userId,
+//                     userName: req.user.name || "Không tên", // hoặc lấy từ DB
+//                     offer, // ✅ Gửi offer vào socket event
+//                 });
+//             }
+//         });
 
-        res.status(200).json({ message: "Khởi tạo chia sẻ màn hình thành công" });
-    } catch (error) {
-        res.status(500).json({
-            message: "Lỗi khi khởi tạo chia sẻ màn hình",
-            error: error.message,
-        });
-    }
-};
+//         res.status(200).json({ message: "Khởi tạo chia sẻ màn hình thành công" });
+//     } catch (error) {
+//         res.status(500).json({
+//             message: "Lỗi khi khởi tạo chia sẻ màn hình",
+//             error: error.message,
+//         });
+//     }
+// };
 
-const getCallStatus = async (req, res) => {
-    try {
-        const { groupId } = req.params;
-        const userId = req.user._id;
+// const getCallStatus = async (req, res) => {
+//     try {
+//         const { groupId } = req.params;
+//         const userId = req.user._id;
 
-        if (!mongoose.Types.ObjectId.isValid(groupId)) {
-            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
-        }
+//         if (!mongoose.Types.ObjectId.isValid(groupId)) {
+//             return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+//         }
 
-        const group = await Group.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: "Nhóm không tồn tại" });
-        }
+//         const group = await Group.findById(groupId);
+//         if (!group) {
+//             return res.status(404).json({ message: "Nhóm không tồn tại" });
+//         }
 
-        if (!group.members.map(id => id.toString()).includes(userId.toString())) {
-            return res.status(403).json({ message: "Bạn không có trong nhóm" });
-        }
+//         if (!group.members.map(id => id.toString()).includes(userId.toString())) {
+//             return res.status(403).json({ message: "Bạn không có trong nhóm" });
+//         }
 
-        const activeCall = activeCalls.get(groupId) || new Set();
-        const screenShare = screenShares.get(groupId) || new Set();
+//         const activeCall = activeCalls.get(groupId) || new Set();
+//         const screenShare = screenShares.get(groupId) || new Set();
 
-        const participants = await Promise.all([...activeCall].map(async (id) => {
-            const user = await User.findById(id).select("name");
-            return user ? { userId: id, userName: user.name } : null;
-        }));
+//         const participants = await Promise.all([...activeCall].map(async (id) => {
+//             const user = await User.findById(id).select("name");
+//             return user ? { userId: id, userName: user.name } : null;
+//         }));
 
-        const screenSharers = await Promise.all([...screenShare].map(async (id) => {
-            const user = await User.findById(id).select("name");
-            return user ? { userId: id, userName: user.name } : null;
-        }));
+//         const screenSharers = await Promise.all([...screenShare].map(async (id) => {
+//             const user = await User.findById(id).select("name");
+//             return user ? { userId: id, userName: user.name } : null;
+//         }));
 
-        res.status(200).json({
-            groupId,
-            isCallActive: activeCall.size > 0,
-            participants: participants.filter(Boolean),
-            isScreenShareActive: screenShare.size > 0,
-            screenSharers: screenSharers.filter(Boolean),
-        });
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi khi lấy trạng thái cuộc gọi", error: error.message });
-    }
-};
+//         res.status(200).json({
+//             groupId,
+//             isCallActive: activeCall.size > 0,
+//             participants: participants.filter(Boolean),
+//             isScreenShareActive: screenShare.size > 0,
+//             screenSharers: screenSharers.filter(Boolean),
+//         });
+//     } catch (error) {
+//         res.status(500).json({ message: "Lỗi khi lấy trạng thái cuộc gọi", error: error.message });
+//     }
+// };
 
-// API để khởi tạo truyền file P2P
-const startFileTransfer = async (req, res) => {
-    try {
-        const { fileName, fileSize } = req.body;
-        const { groupId } = req.params;
-        const userId = req.user._id;
+// // API để khởi tạo truyền file P2P
+// const startFileTransfer = async (req, res) => {
+//     try {
+//         const { fileName, fileSize } = req.body;
+//         const { groupId } = req.params;
+//         const userId = req.user._id;
 
-        if (!mongoose.Types.ObjectId.isValid(groupId)) {
-            return res.status(400).json({ message: "ID nhóm không hợp lệ" });
-        }
+//         if (!mongoose.Types.ObjectId.isValid(groupId)) {
+//             return res.status(400).json({ message: "ID nhóm không hợp lệ" });
+//         }
 
-        if (!fileName || !fileSize) {
-            return res.status(400).json({ message: "Tên file và kích thước file là bắt buộc" });
-        }
+//         if (!fileName || !fileSize) {
+//             return res.status(400).json({ message: "Tên file và kích thước file là bắt buộc" });
+//         }
 
-        const group = await Group.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: "Nhóm không tồn tại" });
-        }
+//         const group = await Group.findById(groupId);
+//         if (!group) {
+//             return res.status(404).json({ message: "Nhóm không tồn tại" });
+//         }
 
-        if (!group.members.map(id => id.toString()).includes(userId.toString())) {
-            return res.status(403).json({ message: "Bạn không thuộc nhóm này" });
-        }
+//         if (!group.members.map(id => id.toString()).includes(userId.toString())) {
+//             return res.status(403).json({ message: "Bạn không thuộc nhóm này" });
+//         }
 
-        const sanitizedFileName = sanitizeHtml(fileName, {
-            allowedTags: [],
-            allowedAttributes: {},
-        });
+//         const sanitizedFileName = sanitizeHtml(fileName, {
+//             allowedTags: [],
+//             allowedAttributes: {},
+//         });
 
-        const fileId = `file_${Date.now()}`;
+//         const fileId = `file_${Date.now()}`;
 
-        const io = getIO();
-        group.members.forEach(memberId => {
-            if (memberId.toString() !== userId.toString()) {
-                io.to(memberId.toString()).emit("file-transfer", {
-                    groupId,
-                    senderId: userId,
-                    fileId,
-                    fileName: sanitizedFileName,
-                    fileSize,
-                });
-            }
-        });
+//         const io = getIO();
+//         group.members.forEach(memberId => {
+//             if (memberId.toString() !== userId.toString()) {
+//                 io.to(memberId.toString()).emit("file-transfer", {
+//                     groupId,
+//                     senderId: userId,
+//                     fileId,
+//                     fileName: sanitizedFileName,
+//                     fileSize,
+//                 });
+//             }
+//         });
 
-        await Message.create({
-            groupId,
-            senderId: userId,
-            fileName: sanitizedFileName,
-            fileSize,
-            fileId,
-            timestamp: new Date(),
-        });
+//         await Message.create({
+//             groupId,
+//             senderId: userId,
+//             fileName: sanitizedFileName,
+//             fileSize,
+//             fileId,
+//             timestamp: new Date(),
+//         });
 
-        res.status(200).json({ message: "Khởi tạo truyền file thành công", fileId });
-    } catch (error) {
-        res.status(500).json({ message: "Lỗi khi khởi tạo truyền file", error: error.message });
-    }
-};
+//         res.status(200).json({ message: "Khởi tạo truyền file thành công", fileId });
+//     } catch (error) {
+//         res.status(500).json({ message: "Lỗi khi khởi tạo truyền file", error: error.message });
+//     }
+// };
 
 module.exports = {
     createGroup,
@@ -712,9 +712,9 @@ module.exports = {
     leaveGroup,
 
 
-    startCall,
-    getCallStatus,
-    startScreenShare,
-    startFileTransfer,
+    // startCall,
+    // getCallStatus,
+    // startScreenShare,
+    // startFileTransfer,
     // sendImageMessage
 };

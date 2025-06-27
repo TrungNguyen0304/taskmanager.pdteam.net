@@ -43,16 +43,16 @@ router.delete("/:groupId/members/:userId", authenticateJWT, removeMember);
 router.delete("/:groupId/leave", authenticateJWT, leaveGroup);
 
 // Khởi tạo cuộc gọi video
-router.post('/:groupId/call', authenticateJWT, startCall);
+// router.post('/:groupId/call', authenticateJWT, startCall);
 
-// Lấy trạng thái cuộc gọi và chia sẻ màn hình
-router.get('/:groupId/call-status', authenticateJWT, getCallStatus);
+// // Lấy trạng thái cuộc gọi và chia sẻ màn hình
+// router.get('/:groupId/call-status', authenticateJWT, getCallStatus);
 
-// Khởi tạo chia sẻ màn hình
-router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
+// // Khởi tạo chia sẻ màn hình
+// router.post('/:groupId/screen-share', authenticateJWT, startScreenShare);
 
-// Khởi tạo truyền file P2P
-router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
+// // Khởi tạo truyền file P2P
+// router.post('/:groupId/file-transfer', authenticateJWT, startFileTransfer);
 
 //thu hồi tin nhắn
 router.delete("/:groupId/messages/:messageId/recall", authenticateJWT, recallMessage);

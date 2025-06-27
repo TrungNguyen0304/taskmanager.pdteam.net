@@ -61,6 +61,7 @@ const ChatMainMember = ({
   error,
   setError,
   navigate,
+  isGroupInCall
 }) => {
   // Debug props
   useEffect(() => {
@@ -101,6 +102,7 @@ const ChatMainMember = ({
         navigate={navigate}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+         isGroupInCall={isGroupInCall}
       />
 
       <ChatMessages
