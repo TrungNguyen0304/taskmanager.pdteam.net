@@ -28,7 +28,7 @@ const HomeLeader = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://localhost:8001/api/leader/getStatistics",
+        "https://apitaskmanager.pdteam.net/api/leader/getStatistics",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,

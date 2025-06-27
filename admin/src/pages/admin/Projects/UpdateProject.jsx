@@ -21,7 +21,7 @@ const UpdateProject = () => {
     const fetchProject = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:8001/api/company/viewTeamProject/${id}`,
+          `https://apitaskmanager.pdteam.net/api/company/viewTeamProject/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -66,7 +66,7 @@ const UpdateProject = () => {
     setIsLoading(true);
     try {
       await axios.put(
-        `http://localhost:8001/api/company/updateAssignedProjects/${id}`,
+        `https://apitaskmanager.pdteam.net/api/company/updateAssignedProjects/${id}`,
         {
           name: values.name,
           description: values.description,

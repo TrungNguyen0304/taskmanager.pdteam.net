@@ -56,7 +56,7 @@ const TaskMember = () => {
     const fetchTasks = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8001/api/member/showallTask",
+          "https://apitaskmanager.pdteam.net/api/member/showallTask",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -142,7 +142,7 @@ const TaskMember = () => {
     try {
       setIsUpdating(true);
       const response = await axios.put(
-        `http://localhost:8001/api/member/updateStatus/${selectedTask.id}`,
+        `https://apitaskmanager.pdteam.net/api/member/updateStatus/${selectedTask.id}`,
         { status: apiStatus },
         {
           headers: {

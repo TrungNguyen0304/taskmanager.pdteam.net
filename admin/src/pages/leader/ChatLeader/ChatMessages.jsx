@@ -36,7 +36,7 @@ const ChatMessages = ({
   chatEndRef,
   recallModalRef,
 }) => {
-  const BASE_URL = "http://localhost:8001";
+  const BASE_URL = "https://apitaskmanager.pdteam.net";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [showToBottom, setShowToBottom] = useState(false);

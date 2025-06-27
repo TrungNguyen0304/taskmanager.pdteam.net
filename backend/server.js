@@ -2,7 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const ConnectDB = require("./config/db");
 const cors = require("cors");
-const path = require('path');
+const path = require("path");
 const { Server } = require("socket.io");
 const http = require("http");
 const { setupSocket } = require("./socket/socketHandler.js");
@@ -16,7 +16,7 @@ const memberRoute = require("./route/memberRoute.js");
 const leaderRoute = require("./route/leaderRoute.js");
 const notificationRoute = require("./route/notificationRoute.js");
 const groupRoute = require("./route/groupRoute.js");
-const commentRoute = require("./route/commentRoute.js")
+const commentRoute = require("./route/commentRoute.js");
 
 dotenv.config();
 const app = express();
@@ -26,12 +26,11 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
-  "http://localhost:8001",
+  "https://apitaskmanager.pdteam.net",
   // "http://103.45.235.153",
   "http://127.0.0.1:5500",
   "https://apitaskmanager.pdteam.net",
   "https://taskmanager.pdteam.net",
-
 ];
 
 app.use(
@@ -43,9 +42,12 @@ app.use(
 
 app.use(express.json());
 
-app.use('/uploads', express.static('uploads'));
+app.use("/uploads", express.static("uploads"));
 // app.use("/uploads/reports", express.static("uploads/reports"));
-app.use('/uploads/reports', express.static(path.join(__dirname, 'uploads/reports')));
+app.use(
+  "/uploads/reports",
+  express.static(path.join(__dirname, "uploads/reports"))
+);
 
 ConnectDB();
 
@@ -73,6 +75,6 @@ setupSocket(io);
 startScheduleCheck();
 
 const PORT = process.env.PORT || 8001;
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });

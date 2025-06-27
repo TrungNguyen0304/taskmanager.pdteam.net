@@ -34,7 +34,7 @@ const HomeMember = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://localhost:8001/api/member/getMemberStatistics",
+        "https://apitaskmanager.pdteam.net/api/member/getMemberStatistics",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,

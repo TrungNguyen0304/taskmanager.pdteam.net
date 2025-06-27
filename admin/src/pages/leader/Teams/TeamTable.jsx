@@ -13,7 +13,7 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
     const fetchTeams = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8001/api/leader/showallTeam",
+          "https://apitaskmanager.pdteam.net/api/leader/showallTeam",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

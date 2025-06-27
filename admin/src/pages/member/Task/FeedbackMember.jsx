@@ -15,7 +15,7 @@ const FeedbackMember = () => {
     const fetchFeedbacks = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8001/api/member/showAllFeedback",
+          "https://apitaskmanager.pdteam.net/api/member/showAllFeedback",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

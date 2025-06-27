@@ -6,8 +6,8 @@ import ChatSidebar from "./ChatMemberSidebar";
 import ChatMain from "./ChatMemberMain";
 import ChatMemberHomeOut from "./ChatMemberHomeOut";
 
-const API_URL = "http://localhost:8001/api/group";
-const TEAM_API_URL = "http://localhost:8001/api/member/showallTeam";
+const API_URL = "https://apitaskmanager.pdteam.net/api/group";
+const TEAM_API_URL = "https://apitaskmanager.pdteam.net/api/member/showallTeam";
 
 const ChatMember = () => {
   const socket = useContext(SocketContext);

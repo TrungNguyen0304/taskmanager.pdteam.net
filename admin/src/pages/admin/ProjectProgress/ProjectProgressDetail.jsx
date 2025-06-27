@@ -283,7 +283,7 @@ const ProjectProgressDetail = () => {
     const fetchProject = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:8001/api/company/viewProject/${id}`,
+          `https://apitaskmanager.pdteam.net/api/company/viewProject/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

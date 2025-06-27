@@ -23,7 +23,7 @@ const ShowAllFeedback = () => {
     const fetchFeedbacks = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8001/api/leader/showAllFeedback",
+          "https://apitaskmanager.pdteam.net/api/leader/showAllFeedback",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

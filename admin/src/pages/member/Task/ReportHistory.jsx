@@ -14,7 +14,7 @@ const ReportHistory = () => {
   const [modalReportId, setModalReportId] = useState(null);
   const reportsPerPage = 5;
 
-  const BASE_URL = "http://localhost:8001";
+  const BASE_URL = "https://apitaskmanager.pdteam.net";
 
   useEffect(() => {
     const fetchReports = async () => {
