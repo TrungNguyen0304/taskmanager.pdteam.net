@@ -39,7 +39,7 @@ const TaskReport = () => {
   const fetchReports = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8001/api/leader/showAllReportTask/${id}`,
+        `https://apitaskmanager.pdteam.net/api/leader/showAllReportTask/${id}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -50,7 +50,7 @@ const TaskReport = () => {
         response.data.reports.map(async (report) => {
           try {
             const commentResponse = await axios.get(
-              `http://localhost:8001/api/comment/reports/${report._id}/getcomment`,
+              `https://apitaskmanager.pdteam.net/api/comment/reports/${report._id}/getcomment`,
               {
                 headers: {
                   Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -130,7 +130,7 @@ const TaskReport = () => {
     setEvaluationLoading(true);
     try {
       const response = await axios.post(
-        `http://localhost:8001/api/leader/evaluateMemberReport/${evaluateModalReportId}`,
+        `https://apitaskmanager.pdteam.net/api/leader/evaluateMemberReport/${evaluateModalReportId}`,
         {
           score: Number(evaluationData.score),
           comment: evaluationData.comment,

@@ -25,7 +25,7 @@
 //     const fetchProject = async () => {
 //       try {
 //         const response = await axios.get(
-//           "http://localhost:8001/api/leader/showallProject",
+//           "https://apitaskmanager.pdteam.net/api/leader/showallProject",
 //           {
 //             headers: {
 //               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -80,7 +80,7 @@
 //     setIsSubmitting(true);
 //     try {
 //       await axios.post(
-//         "http://localhost:8001/api/leader/createTask",
+//         "https://apitaskmanager.pdteam.net/api/leader/createTask",
 //         {
 //           ...formData,
 //           priority: parseInt(formData.priority),
@@ -332,7 +332,7 @@ const CreateTask = () => {
     const fetchProject = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:8001/api/leader/showallProject",
+          "https://apitaskmanager.pdteam.net/api/leader/showallProject",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -379,7 +379,7 @@ const CreateTask = () => {
     setIsSubmitting(true);
     try {
       await axios.post(
-        "http://localhost:8001/api/leader/createTask",
+        "https://apitaskmanager.pdteam.net/api/leader/createTask",
         {
           ...formData,
           priority: parseInt(formData.priority),

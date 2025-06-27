@@ -3,7 +3,7 @@ import io from "socket.io-client";
 
 export const SocketContext = createContext();
 
-const SOCKET_URL = "http://localhost:8001";
+const SOCKET_URL = "https://apitaskmanager.pdteam.net";
 
 export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);

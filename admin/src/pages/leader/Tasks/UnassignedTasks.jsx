@@ -33,7 +33,7 @@ const UnassignedTasks = () => {
         }
 
         const response = await axios.get(
-          "http://localhost:8001/api/leader/unassignedTask",
+          "https://apitaskmanager.pdteam.net/api/leader/unassignedTask",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -67,7 +67,7 @@ const UnassignedTasks = () => {
         try {
           const token = localStorage.getItem("token");
           const response = await axios.get(
-            "http://localhost:8001/api/leader/showallMember",
+            "https://apitaskmanager.pdteam.net/api/leader/showallMember",
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -87,7 +87,7 @@ const UnassignedTasks = () => {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:8001/api/leader/deleteTask/${id}`, {
+      await axios.delete(`https://apitaskmanager.pdteam.net/api/leader/deleteTask/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTasks((prev) => prev.filter((task) => task.id !== id));
@@ -124,7 +124,7 @@ const UnassignedTasks = () => {
     setIsAssigning(true);
     try {
       await axios.put(
-        `http://localhost:8001/api/leader/assignTask/${selectedTaskId}`,
+        `https://apitaskmanager.pdteam.net/api/leader/assignTask/${selectedTaskId}`,
         { memberId: selectedMemberId },
         {
           headers: { Authorization: `Bearer ${token}` },

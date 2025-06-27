@@ -26,7 +26,7 @@ const ProjectDetailLeader = () => {
     const fetchProjectData = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8001/api/leader/viewProject/${projectId}`,
+          `https://apitaskmanager.pdteam.net/api/leader/viewProject/${projectId}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

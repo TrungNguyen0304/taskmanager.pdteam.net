@@ -61,7 +61,6 @@ const ChatMainMember = ({
   error,
   setError,
   navigate,
-  isGroupInCall
 }) => {
   // Debug props
   useEffect(() => {
@@ -75,7 +74,7 @@ const ChatMainMember = ({
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `http://localhost:8001/api/group/${selectedGroup._id}/messages`,
+          `https://apitaskmanager.pdteam.net/api/group/${selectedGroup._id}/messages`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -102,7 +101,6 @@ const ChatMainMember = ({
         navigate={navigate}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
-         isGroupInCall={isGroupInCall}
       />
 
       <ChatMessages

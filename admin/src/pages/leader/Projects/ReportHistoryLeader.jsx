@@ -18,7 +18,7 @@ const ReportHistoryLeader = () => {
     const fetchReports = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:8001/api/leader/getReportProject/${id}`,
+          `https://apitaskmanager.pdteam.net/api/leader/getReportProject/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -32,7 +32,7 @@ const ReportHistoryLeader = () => {
             response.data.reports.map(async (report) => {
               try {
                 const commentResponse = await axios.get(
-                  `http://localhost:8001/api/comment/reports/${report.reportId}/getcomment`,
+                  `https://apitaskmanager.pdteam.net/api/comment/reports/${report.reportId}/getcomment`,
                   {
                     headers: {
                       Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -115,7 +115,7 @@ const ReportHistoryLeader = () => {
     const fetchReports = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:8001/api/leader/getReportProject/${id}`,
+          `https://apitaskmanager.pdteam.net/api/leader/getReportProject/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -128,7 +128,7 @@ const ReportHistoryLeader = () => {
             response.data.reports.map(async (report) => {
               try {
                 const commentResponse = await axios.get(
-                  `http://localhost:8001/api/comment/reports/${report.reportId}/getcomment`,
+                  `https://apitaskmanager.pdteam.net/api/comment/reports/${report.reportId}/getcomment`,
                   {
                     headers: {
                       Authorization: `Bearer ${localStorage.getItem("token")}`,
