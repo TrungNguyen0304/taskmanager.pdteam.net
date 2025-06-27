@@ -6,7 +6,7 @@ import axios from "axios";
 import PropTypes from "prop-types";
 
 const api = axios.create({
-  baseURL: "http://localhost:8001/api/comment/reports",
+  baseURL: "https://apitaskmanager.pdteam.net/api/comment/reports",
   headers: {
     Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
   },

@@ -14,7 +14,7 @@ const Navbar = ({ userId }) => {
 
   // Khởi tạo socket khi component mount
   useEffect(() => {
-    socket.current = io("http://localhost:8001"); // Thay bằng URL server Socket.IO thực tế
+    socket.current = io("https://apitaskmanager.pdteam.net"); // Thay bằng URL server Socket.IO thực tế
     return () => {
       socket.current.disconnect(); // Ngắt kết nối khi component unmount
     };

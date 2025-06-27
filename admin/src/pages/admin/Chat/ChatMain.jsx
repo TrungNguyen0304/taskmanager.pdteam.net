@@ -78,7 +78,7 @@ const ChatMain = ({
       try {
         const token = localStorage.getItem("token");
         const response = await axios.get(
-          `http://localhost:8001/api/group/${selectedGroup._id}/messages`,
+          `https://apitaskmanager.pdteam.net/api/group/${selectedGroup._id}/messages`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

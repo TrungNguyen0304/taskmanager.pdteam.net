@@ -20,7 +20,7 @@ const UpdateUnassigned = () => {
     const fetchProject = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:8001/api/company/viewTeamProject/${id}`,
+          `https://apitaskmanager.pdteam.net/api/company/viewTeamProject/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -60,7 +60,7 @@ const UpdateUnassigned = () => {
     setIsLoading(true);
     try {
       await axios.put(
-        `http://localhost:8001/api/company/updateUnassignedProject/${id}`,
+        `https://apitaskmanager.pdteam.net/api/company/updateUnassignedProject/${id}`,
         {
           name: values.name,
           description: values.description,

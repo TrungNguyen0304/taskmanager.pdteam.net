@@ -12,8 +12,8 @@ import { HiMiniVideoCamera } from "react-icons/hi2";
 import io from "socket.io-client";
 import axios from "axios";
 
-const SOCKET_URL = "http://localhost:8001";
-const API_URL = "http://localhost:8001/api/group";
+const SOCKET_URL = "https://apitaskmanager.pdteam.net";
+const API_URL = "https://apitaskmanager.pdteam.net/api/group";
 
 const MAX_VISIBLE = 5;
 

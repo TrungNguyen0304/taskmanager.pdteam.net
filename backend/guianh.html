@@ -39,7 +39,7 @@
     </div>
 
     <script>
-        const API_BASE = "http://localhost:8001/api/group";
+        const API_BASE = "https://apitaskmanager.pdteam.net/api/group";
 
         document.getElementById("getGroupsBtn").addEventListener("click", async () => {
             const token = document.getElementById("tokenInput").value;
@@ -82,7 +82,7 @@
                     li.innerHTML = `
                         <strong>${msg.senderName}</strong> (${new Date(msg.timestamp).toLocaleString()})<br/>
                         ${msg.message || ""}<br/>
-                        ${msg.imageUrl ? `<img src="http://localhost:8001${msg.imageUrl}" alt="Image" style="max-width:200px; max-height:200px;" />` : ""}
+                        ${msg.imageUrl ? `<img src="https://apitaskmanager.pdteam.net${msg.imageUrl}" alt="Image" style="max-width:200px; max-height:200px;" />` : ""}
                         <hr/>
                     `;
                     messagesList.appendChild(li);

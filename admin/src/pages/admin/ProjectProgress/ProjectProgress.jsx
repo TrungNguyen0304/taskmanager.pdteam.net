@@ -12,7 +12,7 @@ const ProjectProgress = () => {
     const fetchProjects = async () => {
       try {
         const response = await fetch(
-          "http://localhost:8001/api/company/getassigned",
+          "https://apitaskmanager.pdteam.net/api/company/getassigned",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

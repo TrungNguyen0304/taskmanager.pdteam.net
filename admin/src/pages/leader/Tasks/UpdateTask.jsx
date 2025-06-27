@@ -23,7 +23,7 @@ const UpdateTask = () => {
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const res = await axios.get(`http://localhost:8001/api/leader/viewTask/${id}`, {
+        const res = await axios.get(`https://apitaskmanager.pdteam.net/api/leader/viewTask/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -93,7 +93,7 @@ const UpdateTask = () => {
 
     try {
       await axios.put(
-        `http://localhost:8001/api/leader/updateTask/${id}`,
+        `https://apitaskmanager.pdteam.net/api/leader/updateTask/${id}`,
         {
           ...formData,
           priority: Number(formData.priority), // Ensure priority is a number

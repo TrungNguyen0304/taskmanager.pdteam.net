@@ -13,12 +13,12 @@
 // import io from "socket.io-client";
 // import axios from "axios";
 
-// const socket = io("http://localhost:8001", {
+// const socket = io("https://apitaskmanager.pdteam.net", {
 //   reconnection: true,
 //   reconnectionAttempts: 5,
 //   reconnectionDelay: 1000,
 // });
-// const API_BASE_URL = "http://localhost:8001/api/group";
+// const API_BASE_URL = "https://apitaskmanager.pdteam.net/api/group";
 
 // const MAX_VISIBLE = 5;
 

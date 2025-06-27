@@ -14,7 +14,7 @@ const TeamDetailMember = () => {
     const fetchTeamDetail = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:8001/api/member/viewTeam/${id}`,
+          `https://apitaskmanager.pdteam.net/api/member/viewTeam/${id}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

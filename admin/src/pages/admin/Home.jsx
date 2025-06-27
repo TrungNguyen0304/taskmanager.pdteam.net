@@ -29,7 +29,7 @@
 //     try {
 //       setLoading(true);
 //       const response = await axios.get(
-//         "http://localhost:8001/api/company/getCompanyStatistics",
+//         "https://apitaskmanager.pdteam.net/api/company/getCompanyStatistics",
 //         {
 //           headers: {
 //             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -778,7 +778,7 @@ const Home = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://localhost:8001/api/company/getCompanyStatistics",
+        "https://apitaskmanager.pdteam.net/api/company/getCompanyStatistics",
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
