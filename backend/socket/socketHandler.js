@@ -149,7 +149,7 @@ function setupSocket(io) {
         socket.on("group-message", ({ _id, groupId, senderId, senderName, message, fileUrl, fileName, fileSize, fileType, fileId, timestamp }) => {
             if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
 
-            socket.to(groupId).emit("group-message", {
+            io.to(groupId).emit("group-message", {
                 _id,
                 groupId,
                 senderId,
@@ -163,7 +163,6 @@ function setupSocket(io) {
                 timestamp
             });
         });
-
         socket.on("typing", ({ userId, groupId }) => {
             if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(groupId)) return;
             socket.to(groupId).emit("typing", { userId });
