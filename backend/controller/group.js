@@ -49,9 +49,17 @@ const createGroup = async (req, res) => {
             }
         }
 
-        // Đảm bảo người tạo nhóm cũng là thành viên
+        // ✅ Đảm bảo người tạo và company cũng là thành viên
         const membersSet = new Set(members.map(id => id.toString()));
         membersSet.add(userId.toString());
+
+        if (user.role !== "company") {
+            const companyUser = await User.findOne({ role: "company" });
+            if (companyUser) {
+                membersSet.add(companyUser._id.toString());
+            }
+        }
+
         const finalMembers = Array.from(membersSet);
 
         // Tạo nhóm
@@ -79,6 +87,7 @@ const createGroup = async (req, res) => {
         });
     }
 };
+
 
 const getGroups = async (req, res) => {
     try {

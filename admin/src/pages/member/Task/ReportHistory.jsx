@@ -311,11 +311,10 @@ const ReportHistory = () => {
                 <button
                   onClick={() => paginate(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg border ${
-                    currentPage === 1
+                  className={`px-4 py-2 rounded-lg border ${currentPage === 1
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-white text-blue-600 hover:bg-blue-50"
-                  }`}
+                    }`}
                 >
                   Trước
                 </button>
@@ -324,11 +323,10 @@ const ReportHistory = () => {
                     <button
                       key={page}
                       onClick={() => paginate(page)}
-                      className={`px-4 py-2 rounded-lg border ${
-                        currentPage === page
+                      className={`px-4 py-2 rounded-lg border ${currentPage === page
                           ? "bg-blue-600 text-white"
                           : "bg-white text-blue-600 hover:bg-blue-50"
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -337,11 +335,10 @@ const ReportHistory = () => {
                 <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className={`px-4 py-2 rounded-lg border ${
-                    currentPage === totalPages
+                  className={`px-4 py-2 rounded-lg border ${currentPage === totalPages
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-white text-blue-600 hover:bg-blue-50"
-                  }`}
+                    }`}
                 >
                   Sau
                 </button>
@@ -354,6 +351,7 @@ const ReportHistory = () => {
       {/* Bình luận modal */}
       <CommentModal
         reportId={modalReportId}
+        toRole="leader"
         isOpen={!!modalReportId}
         onClose={handleCloseCommentModal}
         onCommentUpdate={handleCommentUpdate}

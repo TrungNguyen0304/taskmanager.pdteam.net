@@ -178,14 +178,14 @@ const TaskReport = () => {
 
   const filteredReports = selectedDate
     ? reportsData.reports.filter((report) => {
-        const reportDate = new Date(report.createdAt).toLocaleDateString(
-          "vi-VN"
-        );
-        const selectedDateFormatted = new Date(selectedDate).toLocaleDateString(
-          "vi-VN"
-        );
-        return reportDate === selectedDateFormatted;
-      })
+      const reportDate = new Date(report.createdAt).toLocaleDateString(
+        "vi-VN"
+      );
+      const selectedDateFormatted = new Date(selectedDate).toLocaleDateString(
+        "vi-VN"
+      );
+      return reportDate === selectedDateFormatted;
+    })
     : reportsData.reports;
 
   const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
@@ -347,11 +347,10 @@ const TaskReport = () => {
                     <button
                       onClick={() => handleOpenEvaluateModal(report._id)}
                       disabled={report.feedback}
-                      className={`flex items-center gap-2 mt-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                        report.feedback
+                      className={`flex items-center gap-2 mt-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${report.feedback
                           ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                           : "bg-blue-600 text-white hover:bg-blue-700"
-                      }`}
+                        }`}
                     >
                       <Star className="w-5 h-5" />
                       {report.feedback ? "Đã đánh giá" : "Đánh giá báo cáo"}
@@ -492,11 +491,10 @@ const TaskReport = () => {
               <button
                 key={i + 1}
                 onClick={() => handlePageChange(i + 1)}
-                className={`px-3 py-1.5 rounded-lg ${
-                  currentPage === i + 1
+                className={`px-3 py-1.5 rounded-lg ${currentPage === i + 1
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 hover:bg-gray-300"
-                } transition`}
+                  } transition`}
               >
                 {i + 1}
               </button>
@@ -515,6 +513,7 @@ const TaskReport = () => {
       {/* Comment Modal */}
       <CommentModal
         reportId={modalReportId}
+        toRole="member"
         isOpen={!!modalReportId}
         onClose={handleCloseCommentModal}
         onCommentUpdate={handleCommentUpdate}

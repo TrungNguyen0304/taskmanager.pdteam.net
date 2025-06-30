@@ -25,6 +25,7 @@ export const onNotification = (callback) => {
   socket.on("project-overdue", callback);//12
   socket.on("project-status-updated", callback);//13
   socket.on("member-added", callback);//14
+  socket.on("comment-added", callback);//15
 };
 
 export const disconnectSocket = () => {

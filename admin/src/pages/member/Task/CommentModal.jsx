@@ -12,7 +12,7 @@ const api = axios.create({
   },
 });
 
-const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
+const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate, toRole }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -99,13 +99,11 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
       setComments(
         Array.isArray(response.data.comments) ? response.data.comments : []
       );
-      // Log comments to inspect the 'from' field
-      console.log("Fetched comments:", response.data.comments);
     } catch (error) {
       setComments([]);
       alert(
         error.response?.data?.message ||
-          "Không thể tải bình luận. Vui lòng thử lại."
+        "Không thể tải bình luận. Vui lòng thử lại."
       );
       console.error("Fetch comments error:", error);
     } finally {
@@ -118,6 +116,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
 
     try {
       await api.patch(`/${commentId}/read`);
+      // Update local state to reflect read status
       setComments((prevComments) =>
         prevComments.map((c) =>
           c._id === commentId ? { ...c, isRead: true } : c
@@ -129,6 +128,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
   };
 
   const handleCommentClick = (commentId) => {
+    // Mark comment as read when clicked
     markCommentAsRead(commentId);
   };
 
@@ -147,7 +147,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
       setLoading(true);
       await api.post(`/${reportId}/appcomment`, {
         comment: newComment,
-        toRole: "leader",
+        toRole,
       });
       await fetchComments();
       onCommentUpdate(reportId, comments.length + 1);
@@ -156,7 +156,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       alert(
         error.response?.data?.message ||
-          "Không thể gửi bình luận. Vui lòng thử lại."
+        "Không thể gửi bình luận. Vui lòng thử lại."
       );
       console.error("Post comment error:", error);
     } finally {
@@ -203,7 +203,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       alert(
         error.response?.data?.message ||
-          "Không thể cập nhật bình luận. Vui lòng thử lại."
+        "Không thể cập nhật bình luận. Vui lòng thử lại."
       );
       console.error("Update comment error:", error);
     } finally {
@@ -233,7 +233,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       alert(
         error.response?.data?.message ||
-          "Không thể xóa bình luận. Vui lòng thử lại."
+        "Không thể xóa bình luận. Vui lòng thử lại."
       );
       console.error("Delete comment error:", error);
     } finally {
@@ -318,15 +318,12 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
                   data-comment-id={comment._id}
                   onClick={() => handleCommentClick(comment._id)}
                   role="button"
-                  aria-label={`Xem bình luận từ ${
-                    comment.creator?.name || "Ẩn danh"
-                  }`}
+                  aria-label={`Xem bình luận từ ${comment.creator?.name || "Ẩn danh"}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-800">
-                        {comment.creator?.name || "Ẩn danh"} (
-                        {comment.from || "unknown"})
+                        {comment.creator?.name || "Ẩn danh"} ({comment.from})
                       </span>
                       {!comment.isRead && (
                         <span
@@ -335,51 +332,49 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
                         ></span>
                       )}
                     </div>
-                    <div className="relative">
-                      {console.log(
-                        `Comment ID: ${comment._id}, from: ${comment.from}`
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMenu(comment._id);
-                        }}
-                        className="p-1 rounded-full hover:bg-gray-200 transition-colors duration-200 z-10"
-                        style={{ minWidth: "32px", minHeight: "32px" }}
-                        aria-label="Tùy chọn bình luận"
-                      >
-                        <MoreVertical className="w-5 h-5 text-gray-600" />
-                      </button>
-                      {menuOpenId === comment._id && (
-                        <div
-                          className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-20"
-                          data-menu-id={comment._id}
+                    {comment.from !== "member" && (
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent marking as read when clicking menu
+                            toggleMenu(comment._id);
+                          }}
+                          className="p-1 rounded-full hover:bg-gray-200 transition-colors duration-200"
+                          aria-label="Tùy chọn bình luận"
                         >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditComment(comment);
-                            }}
-                            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                            aria-label="Chỉnh sửa bình luận"
+                          <MoreVertical className="w-5 h-5 text-gray-600" />
+                        </button>
+                        {menuOpenId === comment._id && (
+                          <div
+                            className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10"
+                            data-menu-id={comment._id}
                           >
-                            <LucidePencilLine className="w-4 h-4" />
-                            Chỉnh sửa
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteComment(comment._id);
-                            }}
-                            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                            aria-label="Xóa bình luận"
-                          >
-                            <MdDelete className="w-4 h-4" />
-                            Xóa
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent marking as read
+                                handleEditComment(comment);
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                              aria-label="Chỉnh sửa bình luận"
+                            >
+                              <LucidePencilLine className="w-4 h-4" />
+                              Chỉnh sửa
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent marking as read
+                                handleDeleteComment(comment._id);
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                              aria-label="Xóa bình luận"
+                            >
+                              <MdDelete className="w-4 h-4" />
+                              Xóa
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {editingCommentId === comment._id ? (
                     <div className="mb-3">
@@ -434,7 +429,6 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
                     <button
                       onClick={handleShowLess}
                       className="flex items-center font-semibold text-blue-600 hover:text-blue-800 text-sm sm:text-base transition-colors duration-200"
-                      aria-label="Ẩn bớt bình luận"
                     >
                       Ẩn bớt
                       <FaAngleUp className="ml-1 w-4 h-4" />
@@ -449,7 +443,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
           )}
         </div>
 
-        <div className="p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+        <div className="p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-2xl">
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
@@ -527,6 +521,7 @@ CommentModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onCommentUpdate: PropTypes.func.isRequired,
+  toRole: PropTypes.string.isRequired,
 };
 
 export default CommentModal;
