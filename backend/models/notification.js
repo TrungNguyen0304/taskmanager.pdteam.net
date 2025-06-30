@@ -13,21 +13,10 @@ const notificationSchema = new mongoose.Schema(
     createdAt: { type: Date, default: Date.now },
     source: {
       type: String,
-      enum: ["socket", "firebase", "system"],
+      enum: ["socket", "firebase", "system", "comment"], // ✅ Đã thêm 'comment'
       required: true,
     },
     isRead: { type: Boolean, default: false },
-    // targetId: { type: mongoose.Schema.Types.ObjectId, default: null },
-    // targetType: {
-    //   type: String, enum: ["task", "report", "project", "team", "feedback"],
-    //   default: null
-    // },
-    // receiverRole: {
-    //   type: String,
-    //   enum: ["company", "leader", "member"],
-    //   required: true
-    // }
-
   },
   { timestamps: true }
 );

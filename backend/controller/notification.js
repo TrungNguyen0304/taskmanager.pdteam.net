@@ -1,6 +1,8 @@
 const User = require("../models/user");
 const Team = require("../models/team");
 const Project = require("../models/project")
+const Report = require("../models/report");
+const Comment = require("../models/comment");
 const { sendNotification } = require("../utils/firebase-admin");
 const { getIO, getSocketIdByUserId, isUserOnline } = require("../socket/socketHandler");
 const Notification = require("../models/notification")
@@ -639,6 +641,102 @@ const notifyMemberTeam = async ({ team, newMember }) => {
 };
 
 
+const notifyComment = async ({ comment, report, creator }) => {
+  const io = getIO();
+  const title = "Bình luận mới";
+  const message = `Bạn nhận được bình luận từ ${creator.name} trong báo cáo.`;
+  try {
+    const reportData = await Report.findById(report._id).populate('team');
+    if (!reportData) {
+      console.log(`Không tìm thấy báo cáo: ${report._id}`);
+      return;
+    }
+
+    const teamData = reportData.team;
+    if (!teamData) {
+      console.log(`Không tìm thấy team cho báo cáo: ${report._id}`);
+      return;
+    }
+
+    const recipients = [];
+    if (comment.to === 'company') {
+      const companyUsers = await User.find({ role: 'company' });
+      console.log(`Company users found: ${companyUsers.length}`);
+      recipients.push(...companyUsers);
+    } else if (comment.to === 'leader') {
+      if (teamData.assignedLeader) {
+        const leader = await User.findById(teamData.assignedLeader);
+        console.log(`Leader found: ${leader ? leader.name : 'None'}`);
+        if (leader) recipients.push(leader);
+      } else {
+        console.log(`No assigned leader for team: ${teamData._id}`);
+      }
+    } else if (comment.to === 'member') {
+      if (reportData.assignedMembers && reportData.assignedMembers.length > 0) {
+        const members = await User.find({ _id: { $in: reportData.assignedMembers } });
+        console.log(`Assigned members found: ${members.length}`);
+        recipients.push(...members);
+      } else {
+        console.log(`No assigned members for report: ${reportData._id}`);
+      }
+    } else {
+      console.log(`Invalid 'to' role: ${comment.to}`);
+    }
+
+    if (recipients.length === 0) {
+      console.log(`Không tìm thấy người nhận hợp lệ cho comment: ${comment._id}`);
+      return;
+    }
+
+    for (const recipient of recipients) {
+      const recipientIdStr = String(recipient._id);
+      if (recipientIdStr === String(creator._id)) {
+        continue;
+      }
+      try {
+        await saveNotification({
+          userId: recipientIdStr,
+          title,
+          message,
+          type: "info",
+          source: "comment",
+          data: {
+            commentId: comment._id,
+            reportId: report._id,
+          },
+        });
+
+        if (isUserOnline(recipientIdStr)) {
+          io.to(recipientIdStr).emit("comment-added", {
+            title,
+            message,
+            commentId: comment._id,
+            reportId: report._id,
+            creator: {
+              id: creator._id,
+              name: creator.name,
+            },
+            comment: comment.comment,
+            submittedAt: comment.createdAt,
+          });
+          console.log(`Sent socket to user room: ${recipientIdStr}`);
+        } else {
+          if (recipient.fcmToken) {
+            await sendNotification(recipient.fcmToken, title, message);
+            console.log(`Sent FCM to offline user with userId: ${recipientIdStr}`);
+          } else {
+            console.log(`No FCM token for user: ${recipientIdStr}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error sending notification to user ${recipientIdStr}:`, error.message);
+      }
+    }
+  } catch (error) {
+    console.error(`Error in notifyComment for comment ${comment._id}:`, error.message);
+  }
+};
+
 const saveNotification = async ({ userId, title, message, type, source }) => {
   try {
     const notif = new Notification({
@@ -747,5 +845,6 @@ module.exports = {
   deleteNotification,
   markNotificationAsRead,
   notifyStatusProject,
-  notifyMemberTeam
+  notifyMemberTeam,
+  notifyComment
 };
