@@ -156,7 +156,7 @@ const ProjectReport = () => {
 
   const handleSelectReport = (reportId) => {
     setEvaluateReportId(reportId);
-    setIsSelectReportModalOpen(false);  
+    setIsSelectReportModalOpen(false);
     setIsEvaluateModalOpen(true);
     setComment("");
     setScore("");
@@ -509,6 +509,7 @@ const ProjectReport = () => {
       {isCommentModalOpen && (
         <CommentModal
           reportId={selectedReportId}
+          toRole="leader"
           isOpen={isCommentModalOpen}
           onClose={handleCloseCommentModal}
           onCommentUpdate={handleCommentUpdate}

@@ -12,7 +12,7 @@ const api = axios.create({
   },
 });
 
-const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
+const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate, toRole }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -103,7 +103,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
       setComments([]);
       alert(
         error.response?.data?.message ||
-          "Không thể tải bình luận. Vui lòng thử lại."
+        "Không thể tải bình luận. Vui lòng thử lại."
       );
       console.error("Fetch comments error:", error);
     } finally {
@@ -147,7 +147,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
       setLoading(true);
       await api.post(`/${reportId}/appcomment`, {
         comment: newComment,
-        toRole: "leader",
+        toRole,
       });
       await fetchComments();
       onCommentUpdate(reportId, comments.length + 1);
@@ -156,7 +156,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       alert(
         error.response?.data?.message ||
-          "Không thể gửi bình luận. Vui lòng thử lại."
+        "Không thể gửi bình luận. Vui lòng thử lại."
       );
       console.error("Post comment error:", error);
     } finally {
@@ -203,7 +203,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       alert(
         error.response?.data?.message ||
-          "Không thể cập nhật bình luận. Vui lòng thử lại."
+        "Không thể cập nhật bình luận. Vui lòng thử lại."
       );
       console.error("Update comment error:", error);
     } finally {
@@ -233,7 +233,7 @@ const CommentModal = ({ reportId, isOpen, onClose, onCommentUpdate }) => {
     } catch (error) {
       alert(
         error.response?.data?.message ||
-          "Không thể xóa bình luận. Vui lòng thử lại."
+        "Không thể xóa bình luận. Vui lòng thử lại."
       );
       console.error("Delete comment error:", error);
     } finally {
@@ -521,6 +521,7 @@ CommentModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onCommentUpdate: PropTypes.func.isRequired,
+  toRole: PropTypes.string.isRequired,
 };
 
 export default CommentModal;
