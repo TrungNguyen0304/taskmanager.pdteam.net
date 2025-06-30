@@ -1,12 +1,5 @@
 import React, { useEffect } from "react";
-import {
-  MoreVertical,
-  X,
-  UserPlus,
-  Users,
-  ChevronDown,
-  Trash2,
-} from "lucide-react";
+import { MoreVertical, X, Users, ChevronDown, Trash2 } from "lucide-react";
 import axios from "axios";
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
@@ -26,23 +19,15 @@ const ChatMainMember = ({
   setSidebarOpen,
   showMembers,
   setShowMembers,
-  addingMember,
-  setAddingMember,
-  newMemberId,
-  setNewMemberId,
   selectedMemberIndex,
   setSelectedMemberIndex,
-  handleConfirmAdd,
   handleRemoveMember,
-  handleLeaveGroup,
   currentUser,
-  teamMembers,
   typingUsers,
   onlineUsers,
   openMenuId,
   setOpenMenuId,
   editingMessageId,
-  setEditingMessageId,
   editText,
   setEditText,
   handleStartEditMessage,
@@ -56,18 +41,13 @@ const ChatMainMember = ({
   isRecallModalOpen,
   messageToRecall,
   chatEndRef,
-  addMemberRef,
-  recallModalRef, // Nhận ref từ ChatLeader
+  recallModalRef,
   error,
   setError,
   navigate,
 }) => {
-  // Debug props
-  useEffect(() => {
-    // console.log("Recall modal props changed:", { isRecallModalOpen, messageToRecall });
-  }, [isRecallModalOpen, messageToRecall]);
+  useEffect(() => {}, [isRecallModalOpen, messageToRecall]);
 
-  // Fetch messages when group changes to prevent stale data
   useEffect(() => {
     const fetchMessages = async () => {
       if (!selectedGroup?._id) return;
@@ -75,9 +55,7 @@ const ChatMainMember = ({
         const token = localStorage.getItem("token");
         const response = await axios.get(
           `https://apitaskmanager.pdteam.net/api/group/${selectedGroup._id}/messages`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         const transformedMessages = response.data.map((msg) => ({
           ...msg,
@@ -125,7 +103,7 @@ const ChatMainMember = ({
         error={error}
         setError={setError}
         chatEndRef={chatEndRef}
-        recallModalRef={recallModalRef} // Truyền ref xuống
+        recallModalRef={recallModalRef}
       />
 
       <ChatInput
@@ -139,25 +117,28 @@ const ChatMainMember = ({
 
       {sidebarOpen && (
         <>
+          {/* backdrop */}
           <div
             className="fixed inset-0 bg-black/50 sm:hidden z-40"
             onClick={() => setSidebarOpen(false)}
           />
+          {/* side panel */}
           <div
             className={`fixed top-0 right-0 h-full w-64 sm:w-72 bg-white border-l shadow-xl z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${
               sidebarOpen ? "translate-x-0" : "translate-x-full"
             }`}
           >
+            {/* user header */}
             <div className="flex items-center justify-between px-4 py-4 border-b bg-gray-50">
               <div>
                 <h1 className="font-bold text-gray-800 text-base sm:text-lg flex items-center gap-2">
                   {currentUser.name}
                   {onlineUsers.has(currentUser._id) && (
-                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="w-2 h-2 bg-green-500 rounded-full" />
                   )}
                 </h1>
                 <p className="flex items-center text-xs text-gray-600">
-                  <div className="bg-green-500 w-2 h-2 rounded-full mr-1"></div>
+                  <span className="bg-green-500 w-2 h-2 rounded-full mr-1" />
                   Bạn đang online
                 </p>
               </div>
@@ -169,14 +150,16 @@ const ChatMainMember = ({
               </button>
             </div>
 
+            {/* body */}
             <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
+              {/* toggle member list */}
               <button
                 onClick={() => setShowMembers(!showMembers)}
                 className="flex items-center justify-between w-full px-4 py-2 bg-gray-50 border rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <span className="flex items-center gap-2 text-gray-800 text-sm sm:text-base">
-                  <Users size={14} className="sm:w-5 sm:h-5" /> Thành viên (
-                  {selectedGroup.members.length})
+                  <Users size={14} className="sm:w-5 sm:h-5" />
+                  Thành viên ({selectedGroup.members.length})
                 </span>
                 <ChevronDown
                   size={14}
@@ -186,6 +169,7 @@ const ChatMainMember = ({
                 />
               </button>
 
+              {/* member list */}
               {showMembers && (
                 <div className="bg-gray-50 p-3 rounded-lg border space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
                   {selectedGroup.members.map((member, index) => (
@@ -196,9 +180,10 @@ const ChatMainMember = ({
                       <span className="flex items-center gap-2">
                         {member.name}
                         {onlineUsers.has(member._id) && (
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span className="w-2 h-2 bg-green-500 rounded-full" />
                         )}
                       </span>
+
                       {member._id !== currentUser._id && (
                         <div className="relative">
                           <button
@@ -214,6 +199,7 @@ const ChatMainMember = ({
                               className="text-gray-600 sm:w-5 sm:h-5"
                             />
                           </button>
+
                           {selectedMemberIndex === index && (
                             <div className="absolute right-6 -top-1 bg-white border rounded-lg shadow z-10">
                               <button
@@ -231,52 +217,6 @@ const ChatMainMember = ({
                   ))}
                 </div>
               )}
-
-              <div ref={addMemberRef}>
-                <button
-                  onClick={() => setAddingMember(!addingMember)}
-                  className="flex items-center gap-2 text-sm sm:text-base bg-gray-50 border rounded-lg hover:bg-gray-100 px-4 py-2 w-full transition-colors"
-                >
-                  <UserPlus size={14} className="text-blue-600 sm:w-5 sm:h-5" />{" "}
-                  Thêm thành viên
-                </button>
-                {addingMember && (
-                  <div className="flex gap-3 mt-3 items-center">
-                    <select
-                      value={newMemberId}
-                      onChange={(e) => setNewMemberId(e.target.value)}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Chọn thành viên</option>
-                      {teamMembers
-                        .filter(
-                          (m) =>
-                            !selectedGroup.members.some(
-                              (member) => member._id === m._id
-                            )
-                        )
-                        .map((member) => (
-                          <option key={member._id} value={member._id}>
-                            {member.name}
-                          </option>
-                        ))}
-                    </select>
-                    <button
-                      onClick={handleConfirmAdd}
-                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm"
-                    >
-                      Thêm
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={handleLeaveGroup}
-                className="mt-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
-              >
-                Giải tán nhóm
-              </button>
             </div>
           </div>
         </>

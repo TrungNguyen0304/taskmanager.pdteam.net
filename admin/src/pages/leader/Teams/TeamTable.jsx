@@ -58,9 +58,7 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
     }
   }, [teams, currentPage]);
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
+  const handlePageChange = (page) => setCurrentPage(page);
 
   const totalPages = Math.ceil(teams.length / PAGE_SIZE);
   const paginatedTeams = teams.slice(
@@ -70,105 +68,126 @@ const TeamTable = ({ title = "Danh Sách Nhóm", originPage = "team" }) => {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md w-full mx-auto">
-        <p>Đang tải dữ liệu nhóm...</p>
+      <div className="p-6 bg-white rounded-2xl shadow-lg w-full mx-auto max-w-7xl">
+        <p className="text-center text-gray-500 animate-pulse">
+          Đang tải dữ liệu nhóm...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-[#f6f7fb] rounded-2xl shadow-md w-full mx-auto">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-blue-600 flex items-center gap-2">
+    <div className="p-4 sm:p-6 bg-white/60 backdrop-blur-lg rounded-3xl shadow-xl w-full mx-auto ring‑1 ring-gray-200">
+      {/* Title */}
+      <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <h2 className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 via-sky-500 to-teal-400 bg-clip-text text-transparent flex items-center gap-2">
           {title}
         </h2>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-[800px] w-full table-fixed border-separate border-spacing-y-2">
+        <table className="w-full table-fixed border-separate [border-spacing:0_8px] text-sm sm:text-base">
           <thead>
-            <tr className="bg-[#cce5ff] rounded-xl text-blue-600 text-base">
-              <th className="w-[25%] px-4 py-3">Tên Nhóm</th>
-              <th className="w-[25%] px-4 py-3">Trưởng Nhóm</th>
-              <th className="w-[20%] px-4 py-3">Số Thành Viên</th>
-              <th className="w-[20%] px-4 py-3 rounded-r-xl">Hành Động</th>
+            <tr className="h-12 bg-gradient-to-r from-[#e6f3ff] to-[#f3fcff] text-blue-700 uppercase tracking-wide text-sm sm:text-base rounded-xl shadow-sm">
+              <th className="w-[30%] px-4 text-left sm:text-center rounded-l-xl">
+                Tên Nhóm
+              </th>
+              <th className="hidden sm:table-cell w-[20%] px-4 text-center">
+                Trưởng Nhóm
+              </th>
+              <th className="hidden sm:table-cell w-[20%] px-4 text-center">
+                Thành Viên
+              </th>
+              <th className="w-[30%] px-4 text-center rounded-r-xl">
+                Hành Động
+              </th>
             </tr>
           </thead>
           <tbody>
             {paginatedTeams.length === 0 ? (
               <tr>
                 <td
-                  colSpan="5"
+                  colSpan="4"
                   className="px-4 py-6 text-center text-gray-500 bg-white rounded-xl shadow"
                 >
                   Không có dữ liệu nhóm.
                 </td>
               </tr>
             ) : (
-              paginatedTeams.map((team, index) => {
-                const globalIndex = (currentPage - 1) * PAGE_SIZE + index + 1;
-                return (
-                  <tr
-                    key={team.id}
-                    className="bg-white rounded-xl shadow transition text-center"
-                  >
-                    <td className="px-4 py-3 text-[#323338]">{team.name}</td>
-                    <td className="px-4 py-3 text-[#676879]">{team.leader}</td>
-                    <td className="px-4 py-3 text-[#676879]">
-                      {team.memberCount}
-                    </td>
-                    <td className="px-4 py-3 rounded-r-xl">
-                      <NavLink
-                        to={`/team-detail/${team.id}`}
-                        state={{ index, originPage }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium shadow hover:bg-blue-600 transition"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Xem chi tiết
-                      </NavLink>
-                    </td>
-                  </tr>
-                );
-              })
+              paginatedTeams.map((team, index) => (
+                <tr
+                  key={team.id}
+                  className="bg-white even:bg-[#f7fbff] hover:bg-[#eaf4ff] rounded-xl shadow transition-colors duration-150"
+                >
+                  <td className="px-4 py-3 text-[#323338] text-left sm:text-center">
+                    <div className="flex flex-col items-start sm:items-center gap-0.5">
+                      <span className="font-medium truncate max-w-[12rem] sm:max-w-full text-base">
+                        {team.name}
+                      </span>
+                      <span className="sm:hidden text-sm text-gray-500">
+                        Trưởng nhóm: {team.leader}
+                      </span>
+                      <span className="sm:hidden text-sm text-gray-500">
+                        Thành viên: {team.memberCount}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td className="hidden sm:table-cell px-4 py-3 text-[#676879] text-center truncate max-w-[8rem]">
+                    {team.leader}
+                  </td>
+
+                  <td className="hidden sm:table-cell px-4 py-3 text-[#676879] text-center">
+                    {team.memberCount}
+                  </td>
+
+                  <td className="px-4 py-3 text-center">
+                    <NavLink
+                      to={`/team-detail/${team.id}`}
+                      state={{ index, originPage }}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-lg font-medium shadow hover:from-sky-600 hover:to-blue-700 focus:outline-none focus:ring‑2 focus:ring-offset-2 focus:ring-sky-500 transition"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span className="hidden md:inline">Xem chi tiết</span>
+                    </NavLink>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
 
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-end mt-6 flex-wrap gap-2">
+        <div className="flex justify-center sm:justify-end mt-8 flex-wrap gap-2">
           <button
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className={`px-4 py-2 rounded-lg font-semibold ${
-              currentPage === 1
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-[#009aff] text-white hover:bg-[#0077c2]"
-            }`}
+            className={`px-4 py-2 rounded-lg font-semibold text-sm sm:text-base shadow transition disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-gray-200 to-gray-300 text-gray-600 disabled:from-gray-100 disabled:to-gray-100`}
           >
             Trước
           </button>
+
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
               onClick={() => handlePageChange(page)}
-              className={`px-4 py-2 rounded-lg font-semibold ${
+              className={`px-4 py-2 rounded-lg font-semibold text-sm sm:text-base shadow transition ${
                 currentPage === page
-                  ? "bg-gradient-to-r from-[#009aff] to-[#1d557a] text-white shadow"
+                  ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white"
                   : "bg-white text-[#323338] border border-gray-200 hover:bg-[#eaf1fb]"
               }`}
             >
               {page}
             </button>
           ))}
+
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className={`px-4 py-2 rounded-lg font-semibold ${
-              currentPage === totalPages
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-[#009aff] text-white hover:bg-[#0077c2]"
-            }`}
+            className={`px-4 py-2 rounded-lg font-semibold text-sm sm:text-base shadow transition disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-gray-200 to-gray-300 text-gray-600 disabled:from-gray-100 disabled:to-gray-100`}
           >
             Sau
           </button>

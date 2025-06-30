@@ -20,11 +20,9 @@ const getProgressWidth = (task, dateHeaders) => {
   const headerStart = new Date(dateHeaders[0].date);
   const headerEnd = new Date(dateHeaders[dateHeaders.length - 1].date);
 
-  // Đảm bảo taskStart và taskEnd nằm trong phạm vi dateHeaders
   const startDate = taskStart < headerStart ? headerStart : taskStart;
   const endDate = taskEnd > headerEnd ? headerEnd : taskEnd;
 
-  // Tìm vị trí bắt đầu và kết thúc trong mảng dateHeaders
   let startIndex = dateHeaders.findIndex(
     (header) =>
       header.date.toDateString() === new Date(startDate).toDateString()
@@ -33,7 +31,6 @@ const getProgressWidth = (task, dateHeaders) => {
     (header) => header.date.toDateString() === new Date(endDate).toDateString()
   );
 
-  // Nếu không tìm thấy, lấy giá trị gần nhất
   if (startIndex === -1) {
     startIndex = 0;
   }
@@ -85,7 +82,7 @@ const formatDate = (dateString) => {
 
 const isOverdue = (deadline) => {
   if (!deadline) return false;
-  const currentDate = new Date("2025-06-16T00:00:00.000Z"); // Current date: June 16, 2025
+  const currentDate = new Date("2025-06-16T00:00:00.000Z");
   const deadlineDate = new Date(deadline);
   return deadlineDate < currentDate;
 };
@@ -93,7 +90,6 @@ const isOverdue = (deadline) => {
 const getDateHeaders = (tasks, projectDeadline) => {
   if (!tasks.length || !projectDeadline) return [];
 
-  // Find the earliest start date and latest end date
   const startDates = tasks
     .map((task) => new Date(task.start))
     .filter((date) => !isNaN(date.getTime()));
@@ -127,6 +123,14 @@ const getDateHeaders = (tasks, projectDeadline) => {
   }
 
   return headers;
+};
+
+const truncateDescription = (description) => {
+  const words = description.split(" ");
+  if (words.length > 20) {
+    return words.slice(0, 20).join(" ") + "...";
+  }
+  return description;
 };
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -275,9 +279,10 @@ const ProjectProgressDetail = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [ganttPage, setGanttPage] = useState(1);
   const [summaryPage, setSummaryPage] = useState(1);
-  const ganttTasksPerPage = 2; // 2 tasks per page for progress section
-  const summaryTasksPerPage = 3; // 3 tasks per page for summary section
+  const ganttTasksPerPage = 2;
+  const summaryTasksPerPage = 3;
   const [error, setError] = useState(null);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -336,7 +341,6 @@ const ProjectProgressDetail = () => {
     fetchProject();
   }, [id]);
 
-  // Update ganttTasks based on selectedTask
   const ganttTasks = selectedTask
     ? [selectedTask]
     : selectedProject?.tasks.slice(
@@ -409,9 +413,21 @@ const ProjectProgressDetail = () => {
                   <h4 className="font-medium text-gray-900 text-sm sm:text-base">
                     {selectedProject.name}
                   </h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {selectedProject.description}
-                  </p>
+                  <div className="text-sm text-gray-600 mt-1">
+                    <p>
+                      {showFullDescription
+                        ? selectedProject.description
+                        : truncateDescription(selectedProject.description)}
+                    </p>
+                    {selectedProject.description.split(" ").length > 20 && (
+                      <button
+                        onClick={() => setShowFullDescription(!showFullDescription)}
+                        className="text-blue-600 hover:underline text-sm mt-1"
+                      >
+                        {showFullDescription ? "Thu gọn" : "Xem thêm"}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 text-sm">
                   <div className="flex justify-between">

@@ -120,10 +120,9 @@ const Unassigned = () => {
           return;
         }
 
-        // Format deadline to ISO string with timezone
         const formattedDeadline = new Date(deadline).toISOString();
 
-        const response = await axios.put(
+        await axios.put(
           `https://apitaskmanager.pdteam.net/api/company/assignProject/${selectedProject}`,
           { assignedTeam, deadline: formattedDeadline },
           {
@@ -133,7 +132,6 @@ const Unassigned = () => {
           }
         );
 
-        // Update project list to reflect the assigned project
         setProjects(projects.filter((p) => p.id !== selectedProject));
         if (projects.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1);
@@ -176,6 +174,14 @@ const Unassigned = () => {
       setCurrentPage(page);
       setLoading(true);
     }
+  };
+
+  const truncateDescription = (description) => {
+    const words = description.split(" ");
+    if (words.length > 40) {
+      return words.slice(0, 40).join(" ") + "...";
+    }
+    return description;
   };
 
   return (
@@ -221,7 +227,7 @@ const Unassigned = () => {
                     </div>
                     <p className="text-gray-600 mt-2">
                       <span className="font-semibold text-black">Mô tả:</span>{" "}
-                      {project.description}
+                      {truncateDescription(project.description)}
                     </p>
                     <p className="text-gray-600">
                       <strong>Trạng thái:</strong> {project.status}

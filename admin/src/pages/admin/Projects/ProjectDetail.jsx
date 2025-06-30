@@ -204,7 +204,6 @@ const ProjectDetail = () => {
               <div className="space-y-4 text-gray-700">
                 {project.assignedTeam?.name && (
                   <p className="text-base sm:text-lg">
-                    <span className="font-medium">Phòng ban:</span>{" "}
                     {project.assignedTeam.name}
                   </p>
                 )}

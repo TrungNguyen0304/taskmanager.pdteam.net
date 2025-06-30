@@ -126,7 +126,7 @@ const ShowAllFeedback = () => {
                     {feedback.reportContent}
                   </p>
                   <p className="text-gray-700 text-sm sm:text-base">
-                    <span className="font-semibold">Nội dung đánh giá:</span>{" "}
+                    <span className="font-semibold">Nội dung đã được đánh giá:</span>{" "}
                     {feedback.content}
                   </p>
                   <p className="text-gray-700 text-sm sm:text-base">
@@ -136,7 +136,7 @@ const ShowAllFeedback = () => {
                     </span>
                   </p>
                   <p className="text-gray-700 text-sm sm:text-base">
-                    <span className="font-semibold">Người đánh giá:</span>{" "}
+                    <span className="font-semibold">Quản lý dự án:</span>{" "}
                     {feedback.createdBy}
                   </p>
                   <p className="text-gray-700 text-sm sm:text-base">
