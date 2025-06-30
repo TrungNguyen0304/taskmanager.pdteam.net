@@ -1332,12 +1332,103 @@ const showallMember = async (req, res) => {
   }
 };
 
+// show all project đã báo cáo
+const getReportProject = async (req, res) => {
+  try {
+    const { id } = req.params; // projectId
+    const userId = req.user._id;
+
+    // 1. Kiểm tra projectId hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "projectId không hợp lệ." });
+    }
+
+    // 2. Tìm project và populate team
+    const project = await Project.findById(id).populate('assignedTeam');
+    if (!project) {
+      return res.status(404).json({ message: "Dự án không tồn tại." });
+    }
+
+    // 3. Kiểm tra project có team hay không
+    if (!project.assignedTeam) {
+      return res.status(400).json({ message: "Dự án chưa được gán cho team nào." });
+    }
+
+    // 4. Kiểm tra user có phải là leader của team
+    const team = await Team.findById(project.assignedTeam._id);
+    if (!team || team.assignedLeader.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Bạn không có quyền xem báo cáo của dự án này."
+      });
+    }
+
+    // 5. Lấy tất cả báo cáo của project
+    const reports = await Report.find({ project: id })
+      .populate({
+        path: 'project',
+        select: 'name _id'
+      })
+      .populate({
+        path: 'team',
+        select: 'name _id'
+      })
+      .populate({
+        path: 'assignedLeader',
+        select: 'name _id'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 6. Kiểm tra nếu không có báo cáo
+    if (!reports || reports.length === 0) {
+      return res.status(404).json({
+        message: "Chưa có báo cáo nào cho dự án này."
+      });
+    }
+
+    // 7. Định dạng danh sách báo cáo
+    const formattedReports = reports.map(report => ({
+      reportId: report._id,
+      project: {
+        projectId: report.project?._id || null,
+        projectName: report.project?.name || 'Không rõ'
+      },
+      team: {
+        teamId: report.team?._id || null,
+        teamName: report.team?.name || 'Không rõ'
+      },
+      assignedLeader: {
+        leaderId: report.assignedLeader?._id || null,
+        leaderName: report.assignedLeader?.name || 'Không rõ'
+      },
+      content: report.content,
+      projectProgress: report.projectProgress,
+      difficulties: report.difficulties,
+      file: report.file || null,
+      createdAt: report.createdAt
+    }));
+
+    // 8. Trả về phản hồi
+    res.status(200).json({
+      message: "Lấy danh sách báo cáo cho dự án thành công.",
+      reports: formattedReports
+    });
+
+  } catch (error) {
+    console.error("getReportProject error:", error);
+    res.status(500).json({
+      message: "Lỗi server khi lấy báo cáo dự án.",
+      error: error.message
+    });
+  }
+};
+
 const getStatistics = async (req, res) => {
   try {
     const userId = req.user._id;
 
     // 1. Tìm tất cả team mà user là leader
-    const teams = await Team.find({ assignedLeader: userId }).select('_id name');
+    const teams = await Team.find({ assignedLeader: userId }).select('_id name assignedMembers');
     if (!teams || teams.length === 0) {
       return res.status(404).json({ message: "Bạn không quản lý team nào." });
     }
@@ -1348,29 +1439,59 @@ const getStatistics = async (req, res) => {
     const projects = await Project.find({ assignedTeam: { $in: teamIds } }).select('_id name');
     const projectIds = projects.map(project => project._id);
 
-    if (projectIds.length === 0) {
-      return res.status(200).json({
-        message: "Không có project nào thuộc team của bạn.",
-        statistics: {
-          taskStatus: {},
-          projectProgress: [],
-          memberReports: [],
-          reports: { total: 0, evaluated: 0, unevaluated: 0 },
-          feedbacks: { total: 0, averageScore: 0 },
-          teamMembers: [],
-          assignedTasks: [],
-          unassignedTasks: [],
-          chartData: {
-            taskStatus: { labels: [], datasets: [] },
-            teamMembers: { labels: [], datasets: [] },
-            reports: { labels: [], datasets: [] },
-            taskAssignment: { labels: [], datasets: [] }
-          }
+    // 3. Khởi tạo object phản hồi mặc định
+    const defaultResponse = {
+      message: "Không có project nào thuộc team của bạn.",
+      statistics: {
+        taskStatus: { pending: 0, in_progress: 0, completed: 0, cancelled: 0 },
+        projectProgress: [],
+        memberReports: [],
+        reports: { total: 0, evaluated: 0, unevaluated: 0 },
+        feedbacks: { total: 0, averageScore: 0 },
+        teamMembers: teams.map(team => ({
+          teamId: team._id,
+          teamName: team.name,
+          memberCount: team.assignedMembers.length || 0
+        })),
+        assignedTasks: [],
+        unassignedTasks: [],
+        chartData: {
+          taskStatus: { labels: [], datasets: [] },
+          teamMembers: {
+            type: 'bar',
+            data: {
+              labels: teams.map(team => team.name),
+              datasets: [{
+                label: 'Số lượng thành viên',
+                data: teams.map(team => team.assignedMembers.length || 0),
+                backgroundColor: ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'],
+                borderColor: ['#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF'],
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'Số lượng thành viên trong mỗi team' }
+              },
+              scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Số thành viên' } },
+                x: { title: { display: true, text: 'Team' } }
+              }
+            }
+          },
+          reports: { labels: [], datasets: [] },
+          taskAssignment: { labels: [], datasets: [] }
         }
-      });
+      }
+    };
+
+    if (projectIds.length === 0) {
+      return res.status(200).json(defaultResponse);
     }
 
-    // 3. Aggregation pipelines cho thống kê
+    // 4. Aggregation pipelines cho thống kê
     // Thống kê số lượng task theo trạng thái
     const taskStatusStats = await Task.aggregate([
       { $match: { projectId: { $in: projectIds } } },
@@ -1504,17 +1625,11 @@ const getStatistics = async (req, res) => {
     ]);
 
     // Thống kê số lượng thành viên trong mỗi team
-    const teamMembersStats = await Team.aggregate([
-      { $match: { _id: { $in: teamIds } } },
-      {
-        $project: {
-          teamId: '$_id',
-          teamName: '$name',
-          memberCount: { $size: '$assignedMembers' },
-          _id: 0
-        }
-      }
-    ]);
+    const teamMembersStats = teams.map(team => ({
+      teamId: team._id,
+      teamName: team.name,
+      memberCount: team.assignedMembers.length || 0
+    }));
 
     // Thống kê task đã giao (assignedMember != null) theo project
     const assignedTasksStats = await Task.aggregate([
@@ -1693,7 +1808,7 @@ const getStatistics = async (req, res) => {
       }
     };
 
-    // 4. Trả về kết quả thống kê
+    // 5. Trả về kết quả thống kê
     res.status(200).json({
       message: "Thống kê thành công.",
       statistics: {
@@ -1719,97 +1834,6 @@ const getStatistics = async (req, res) => {
   } catch (error) {
     console.error("Lỗi trong getStatistics:", error);
     res.status(500).json({ message: "Lỗi server.", error: error.message });
-  }
-};
-
-// show all project đã báo cáo
-const getReportProject = async (req, res) => {
-  try {
-    const { id } = req.params; // projectId
-    const userId = req.user._id;
-
-    // 1. Kiểm tra projectId hợp lệ
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "projectId không hợp lệ." });
-    }
-
-    // 2. Tìm project và populate team
-    const project = await Project.findById(id).populate('assignedTeam');
-    if (!project) {
-      return res.status(404).json({ message: "Dự án không tồn tại." });
-    }
-
-    // 3. Kiểm tra project có team hay không
-    if (!project.assignedTeam) {
-      return res.status(400).json({ message: "Dự án chưa được gán cho team nào." });
-    }
-
-    // 4. Kiểm tra user có phải là leader của team
-    const team = await Team.findById(project.assignedTeam._id);
-    if (!team || team.assignedLeader.toString() !== userId.toString()) {
-      return res.status(403).json({
-        message: "Bạn không có quyền xem báo cáo của dự án này."
-      });
-    }
-
-    // 5. Lấy tất cả báo cáo của project
-    const reports = await Report.find({ project: id })
-      .populate({
-        path: 'project',
-        select: 'name _id'
-      })
-      .populate({
-        path: 'team',
-        select: 'name _id'
-      })
-      .populate({
-        path: 'assignedLeader',
-        select: 'name _id'
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    // 6. Kiểm tra nếu không có báo cáo
-    if (!reports || reports.length === 0) {
-      return res.status(404).json({
-        message: "Chưa có báo cáo nào cho dự án này."
-      });
-    }
-
-    // 7. Định dạng danh sách báo cáo
-    const formattedReports = reports.map(report => ({
-      reportId: report._id,
-      project: {
-        projectId: report.project?._id || null,
-        projectName: report.project?.name || 'Không rõ'
-      },
-      team: {
-        teamId: report.team?._id || null,
-        teamName: report.team?.name || 'Không rõ'
-      },
-      assignedLeader: {
-        leaderId: report.assignedLeader?._id || null,
-        leaderName: report.assignedLeader?.name || 'Không rõ'
-      },
-      content: report.content,
-      projectProgress: report.projectProgress,
-      difficulties: report.difficulties,
-      file: report.file || null,
-      createdAt: report.createdAt
-    }));
-
-    // 8. Trả về phản hồi
-    res.status(200).json({
-      message: "Lấy danh sách báo cáo cho dự án thành công.",
-      reports: formattedReports
-    });
-
-  } catch (error) {
-    console.error("getReportProject error:", error);
-    res.status(500).json({
-      message: "Lỗi server khi lấy báo cáo dự án.",
-      error: error.message
-    });
   }
 };
 
