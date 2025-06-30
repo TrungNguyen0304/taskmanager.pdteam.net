@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, Flag, Users, MessageCircle, X } from "lucide-react";
+import { FileText, Clock, Flag, Users, X } from "lucide-react";
 import { GrUpdate } from "react-icons/gr";
 import { FaUser } from "react-icons/fa";
 import axios from "axios";
-import CommentModal from "./CommentModal";
 
 const PAGE_SIZE = 3;
 
@@ -49,8 +48,6 @@ const TaskMember = () => {
   const [newStatus, setNewStatus] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -86,7 +83,6 @@ const TaskMember = () => {
                 leader: task.project?.team?.assignedLeader?.name || "N/A",
               },
             },
-            commentCount: task.commentCount || 0,
           }));
           setTasks(formatted);
         } else {
@@ -94,7 +90,6 @@ const TaskMember = () => {
         }
       } catch (error) {
         console.error("Lỗi khi tải danh sách nhiệm vụ:", error);
-        // setErrorMessage("Không thể tải danh sách nhiệm vụ.");
       } finally {
         setLoading(false);
       }
@@ -167,24 +162,6 @@ const TaskMember = () => {
     } finally {
       setIsUpdating(false);
     }
-  };
-
-  const openCommentModal = (taskId) => {
-    setSelectedTaskId(taskId);
-    setIsCommentModalOpen(true);
-  };
-
-  const closeCommentModal = () => {
-    setIsCommentModalOpen(false);
-    setSelectedTaskId(null);
-  };
-
-  const handleCommentUpdate = (taskId, newCommentCount) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === taskId ? { ...task, commentCount: newCommentCount } : task
-      )
-    );
   };
 
   const getStatusStyle = (status) => {
@@ -321,19 +298,6 @@ const TaskMember = () => {
                     </p>
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <MessageCircle className="w-5 h-5 text-gray-500" />
-                      <button
-                        onClick={() => openCommentModal(task.id)}
-                        className="text-gray-800 hover:text-blue-800 font-medium flex items-center gap-2"
-                        aria-label={`Xem bình luận cho nhiệm vụ ${task.name}`}
-                      >
-                        Bình luận ({task.commentCount})
-                      </button>
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base text-gray-600">
                     <div className="flex items-center gap-3">
                       <Clock className="w-5 h-5 text-gray-500" />
@@ -350,14 +314,14 @@ const TaskMember = () => {
                       <FileText className="w-5 h-5" />
                       Báo cáo
                     </button>
-                    <button
+                    {/* <button
                       onClick={() => openStatusModal(task)}
                       className="flex-1 py-2 px-4 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-green-200 hover:border-green-300 transition-all"
                       aria-label={`Thay đổi trạng thái nhiệm vụ ${task.name}`}
                     >
                       <GrUpdate className="w-5 h-5" />
                       Cập nhật trạng thái
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => navigate(`/report-history/${task.id}`)}
                       className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 border border-gray-200 hover:border-gray-300 transition-all"
@@ -440,15 +404,6 @@ const TaskMember = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {isCommentModalOpen && (
-          <CommentModal
-            reportId={selectedTaskId}
-            isOpen={isCommentModalOpen}
-            onClose={closeCommentModal}
-            onCommentUpdate={handleCommentUpdate}
-          />
         )}
 
         {totalPages > 1 && (

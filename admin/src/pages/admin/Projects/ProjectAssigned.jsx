@@ -66,7 +66,7 @@ const ProjectAssigned = () => {
   };
 
   const confirmAction = async () => {
-    setIsProcessing(true); // Bật loading khi bắt đầu xử lý
+    setIsProcessing(true);
 
     try {
       const token = localStorage.getItem("token");
@@ -105,11 +105,12 @@ const ProjectAssigned = () => {
       );
       setShowModal(false);
       alert(
-        `Lỗi: ${error.response?.data?.message || "Không thể thực hiện hành động."
+        `Lỗi: ${
+          error.response?.data?.message || "Không thể thực hiện hành động."
         }`
       );
     } finally {
-      setIsProcessing(false); // Tắt loading
+      setIsProcessing(false);
     }
   };
 
@@ -139,7 +140,7 @@ const ProjectAssigned = () => {
       );
 
       const clonedProject = response.data.project;
-      setProjects([clonedProject, ...projects]); // thêm vào đầu
+      setProjects([clonedProject, ...projects]);
       setTotalProjects(totalProjects + 1);
       setTotalPages(Math.ceil((totalProjects + 1) / limit));
 
@@ -147,17 +148,22 @@ const ProjectAssigned = () => {
       navigate("/project-unassigned");
     } catch (error) {
       console.error("Lỗi khi sao chép dự án:", error);
-      alert(
-        error.response?.data?.message || "Không thể sao chép dự án."
-      );
+      alert(error.response?.data?.message || "Không thể sao chép dự án.");
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const truncateDescription = (description) => {
+    const words = description.split(" ");
+    if (words.length > 40) {
+      return words.slice(0, 40).join(" ") + "...";
+    }
+    return description;
+  };
+
   return (
     <div className="w-full mx-auto bg-white p-6 rounded-lg shadow-md">
-      {/* Loading Overlay cho xóa/thu hồi */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 flex flex-col items-center">
@@ -196,7 +202,7 @@ const ProjectAssigned = () => {
                     <h3 className="text-xl font-semibold">{project.name}</h3>
                     <p className="text-gray-600">
                       <span className="font-semibold text-black">Mô tả:</span>{" "}
-                      {project.description}
+                      {truncateDescription(project.description)}
                     </p>
                     <p className="text-gray-600">
                       <strong>Trạng thái:</strong> {project.status}
@@ -243,7 +249,7 @@ const ProjectAssigned = () => {
                       <RotateCcw className="w-4 h-4 mr-1" />
                       Thu hồi
                     </button>
-                    {(project.status === "cancelled") && (
+                    {project.status === "cancelled" && (
                       <button
                         onClick={() => handleClone(project.id)}
                         className="flex items-center px-3 py-1 border border-green-600 text-green-700 rounded hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -259,7 +265,6 @@ const ProjectAssigned = () => {
             ))}
           </div>
 
-          {/* Pagination */}
           {totalPages > 0 && (
             <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
               <p>
@@ -279,10 +284,11 @@ const ProjectAssigned = () => {
                       key={page}
                       onClick={() => handlePageChange(page)}
                       disabled={isProcessing}
-                      className={`px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed ${currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "hover:bg-gray-100"
-                        }`}
+                      className={`px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "hover:bg-gray-100"
+                      }`}
                     >
                       {page}
                     </button>
@@ -301,7 +307,6 @@ const ProjectAssigned = () => {
         </>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
           <div className="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-md">

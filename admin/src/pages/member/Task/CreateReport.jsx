@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // Added useEffect
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileText } from "lucide-react";
 import axios from "axios";
@@ -12,7 +12,7 @@ const CreateReport = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // thanh toán scroll về đầu trang khi vào trang này
+  // Scroll to top when entering the page
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -44,6 +44,10 @@ const CreateReport = () => {
         }
       }
 
+      if (!values.difficulties) {
+        errors.difficulties = "Vui lòng nhập khó khăn hoặc ghi 'Không có'.";
+      }
+
       return errors;
     },
     onSubmit: async (values, { resetForm }) => {
@@ -55,8 +59,7 @@ const CreateReport = () => {
       const formData = new FormData();
       formData.append("content", values.content);
       formData.append("taskProgress", values.taskProgress);
-      if (values.difficulties)
-        formData.append("difficulties", values.difficulties);
+      formData.append("difficulties", values.difficulties);
       if (file) formData.append("file", file);
 
       try {
@@ -185,7 +188,7 @@ const CreateReport = () => {
             {/* Difficulties */}
             <div>
               <label className="block text-md md:text-lg font-medium text-gray-700 mb-2">
-                Khó khăn (nếu có)
+                Khó khăn <span className="text-red-500">*</span>
               </label>
               <textarea
                 name="difficulties"
@@ -194,9 +197,14 @@ const CreateReport = () => {
                 onBlur={formik.handleBlur}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 rows="3"
-                placeholder="Mô tả khó khăn gặp phải..."
+                placeholder="Mô tả khó khăn gặp phải hoặc ghi 'Không có'..."
                 disabled={isSubmitting}
               />
+              {formik.touched.difficulties && formik.errors.difficulties && (
+                <div className="mt-2 text-sm text-red-600">
+                  {formik.errors.difficulties}
+                </div>
+              )}
             </div>
 
             {/* File Upload */}
