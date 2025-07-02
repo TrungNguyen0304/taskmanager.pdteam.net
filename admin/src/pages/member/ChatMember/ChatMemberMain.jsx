@@ -45,8 +45,12 @@ const ChatMainMember = ({
   error,
   setError,
   navigate,
+  isGroupInCall,
+  callInvite,
+  setCallInvite,
+
 }) => {
-  useEffect(() => {}, [isRecallModalOpen, messageToRecall]);
+  useEffect(() => { }, [isRecallModalOpen, messageToRecall]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -79,6 +83,9 @@ const ChatMainMember = ({
         navigate={navigate}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
+        isGroupInCall={isGroupInCall}
+        callInvite={callInvite}
+        setCallInvite={setCallInvite}
       />
 
       <ChatMessages
@@ -124,9 +131,8 @@ const ChatMainMember = ({
           />
           {/* side panel */}
           <div
-            className={`fixed top-0 right-0 h-full w-64 sm:w-72 bg-white border-l shadow-xl z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${
-              sidebarOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+            className={`fixed top-0 right-0 h-full w-64 sm:w-72 bg-white border-l shadow-xl z-50 flex flex-col transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "translate-x-full"
+              }`}
           >
             {/* user header */}
             <div className="flex items-center justify-between px-4 py-4 border-b bg-gray-50">
@@ -163,9 +169,8 @@ const ChatMainMember = ({
                 </span>
                 <ChevronDown
                   size={14}
-                  className={`sm:w-5 sm:h-5 ${
-                    showMembers ? "rotate-180" : ""
-                  } transition-transform text-gray-600`}
+                  className={`sm:w-5 sm:h-5 ${showMembers ? "rotate-180" : ""
+                    } transition-transform text-gray-600`}
                 />
               </button>
 

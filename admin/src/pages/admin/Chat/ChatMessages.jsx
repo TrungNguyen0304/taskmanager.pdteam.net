@@ -66,7 +66,7 @@ const ChatMessages = ({
         return false;
       });
       if (duplicates.length > 0) {
-        console.warn("Duplicate messages detected:", duplicates);
+        // console.warn("Duplicate messages detected:", duplicates);
       }
     }
   }, [messages]);

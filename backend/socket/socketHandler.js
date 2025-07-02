@@ -320,6 +320,7 @@ function setupSocket(io) {
                 }
 
                 if (!activeCalls.has(groupId)) activeCalls.set(groupId, new Set());
+                
                 if (activeCalls.get(groupId).size > 0) {
                     console.log(`start-call: Cuộc gọi đã tồn tại trong group ${groupId}`);
                     return callback?.({ success: true, message: "Cuộc gọi đã tồn tại, tham gia ngay" });

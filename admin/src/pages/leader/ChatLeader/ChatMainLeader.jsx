@@ -61,7 +61,9 @@ const ChatMainLeader = ({
   error,
   setError,
   navigate,
-  isGroupInCall,
+  isGroupInCall,  
+  callInvite,
+  setCallInvite,
 
 }) => {
   // Debug props
@@ -104,6 +106,8 @@ const ChatMainLeader = ({
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
         isGroupInCall={isGroupInCall}
+        callInvite={callInvite}
+        setCallInvite={setCallInvite}
       />
 
       <ChatMessages

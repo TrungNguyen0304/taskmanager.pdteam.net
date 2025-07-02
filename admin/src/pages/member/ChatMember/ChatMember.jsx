@@ -47,6 +47,35 @@ const ChatMember = () => {
   const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
   const [messageToRecall, setMessageToRecall] = useState(null);
   const [isGroupInCall, setIsGroupInCall] = useState(false);
+  const [callInvite, setCallInvite] = useState(null);
+
+  // Kiểm tra xem nhóm hiện tại có đang trong cuộc gọi không
+  useEffect(() => {
+    const checkCallStatus = () => {
+      if (!socket || !selectedGroup?._id || !currentUser?._id) return;
+
+      socket.emit(
+        "get-call-status",
+        { groupId: selectedGroup._id, userId: currentUser._id },
+        (res) => {
+          if (res.success && res.isCallActive) {
+            const startedBy = res.participants?.[0];
+            setCallInvite({
+              groupId: selectedGroup._id,
+              userName: startedBy?.userName || "Ai đó",
+              message: `${startedBy?.userName || "Ai đó"} đang gọi video`,
+            });
+            setIsGroupInCall(true);
+          } else {
+            setCallInvite(null);
+            setIsGroupInCall(false);
+          }
+        }
+      );
+    };
+
+    checkCallStatus();
+  }, [socket, selectedGroup?._id, currentUser?._id]);
 
   // Fetch groups and team members
   useEffect(() => {
@@ -207,25 +236,20 @@ const ChatMember = () => {
       console.log("✅ GỌI THÀNH CÔNG:", message);
       if (groupId === selectedGroup?._id) {
         setIsGroupInCall(true);
-        setMessages(prev => [
-          ...prev,
-          {
-            _id: Date.now(),
-            senderId: "System",
-            senderName: "System",
-            text: message,
-            timestamp: new Date().toISOString(),
-            system: true,
-            isCallInvite: true,
-            callGroupId: groupId,
-          }
-        ]);
+
+        // Thay vì push vào messages, ta set callInvite
+        setCallInvite({
+          userName,
+          groupId,
+          message,
+        });
       }
     });
 
     socket.on("call-ended", ({ groupId }) => {
       if (groupId === selectedGroup?._id) {
         setIsGroupInCall(false);
+        setCallInvite(null);
       }
     });
 
@@ -822,6 +846,8 @@ const ChatMember = () => {
           navigate={navigate}
           handleTyping={handleTyping}
           isGroupInCall={isGroupInCall}
+          callInvite={callInvite}
+          setCallInvite={setCallInvite}
         />
       )}
     </div>
